@@ -28,6 +28,26 @@ where
     .expect("invariant: manufactured CSR parts are valid")
 }
 
+fn assert_manufactured_solution<T>(solution: &Array1<T>, bound: T)
+where
+    T: RealField + FloatElement + core::fmt::Debug,
+{
+    let values = solution
+        .as_slice()
+        .expect("invariant: Array1 is contiguous");
+    assert!((values[0] - T::from_f64(1.0)).abs() <= bound);
+    assert!((values[1] - T::from_f64(2.0)).abs() <= bound);
+
+    // Direct substitution verifies A*x=b independently of PCG. The matrix
+    // infinity norm is five, so six times the forward bound covers propagated
+    // solution error plus the final row-operation rounding.
+    let residual_bound = T::from_f64(6.0) * bound;
+    let first = T::from_f64(4.0) * values[0] + values[1] - T::from_f64(6.0);
+    let second = values[0] + T::from_f64(3.0) * values[1] - T::from_f64(7.0);
+    assert!(first.abs() <= residual_bound);
+    assert!(second.abs() <= residual_bound);
+}
+
 fn verifies_spd_solution<T>()
 where
     T: RealScalar + RealField + FloatElement + core::fmt::Debug,
@@ -58,12 +78,11 @@ where
     .expect("invariant: manufactured solve has valid dimensions");
 
     assert_eq!(report.termination, Termination::Converged);
-    let values = solution
-        .as_slice()
-        .expect("invariant: Array1 is contiguous");
+    // Two length-two recurrence steps perform fewer than 32 rounded scalar
+    // operations. Multiplying by κ∞(A)=25/11 and a factor-four safety margin
+    // remains below 256 first-order rounding units.
     let bound = T::from_f64(256.0) * <T as RealField>::EPSILON;
-    assert!((values[0] - T::from_f64(1.0)).abs() <= bound);
-    assert!((values[1] - T::from_f64(2.0)).abs() <= bound);
+    assert_manufactured_solution(&solution, bound);
 
     let jacobi = Jacobi::from_csr(&matrix).expect("invariant: diagonal is nonzero");
     solution.fill(<T as NumericElement>::ZERO);
@@ -78,6 +97,7 @@ where
     )
     .expect("invariant: Jacobi solve has valid dimensions");
     assert_eq!(report.termination, Termination::Converged);
+    assert_manufactured_solution(&solution, bound);
 }
 
 #[test]
