@@ -8,6 +8,11 @@ linear systems and restarted right-preconditioned GMRES for general
 nonsymmetric systems. Leto CPU and Hephaestus WGPU execution share one
 backend-neutral recurrence per solver family.
 
+Athena is independently versioned and consumed by the
+[Atlas multiphysics stack](https://github.com/ryancinsight/atlas). The
+cross-repository ownership and migration boundary is recorded in
+[Atlas ADR 0022](https://github.com/ryancinsight/atlas/blob/main/docs/adr/0022-horae-athena-provider-extraction.md).
+
 ## Ownership boundary
 
 Athena owns:
@@ -62,6 +67,12 @@ crates/
 
 Every `lib.rs` and `mod.rs` is a manifest. Operation families live in leaf
 modules and no source file exceeds the repository's 500-line target.
+
+The `athena` facade enables the Leto CPU backend by default; the `wgpu` feature
+adds Hephaestus execution. `athena-core` is the `no_std + alloc`,
+infrastructure-independent contract crate. Consumers that only need
+convergence policy, iteration observation, or backend-neutral solver traits do
+not acquire Leto or Hephaestus dependencies.
 
 `KrylovBackend` uses generic associated view types so the core recurrence
 borrows Leto `ArrayView1`/`ArrayViewMut1` on CPU and typed
@@ -185,3 +196,7 @@ The next dependency-ordered increments are:
    migrate their operator/preconditioner implementations to Athena.
 3. Add nonlinear solver policy only when a second concrete residual/Jacobian
    consumer establishes the shared contract.
+
+## License
+
+Licensed under either the MIT License or Apache License 2.0.
