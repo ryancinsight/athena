@@ -53,7 +53,17 @@ fn wgpu_cg_matches_manufactured_spd_solution() {
         .device()
         .download(&solution, &mut host_solution)
         .expect("solution download must succeed");
+    // Two length-two PCG iterations plus GPU reduction reordering stay within
+    // 512 first-order f32 rounding units for this well-conditioned matrix.
     let bound = 512.0 * f32::EPSILON;
     assert!((host_solution[0] - 1.0).abs() <= bound);
     assert!((host_solution[1] - 2.0).abs() <= bound);
+
+    // Direct substitution verifies A*x=b independently of the GPU recurrence.
+    // The matrix infinity norm is five; six also covers row-operation rounding.
+    let residual_bound = 6.0 * bound;
+    let first = 4.0 * host_solution[0] + host_solution[1] - 6.0;
+    let second = host_solution[0] + 3.0 * host_solution[1] - 7.0;
+    assert!(first.abs() <= residual_bound);
+    assert!(second.abs() <= residual_bound);
 }
