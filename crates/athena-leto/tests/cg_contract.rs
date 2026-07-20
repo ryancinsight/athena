@@ -35,6 +35,7 @@ where
     let values = solution
         .as_slice()
         .expect("invariant: Array1 is contiguous");
+    assert_eq!(values.len(), 2, "manufactured system dimension");
     assert!((values[0] - T::from_f64(1.0)).abs() <= bound);
     assert!((values[1] - T::from_f64(2.0)).abs() <= bound);
 
