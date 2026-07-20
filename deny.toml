@@ -1,0 +1,36 @@
+[graph]
+all-features = true
+
+[advisories]
+yanked = "deny"
+
+[licenses]
+confidence-threshold = 0.9
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-git = "deny"
+unknown-registry = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = [
+    "https://github.com/ryancinsight/aequitas",
+    "https://github.com/ryancinsight/eunomia",
+    "https://github.com/ryancinsight/hephaestus.git",
+    "https://github.com/ryancinsight/hermes.git",
+    "https://github.com/ryancinsight/leto.git",
+    "https://github.com/ryancinsight/melinoe.git",
+    "https://github.com/ryancinsight/Mnemosyne.git",
+    "https://github.com/ryancinsight/Moirai.git",
+    "https://github.com/ryancinsight/themis",
+]

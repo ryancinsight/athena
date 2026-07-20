@@ -1,0 +1,59 @@
+use core::fmt;
+
+/// Failure in a Leto-backed Athena operation.
+#[non_exhaustive]
+#[derive(Debug)]
+pub enum LetoBackendError {
+    /// A delegated Leto operation failed.
+    Leto(leto::LetoError),
+    /// Athena received a non-contiguous vector view where its vector contract
+    /// requires dense rank-one storage.
+    NonContiguousVector,
+    /// Operands had different logical lengths.
+    LengthMismatch {
+        /// First operand length.
+        left: usize,
+        /// Second operand length.
+        right: usize,
+    },
+    /// A square operator was required.
+    NonSquareOperator {
+        /// Matrix row count.
+        rows: usize,
+        /// Matrix column count.
+        columns: usize,
+    },
+    /// A Jacobi diagonal entry was zero.
+    SingularDiagonal {
+        /// Index of the zero diagonal entry.
+        index: usize,
+    },
+}
+
+impl From<leto::LetoError> for LetoBackendError {
+    fn from(error: leto::LetoError) -> Self {
+        Self::Leto(error)
+    }
+}
+
+impl fmt::Display for LetoBackendError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Leto(error) => write!(formatter, "Leto operation failed: {error}"),
+            Self::NonContiguousVector => {
+                formatter.write_str("Athena Leto vectors must be contiguous")
+            }
+            Self::LengthMismatch { left, right } => {
+                write!(formatter, "vector length mismatch: {left} != {right}")
+            }
+            Self::NonSquareOperator { rows, columns } => {
+                write!(formatter, "operator must be square: got {rows} x {columns}")
+            }
+            Self::SingularDiagonal { index } => {
+                write!(formatter, "Jacobi diagonal is zero at index {index}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for LetoBackendError {}

@@ -1,0 +1,46 @@
+[package]
+name = "athena"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "CPU and GPU iterative linear solvers for Atlas"
+
+[features]
+default = ["cpu"]
+cpu = ["dep:athena-leto"]
+wgpu = ["dep:athena-wgpu"]
+
+[dependencies]
+athena-core.workspace = true
+athena-leto = { workspace = true, optional = true }
+athena-wgpu = { workspace = true, optional = true }
+
+[dev-dependencies]
+eunomia.workspace = true
+hephaestus-core.workspace = true
+hephaestus-wgpu.workspace = true
+leto.workspace = true
+leto-ops.workspace = true
+
+[[example]]
+name = "poisson_cpu"
+required-features = ["cpu"]
+
+[[example]]
+name = "poisson_wgpu"
+required-features = ["wgpu"]
+
+[[example]]
+name = "nonsymmetric_cpu"
+required-features = ["cpu"]
+
+[[example]]
+name = "nonsymmetric_wgpu"
+required-features = ["wgpu"]
+
+[lints]
+workspace = true

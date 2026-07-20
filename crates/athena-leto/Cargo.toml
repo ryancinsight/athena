@@ -1,0 +1,22 @@
+[package]
+name = "athena-leto"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "Leto CPU backend and operators for Athena"
+
+[dependencies]
+athena-core.workspace = true
+eunomia.workspace = true
+leto.workspace = true
+leto-ops.workspace = true
+
+[dev-dependencies]
+stats_alloc = "0.1.10"
+
+[lints]
+workspace = true

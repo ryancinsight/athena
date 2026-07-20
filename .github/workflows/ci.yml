@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: clippy, rustfmt
+      - uses: taiki-e/install-action@nextest
+      - name: Install headless Vulkan adapter
+        run: sudo apt-get update && sudo apt-get install --yes libvulkan1 mesa-vulkan-drivers
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Feature checks
+        run: |
+          cargo check --workspace --all-targets --all-features
+          cargo check --workspace --no-default-features
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Native tests
+        env:
+          CI: "true"
+          XDG_RUNTIME_DIR: /tmp
+        run: cargo nextest run --workspace --all-features
+      - name: Documentation tests
+        run: cargo test --doc --workspace --all-features
+      - name: Documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --no-deps --all-features
+      - name: Examples
+        run: |
+          cargo run -p athena --example poisson_cpu --features cpu
+          cargo run -p athena --example nonsymmetric_cpu --features cpu
+          cargo run -p athena --example poisson_wgpu --no-default-features --features wgpu
+          cargo run -p athena --example nonsymmetric_wgpu --no-default-features --features wgpu
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: EmbarkStudios/cargo-deny-action@v2

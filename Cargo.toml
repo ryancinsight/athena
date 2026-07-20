@@ -1,0 +1,55 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/athena",
+    "crates/athena-core",
+    "crates/athena-leto",
+    "crates/athena-wgpu",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+authors = ["Ryan Clanton <ryanclanton@outlook.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ryancinsight/athena"
+publish = false
+
+[workspace.dependencies]
+athena-core = { path = "crates/athena-core", version = "0.1.0" }
+athena-leto = { path = "crates/athena-leto", version = "0.1.0" }
+athena-wgpu = { path = "crates/athena-wgpu", version = "0.1.0" }
+
+eunomia = { version = "0.6.0", git = "https://github.com/ryancinsight/eunomia", default-features = false }
+leto = { version = "0.39.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
+leto-ops = { version = "0.39.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
+hephaestus-core = { version = "0.18.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false }
+hephaestus-wgpu = { version = "0.18.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false, features = ["sparse"] }
+bytemuck = { version = "1.25", features = ["derive"] }
+
+[workspace.lints.rust]
+missing_docs = "deny"
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+
+[profile.dev]
+debug = "line-tables-only"
+overflow-checks = true
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.test]
+debug = "line-tables-only"
+overflow-checks = true
+
+[profile.release]
+codegen-units = 1
+debug = false
+lto = "thin"
+overflow-checks = true
+strip = "symbols"
