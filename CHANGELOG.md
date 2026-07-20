@@ -17,6 +17,8 @@ All notable changes to Athena are documented in this file.
   fused PCG kernels, and prepared scale/AXPY kernels for GMRES.
 - CPU and WGPU manufactured SPD and nonsymmetric-system examples and
   conformance tests.
+- Public construction of non-exhaustive iteration telemetry for external
+  convergence orchestrators.
 
 ### Changed
 

@@ -297,11 +297,11 @@ where
             .backend
             .norm_l2(self.backend.view(&self.workspace.residual))
             .map_err(SolveError::Backend)?;
-        self.observer.observe(IterationState {
+        self.observer.observe(IterationState::new(
             iteration,
-            residual_norm: state.last_residual,
-            threshold: state.threshold,
-        });
+            state.last_residual,
+            state.threshold,
+        ));
         let termination = if !state.last_residual.is_finite() {
             Some(Termination::NonFinite)
         } else if state.last_residual <= state.threshold {

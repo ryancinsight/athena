@@ -191,11 +191,11 @@ where
             if !self.policy.should_check(state.iterations)
                 && (state.last_residual <= state.threshold || cycle.happy_breakdown)
             {
-                self.observer.observe(IterationState {
-                    iteration: state.iterations,
-                    residual_norm: state.last_residual,
-                    threshold: state.threshold,
-                });
+                self.observer.observe(IterationState::new(
+                    state.iterations,
+                    state.last_residual,
+                    state.threshold,
+                ));
             }
 
             if !state.last_residual.is_finite() {
@@ -252,11 +252,11 @@ where
                 return Ok(CycleProgress::Terminated(Termination::NonFinite));
             }
             if self.policy.should_check(state.iterations) {
-                self.observer.observe(IterationState {
-                    iteration: state.iterations,
-                    residual_norm: estimate,
-                    threshold: state.threshold,
-                });
+                self.observer.observe(IterationState::new(
+                    state.iterations,
+                    estimate,
+                    state.threshold,
+                ));
             }
             if estimate <= state.threshold
                 || happy_breakdown
