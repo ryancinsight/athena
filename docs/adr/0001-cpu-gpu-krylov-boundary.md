@@ -90,10 +90,10 @@ CG without speculative generality.
 ## Consequences
 
 - CPU solve iterations allocate nothing after workspace construction.
-- WGPU vectors remain resident, but current provider reductions allocate
-  scalar/scratch buffers and synchronize a scalar readback. A later
-  Hephaestus increment must add prepared/reusable reductions before Athena can
-  claim zero-allocation GPU iteration.
+- WGPU vectors remain resident. PCG and GMRES workspaces prepare fixed-input
+  Hephaestus dot and L2-norm operations once, reusing their scalar/scratch
+  buffers, pipelines, and bind groups across iterations. Scalar convergence
+  readback remains a synchronous control-flow boundary.
 - The WGPU backend is a real Hephaestus consumer-authored-kernel path and does
   not depend directly on raw `wgpu`.
 - `leto_ops::CsrMatrix` stays the CSR SSOT used for host execution and
@@ -116,3 +116,7 @@ CG without speculative generality.
   Hephaestus and checks the downloaded solution against its derived bound;
 - local adapter absence is reported as unavailable coverage, while CI adapter
   absence fails the GPU lane.
+- prepared reduction tests assert the computed dot/norm values and reject a
+  different device allocation before dispatch; and
+- the provider Criterion instrument records prepared versus one-shot dispatch
+  latency, with its machine-specific scope stated in the README.

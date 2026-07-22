@@ -2,7 +2,8 @@
 //!
 //! Solver vectors stay in typed Hephaestus device buffers. Athena authors only
 //! the solver-specific fused vector recurrences; sparse storage, `SpMV`,
-//! reductions, allocation, transfer, and dispatch remain Hephaestus-owned.
+//! prepared reductions, allocation, transfer, and dispatch remain
+//! Hephaestus-owned.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]

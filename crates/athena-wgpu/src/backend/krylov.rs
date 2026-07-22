@@ -3,7 +3,10 @@ use hephaestus_core::{
     Binding, CommandStream, ComputeDevice, DeviceBuffer, DispatchGrid, HephaestusError,
     KernelDevice, Result,
 };
-use hephaestus_wgpu::{StridedOperand, WgpuBuffer, WgpuDevice, WgpuPrepared, dot, norm_l2};
+use hephaestus_wgpu::{
+    PreparedDot, PreparedL2Norm, StridedOperand, WgpuBuffer, WgpuDevice, WgpuPrepared,
+    prepare_dot as prepare_gpu_dot, prepare_norm_l2 as prepare_gpu_norm_l2,
+};
 use leto::Layout;
 
 use super::kernels::{
@@ -22,6 +25,19 @@ pub struct WgpuBackend {
     direction: WgpuPrepared<DirectionKernel>,
     scale: WgpuPrepared<ScaleKernel>,
     axpy: WgpuPrepared<AxpyKernel>,
+}
+
+/// Prepared Hephaestus dot product with its fixed Athena input identities.
+pub struct WgpuPreparedDot {
+    operation: PreparedDot<f32>,
+    left: WgpuBuffer<f32>,
+    right: WgpuBuffer<f32>,
+}
+
+/// Prepared Hephaestus Euclidean norm with its fixed Athena input identity.
+pub struct WgpuPreparedNorm {
+    operation: PreparedL2Norm<f32>,
+    input: WgpuBuffer<f32>,
 }
 
 impl WgpuBackend {
@@ -73,12 +89,28 @@ impl WgpuBackend {
         self.device.download(scalar, &mut host)?;
         Ok(host[0])
     }
+
+    fn validate_prepared_input(
+        role: &'static str,
+        expected: &WgpuBuffer<f32>,
+        actual: &WgpuBuffer<f32>,
+    ) -> Result<()> {
+        if expected.raw() == actual.raw() {
+            Ok(())
+        } else {
+            Err(HephaestusError::DispatchFailed {
+                message: format!("prepared {role} received a different device allocation"),
+            })
+        }
+    }
 }
 
 impl KrylovBackend for WgpuBackend {
     type Scalar = f32;
     type Error = HephaestusError;
     type Vector = WgpuBuffer<f32>;
+    type PreparedDot = WgpuPreparedDot;
+    type PreparedNorm = WgpuPreparedNorm;
     type View<'a>
         = &'a WgpuBuffer<f32>
     where
@@ -140,10 +172,14 @@ impl KrylovBackend for WgpuBackend {
         )
     }
 
-    fn dot(&self, left: Self::View<'_>, right: Self::View<'_>) -> Result<f32> {
+    fn prepare_dot(
+        &self,
+        left: Self::View<'_>,
+        right: Self::View<'_>,
+    ) -> Result<Self::PreparedDot> {
         Self::validate_lengths(left.len(), right.len())?;
         let layout = Self::layout(left.len())?;
-        let result = dot(
+        let operation = prepare_gpu_dot(
             &self.device,
             StridedOperand {
                 buffer: left,
@@ -154,19 +190,49 @@ impl KrylovBackend for WgpuBackend {
                 layout: &layout,
             },
         )?;
-        self.download_scalar(&result)
+        Ok(WgpuPreparedDot {
+            operation,
+            left: left.clone(),
+            right: right.clone(),
+        })
     }
 
-    fn norm_l2(&self, vector: Self::View<'_>) -> Result<f32> {
+    fn dot_prepared(
+        &self,
+        prepared: &Self::PreparedDot,
+        left: Self::View<'_>,
+        right: Self::View<'_>,
+    ) -> Result<f32> {
+        Self::validate_lengths(left.len(), right.len())?;
+        Self::validate_prepared_input("dot left operand", &prepared.left, left)?;
+        Self::validate_prepared_input("dot right operand", &prepared.right, right)?;
+        prepared.operation.dispatch(&self.device)?;
+        self.download_scalar(prepared.operation.output())
+    }
+
+    fn prepare_norm_l2(&self, vector: Self::View<'_>) -> Result<Self::PreparedNorm> {
         let layout = Self::layout(vector.len())?;
-        let result = norm_l2(
+        let operation = prepare_gpu_norm_l2(
             &self.device,
             StridedOperand {
                 buffer: vector,
                 layout: &layout,
             },
         )?;
-        self.download_scalar(&result)
+        Ok(WgpuPreparedNorm {
+            operation,
+            input: vector.clone(),
+        })
+    }
+
+    fn norm_l2_prepared(
+        &self,
+        prepared: &Self::PreparedNorm,
+        vector: Self::View<'_>,
+    ) -> Result<f32> {
+        Self::validate_prepared_input("L2 norm operand", &prepared.input, vector)?;
+        prepared.operation.dispatch(&self.device)?;
+        self.download_scalar(prepared.operation.output())
     }
 
     fn residual(

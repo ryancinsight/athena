@@ -130,9 +130,18 @@ where
     }
 
     fn initialize(&mut self) -> ExecutionResult<B, Stage<GmresState<B::Scalar>, B::Scalar>> {
+        self.backend
+            .copy(
+                self.backend.view(self.right_hand_side),
+                self.backend.view_mut(&mut self.workspace.residual),
+            )
+            .map_err(SolveError::Backend)?;
         let right_hand_side_norm = self
             .backend
-            .norm_l2(self.backend.view(self.right_hand_side))
+            .norm_l2_prepared(
+                &self.workspace.residual_norm,
+                self.backend.view(&self.workspace.residual),
+            )
             .map_err(SolveError::Backend)?;
         let threshold = self.policy.threshold(right_hand_side_norm);
         let initial_residual = self.recompute_residual()?;
@@ -306,7 +315,8 @@ where
         for row in 0..=column {
             let coefficient = self
                 .backend
-                .dot(
+                .dot_prepared(
+                    &self.workspace.work_basis_dot[row],
                     self.backend.view(&self.workspace.work),
                     self.backend.view(&self.workspace.basis[row]),
                 )
@@ -327,7 +337,10 @@ where
 
         let next_norm = self
             .backend
-            .norm_l2(self.backend.view(&self.workspace.work))
+            .norm_l2_prepared(
+                &self.workspace.work_norm,
+                self.backend.view(&self.workspace.work),
+            )
             .map_err(SolveError::Backend)?;
         let next_index = GmresWorkspace::<B, RESTART>::hessenberg_index(column + 1, column);
         self.workspace.hessenberg[next_index] = next_norm;
@@ -426,7 +439,10 @@ where
             )
             .map_err(SolveError::Backend)?;
         self.backend
-            .norm_l2(self.backend.view(&self.workspace.residual))
+            .norm_l2_prepared(
+                &self.workspace.residual_norm,
+                self.backend.view(&self.workspace.residual),
+            )
             .map_err(SolveError::Backend)
     }
 }

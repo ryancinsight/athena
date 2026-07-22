@@ -13,10 +13,20 @@ use crate::LetoBackendError;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LetoBackend<T>(PhantomData<fn() -> T>);
 
+/// Zero-sized prepared dot-product policy for Leto views.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LetoPreparedDot;
+
+/// Zero-sized prepared Euclidean-norm policy for Leto views.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LetoPreparedNorm;
+
 impl<T: RealScalar + RealField> KrylovBackend for LetoBackend<T> {
     type Scalar = T;
     type Error = LetoBackendError;
     type Vector = Array1<T>;
+    type PreparedDot = LetoPreparedDot;
+    type PreparedNorm = LetoPreparedNorm;
     type View<'a>
         = ArrayView1<'a, T>
     where
@@ -85,8 +95,19 @@ impl<T: RealScalar + RealField> KrylovBackend for LetoBackend<T> {
     }
 
     #[inline]
-    fn dot(
+    fn prepare_dot(
         &self,
+        left: Self::View<'_>,
+        right: Self::View<'_>,
+    ) -> Result<Self::PreparedDot, Self::Error> {
+        validate_lengths(left.shape()[0], right.shape()[0])?;
+        Ok(LetoPreparedDot)
+    }
+
+    #[inline]
+    fn dot_prepared(
+        &self,
+        _prepared: &Self::PreparedDot,
         left: Self::View<'_>,
         right: Self::View<'_>,
     ) -> Result<Self::Scalar, Self::Error> {
@@ -94,7 +115,16 @@ impl<T: RealScalar + RealField> KrylovBackend for LetoBackend<T> {
     }
 
     #[inline]
-    fn norm_l2(&self, vector: Self::View<'_>) -> Result<Self::Scalar, Self::Error> {
+    fn prepare_norm_l2(&self, _vector: Self::View<'_>) -> Result<Self::PreparedNorm, Self::Error> {
+        Ok(LetoPreparedNorm)
+    }
+
+    #[inline]
+    fn norm_l2_prepared(
+        &self,
+        _prepared: &Self::PreparedNorm,
+        vector: Self::View<'_>,
+    ) -> Result<Self::Scalar, Self::Error> {
         Ok(dot(&vector, &vector)?.sqrt())
     }
 

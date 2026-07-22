@@ -133,9 +133,18 @@ where
         &mut self,
         right_hand_side: &B::Vector,
     ) -> ExecutionResult<B, Stage<ResidualState<B::Scalar>, B::Scalar>> {
+        self.backend
+            .copy(
+                self.backend.view(right_hand_side),
+                self.backend.view_mut(&mut self.workspace.residual),
+            )
+            .map_err(SolveError::Backend)?;
         let rhs_norm = self
             .backend
-            .norm_l2(self.backend.view(right_hand_side))
+            .norm_l2_prepared(
+                &self.workspace.residual_norm,
+                self.backend.view(&self.workspace.residual),
+            )
             .map_err(SolveError::Backend)?;
         let threshold = self.policy.threshold(rhs_norm);
 
@@ -156,7 +165,10 @@ where
 
         let initial_residual = self
             .backend
-            .norm_l2(self.backend.view(&self.workspace.residual))
+            .norm_l2_prepared(
+                &self.workspace.residual_norm,
+                self.backend.view(&self.workspace.residual),
+            )
             .map_err(SolveError::Backend)?;
         let termination = if !initial_residual.is_finite() {
             Some(Termination::NonFinite)
@@ -203,7 +215,8 @@ where
             .map_err(SolveError::Backend)?;
         let rho = self
             .backend
-            .dot(
+            .dot_prepared(
+                &self.workspace.residual_preconditioned_dot,
                 self.backend.view(&self.workspace.residual),
                 self.backend.view(&self.workspace.preconditioned_residual),
             )
@@ -259,7 +272,8 @@ where
 
         let denominator = self
             .backend
-            .dot(
+            .dot_prepared(
+                &self.workspace.direction_image_dot,
                 self.backend.view(&self.workspace.direction),
                 self.backend.view(&self.workspace.image),
             )
@@ -295,7 +309,10 @@ where
         }
         state.last_residual = self
             .backend
-            .norm_l2(self.backend.view(&self.workspace.residual))
+            .norm_l2_prepared(
+                &self.workspace.residual_norm,
+                self.backend.view(&self.workspace.residual),
+            )
             .map_err(SolveError::Backend)?;
         self.observer.observe(IterationState::new(
             iteration,
@@ -330,7 +347,8 @@ where
         state.preconditioner_applications += 1;
         let next_rho = self
             .backend
-            .dot(
+            .dot_prepared(
+                &self.workspace.residual_preconditioned_dot,
                 self.backend.view(&self.workspace.residual),
                 self.backend.view(&self.workspace.preconditioned_residual),
             )

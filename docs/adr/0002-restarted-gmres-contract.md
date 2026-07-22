@@ -63,8 +63,9 @@ requires:
 
 Leto implements both through contiguous array views. Hephaestus implements
 both through prepared Athena WGSL kernels. Full WGPU basis vectors remain
-device-resident; scalar dot products and norms retain the provider's current
-scalar-readback limitation.
+device-resident. The workspace also owns one prepared Hephaestus dot plan per
+Arnoldi basis vector and prepared residual/work norm plans; scalar readback
+remains the convergence control-flow boundary.
 
 ## Numerical contracts
 
@@ -127,5 +128,7 @@ No re-export, forwarding helper, or compatibility module remains.
 - identity and Jacobi right preconditioners share the same recurrence;
 - repeated CPU solves allocate nothing after workspace construction;
 - a real Hephaestus WGPU solve matches the manufactured solution;
+- prepared WGPU reductions reuse fixed device allocations and reject identity
+  mismatches before dispatch;
 - ZST and const-restart layout claims are asserted; and
 - residue scans prove Leto exports no iterative-solver recurrence.

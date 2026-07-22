@@ -5,15 +5,18 @@ use crate::KrylovBackend;
 
 /// Reusable restarted-GMRES vector and scalar workspace.
 ///
-/// Construction performs every host and backend allocation. A workspace can
-/// serve repeated solves with the same vector length and restart width without
-/// allocating again. Provider-local dispatch scratch remains the backend's
-/// responsibility.
+/// Construction performs every host and backend allocation and prepares the
+/// reductions bound to the workspace vectors. A workspace can serve repeated
+/// solves with the same vector length and restart width without allocating or
+/// rebuilding accelerator dispatch resources.
 pub struct GmresWorkspace<B: KrylovBackend, const RESTART: usize> {
     pub(super) residual: B::Vector,
     pub(super) work: B::Vector,
     pub(super) basis: Vec<B::Vector>,
     pub(super) preconditioned_basis: Vec<B::Vector>,
+    pub(super) residual_norm: B::PreparedNorm,
+    pub(super) work_norm: B::PreparedNorm,
+    pub(super) work_basis_dot: Vec<B::PreparedDot>,
     pub(super) hessenberg: Vec<B::Scalar>,
     pub(super) cosine: Vec<B::Scalar>,
     pub(super) sine: Vec<B::Scalar>,
@@ -32,7 +35,7 @@ impl<B: KrylovBackend, const RESTART: usize> GmresWorkspace<B, RESTART> {
     ///
     /// # Errors
     ///
-    /// Returns the first backend allocation failure.
+    /// Returns the first backend allocation or reduction-preparation failure.
     ///
     /// # Panics
     ///
@@ -55,12 +58,24 @@ impl<B: KrylovBackend, const RESTART: usize> GmresWorkspace<B, RESTART> {
         for _ in 0..RESTART {
             preconditioned_basis.push(backend.allocate(len)?);
         }
+        let residual = backend.allocate(len)?;
+        let work = backend.allocate(len)?;
+        let residual_norm = backend.prepare_norm_l2(backend.view(&residual))?;
+        let work_norm = backend.prepare_norm_l2(backend.view(&work))?;
+        let mut work_basis_dot = Vec::with_capacity(basis_len);
+        for basis_vector in &basis {
+            work_basis_dot
+                .push(backend.prepare_dot(backend.view(&work), backend.view(basis_vector))?);
+        }
 
         Ok(Self {
-            residual: backend.allocate(len)?,
-            work: backend.allocate(len)?,
+            residual,
+            work,
             basis,
             preconditioned_basis,
+            residual_norm,
+            work_norm,
+            work_basis_dot,
             hessenberg: alloc::vec![B::Scalar::ZERO; hessenberg_len],
             cosine: alloc::vec![B::Scalar::ZERO; RESTART],
             sine: alloc::vec![B::Scalar::ZERO; RESTART],
