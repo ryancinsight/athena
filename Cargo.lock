@@ -20,7 +20,7 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 [[package]]
 name = "aequitas"
 version = "0.1.0"
-source = "git+https://github.com/ryancinsight/aequitas?rev=767e2d0550f1dc15bd8c4434a1a1002806f93498#767e2d0550f1dc15bd8c4434a1a1002806f93498"
+source = "git+https://github.com/ryancinsight/aequitas#262b3e09c19d844f57765d3e4ea6ab2336653d6d"
 dependencies = [
  "eunomia",
  "typenum",
@@ -283,7 +283,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "eunomia"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/eunomia?rev=7021628fe8eb3637c297105f626ee5df78abda84#7021628fe8eb3637c297105f626ee5df78abda84"
+source = "git+https://github.com/ryancinsight/eunomia#c65e32444324c9148921e5e99782cc865796da1f"
 dependencies = [
  "bytemuck",
  "libm",
@@ -464,7 +464,7 @@ dependencies = [
 [[package]]
 name = "hephaestus-core"
 version = "0.18.0"
-source = "git+https://github.com/ryancinsight/hephaestus.git#a47302de23d74c07a84e9b7000ce6886c96b2efe"
+source = "git+https://github.com/ryancinsight/hephaestus.git#8c6ab72d2d68ab2df77fcf73d4759a6af0de388e"
 dependencies = [
  "bytemuck",
  "leto",
@@ -475,7 +475,7 @@ dependencies = [
 [[package]]
 name = "hephaestus-wgpu"
 version = "0.18.0"
-source = "git+https://github.com/ryancinsight/hephaestus.git#a47302de23d74c07a84e9b7000ce6886c96b2efe"
+source = "git+https://github.com/ryancinsight/hephaestus.git#8c6ab72d2d68ab2df77fcf73d4759a6af0de388e"
 dependencies = [
  "aequitas",
  "bytemuck",
@@ -495,7 +495,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd"
 version = "0.4.1"
-source = "git+https://github.com/ryancinsight/hermes.git#fbdab542f501f832731f909d1f7b72458016efd5"
+source = "git+https://github.com/ryancinsight/hermes.git#2d40804204168bdc518e584475970dfee758606a"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -508,7 +508,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-core"
 version = "0.4.1"
-source = "git+https://github.com/ryancinsight/hermes.git#fbdab542f501f832731f909d1f7b72458016efd5"
+source = "git+https://github.com/ryancinsight/hermes.git#2d40804204168bdc518e584475970dfee758606a"
 dependencies = [
  "bytemuck",
  "eunomia",
@@ -520,7 +520,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-intrinsics"
 version = "0.4.1"
-source = "git+https://github.com/ryancinsight/hermes.git#fbdab542f501f832731f909d1f7b72458016efd5"
+source = "git+https://github.com/ryancinsight/hermes.git#2d40804204168bdc518e584475970dfee758606a"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -529,7 +529,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-macros"
 version = "0.4.1"
-source = "git+https://github.com/ryancinsight/hermes.git#fbdab542f501f832731f909d1f7b72458016efd5"
+source = "git+https://github.com/ryancinsight/hermes.git#2d40804204168bdc518e584475970dfee758606a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -539,7 +539,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-types"
 version = "0.4.1"
-source = "git+https://github.com/ryancinsight/hermes.git#fbdab542f501f832731f909d1f7b72458016efd5"
+source = "git+https://github.com/ryancinsight/hermes.git#2d40804204168bdc518e584475970dfee758606a"
 dependencies = [
  "hermes-simd-core",
  "hermes-simd-intrinsics",
@@ -575,7 +575,7 @@ dependencies = [
 [[package]]
 name = "leto"
 version = "0.40.0"
-source = "git+https://github.com/ryancinsight/leto.git#42604ad0832833fadc38faf1e169084271a3d1bb"
+source = "git+https://github.com/ryancinsight/leto.git#c00fa04a1157b1d636c5d0214b07f64a11b37b0d"
 dependencies = [
  "aequitas",
  "bytemuck",
@@ -588,7 +588,7 @@ dependencies = [
 [[package]]
 name = "leto-ops"
 version = "0.40.0"
-source = "git+https://github.com/ryancinsight/leto.git#42604ad0832833fadc38faf1e169084271a3d1bb"
+source = "git+https://github.com/ryancinsight/leto.git#c00fa04a1157b1d636c5d0214b07f64a11b37b0d"
 dependencies = [
  "bytemuck",
  "eunomia",
@@ -601,9 +601,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.186"
+version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
+checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
 name = "libloading"
@@ -1314,7 +1314,7 @@ checksum = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.1",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -1390,9 +1390,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "3.0.1"
+version = "3.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5edbec4ed188954a10c12c038215f8ce7606b2d5c973cd8dc43e8795065c5f2f"
+checksum = "53e9bae58849f64dfa4f5d5ae372c8341f7305f82a3868709269343628b659a3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1450,7 +1450,7 @@ checksum = "43cbfe0cf76104d42a574802844187e84a305e531ed54455f11fbde0f10541cd"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.1",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -1973,18 +1973,18 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.8.54"
+version = "0.8.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7cbbc0a705a0fd05cc3676525980d2bf5a9bc4adac6d6475209a7887cf59d19"
+checksum = "b5a105cd7b140f6eeec8acff2ea38135d3cab283ada58540f629fe51e46696eb"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.8.54"
+version = "0.8.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2e817b7b52d0c7358d3246da9d69935ebb18116b2b102b4230dac079b4862f5"
+checksum = "0fe976fb70c78cd64cccfe3a6fc142244e8a77b70959b30faf9d0ac37ee228eb"
 dependencies = [
  "proc-macro2",
  "quote",
