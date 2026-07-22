@@ -13,6 +13,10 @@ pub trait KrylovBackend {
     type Error;
     /// Owned, reusable vector storage.
     type Vector;
+    /// Backend-owned fixed-buffer dot-product resources.
+    type PreparedDot;
+    /// Backend-owned fixed-buffer Euclidean-norm resources.
+    type PreparedNorm;
     /// Immutable zero-copy vector view.
     type View<'a>: Copy
     where
@@ -64,20 +68,70 @@ pub trait KrylovBackend {
         factor: Self::Scalar,
     ) -> Result<(), Self::Error>;
 
-    /// Compute the native-precision dot product.
+    /// Prepare a dot product over fixed vector allocations.
     ///
     /// # Errors
     ///
-    /// Returns a backend dispatch or shape error.
-    fn dot(&self, left: Self::View<'_>, right: Self::View<'_>)
-    -> Result<Self::Scalar, Self::Error>;
+    /// Returns a backend allocation, preparation, or shape error.
+    fn prepare_dot(
+        &self,
+        left: Self::View<'_>,
+        right: Self::View<'_>,
+    ) -> Result<Self::PreparedDot, Self::Error>;
 
-    /// Compute the native-precision Euclidean norm.
+    /// Execute a prepared native-precision dot product.
     ///
     /// # Errors
     ///
-    /// Returns a backend dispatch error.
-    fn norm_l2(&self, vector: Self::View<'_>) -> Result<Self::Scalar, Self::Error>;
+    /// Returns a backend dispatch, shape, or prepared-input mismatch error.
+    fn dot_prepared(
+        &self,
+        prepared: &Self::PreparedDot,
+        left: Self::View<'_>,
+        right: Self::View<'_>,
+    ) -> Result<Self::Scalar, Self::Error>;
+
+    /// Compute a one-shot native-precision dot product.
+    ///
+    /// # Errors
+    ///
+    /// Returns a backend preparation or dispatch error.
+    fn dot(
+        &self,
+        left: Self::View<'_>,
+        right: Self::View<'_>,
+    ) -> Result<Self::Scalar, Self::Error> {
+        let prepared = self.prepare_dot(left, right)?;
+        self.dot_prepared(&prepared, left, right)
+    }
+
+    /// Prepare a Euclidean norm over a fixed vector allocation.
+    ///
+    /// # Errors
+    ///
+    /// Returns a backend allocation, preparation, or shape error.
+    fn prepare_norm_l2(&self, vector: Self::View<'_>) -> Result<Self::PreparedNorm, Self::Error>;
+
+    /// Execute a prepared native-precision Euclidean norm.
+    ///
+    /// # Errors
+    ///
+    /// Returns a backend dispatch or prepared-input mismatch error.
+    fn norm_l2_prepared(
+        &self,
+        prepared: &Self::PreparedNorm,
+        vector: Self::View<'_>,
+    ) -> Result<Self::Scalar, Self::Error>;
+
+    /// Compute a one-shot native-precision Euclidean norm.
+    ///
+    /// # Errors
+    ///
+    /// Returns a backend preparation or dispatch error.
+    fn norm_l2(&self, vector: Self::View<'_>) -> Result<Self::Scalar, Self::Error> {
+        let prepared = self.prepare_norm_l2(vector)?;
+        self.norm_l2_prepared(&prepared, vector)
+    }
 
     /// Compute `residual = right_hand_side - image`.
     ///

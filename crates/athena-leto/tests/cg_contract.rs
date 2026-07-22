@@ -1,8 +1,8 @@
 //! Value-semantic CPU solver conformance.
 
 use athena_core::{
-    Cg, CgWorkspace, ConvergencePolicy, Identity, IterationObserver, IterationState, SolveError,
-    Termination,
+    Cg, CgWorkspace, ConvergencePolicy, Identity, IterationObserver, IterationState, KrylovBackend,
+    SolveError, Termination,
 };
 use athena_leto::{BorrowedDenseOperator, CsrOperator, Jacobi, LetoBackend};
 use eunomia::{FloatElement, NumericElement, RealField};
@@ -296,4 +296,16 @@ fn backend_and_algorithm_markers_are_zero_sized() {
     assert_eq!(core::mem::size_of::<LetoBackend<f64>>(), 0);
     assert_eq!(core::mem::size_of::<Cg<LetoBackend<f64>>>(), 0);
     assert_eq!(core::mem::size_of::<Identity>(), 0);
+
+    let backend = LetoBackend::<f64>::default();
+    let left = Array1::zeros([2]);
+    let right = Array1::zeros([2]);
+    let dot = backend
+        .prepare_dot(left.view(), right.view())
+        .expect("equal-length host views must prepare");
+    let norm = backend
+        .prepare_norm_l2(left.view())
+        .expect("host norm preparation cannot fail");
+    assert_eq!(core::mem::size_of_val(&dot), 0);
+    assert_eq!(core::mem::size_of_val(&norm), 0);
 }

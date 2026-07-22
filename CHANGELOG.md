@@ -19,9 +19,13 @@ All notable changes to Athena are documented in this file.
   conformance tests.
 - Public construction of non-exhaustive iteration telemetry for external
   convergence orchestrators.
+- Prepared Hephaestus dot and L2-norm plans owned by reusable PCG and GMRES
+  workspaces, with fixed-allocation validation and provider benchmark evidence.
 
 ### Changed
 
 - Move public CG and restarted GMRES orchestration from Leto to Athena after
   CPU and WGPU conformance. Leto remains the host-array, CSR, SpMV, and
   reduction provider.
+- Align Leto, Hephaestus, Aequitas, Hermes, and Eunomia revisions so provider
+  numeric types retain one Git source identity.

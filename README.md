@@ -87,11 +87,32 @@ The CPU implementation performs no allocation after `CgWorkspace` or
 vectors, `RESTART` preconditioned vectors, and const-bounded host scalar
 storage. `BorrowedDenseOperator` holds Leto `CowStorage` and does not detach
 because operator application is read-only. On WGPU, full vectors remain
-device-resident and Athena uses prepared fused PCG kernels plus prepared scale
-and AXPY kernels for GMRES. Current Hephaestus `dot` and `norm_l2` allocate
-provider-local reduction buffers and transfer one scalar for each requested
-convergence value, so this release makes no zero-allocation or
-zero-submission-overhead GPU claim.
+device-resident and Athena uses prepared fused PCG kernels, prepared scale and
+AXPY kernels, and Hephaestus prepared dot/norm reductions. Workspace
+construction fixes each reduction's input allocations and creates its output,
+scratch, pipeline, and bind-group resources once. Iterations dispatch those
+plans without rebuilding provider resources; only the convergence scalar
+crosses to the host. Solver initialization copies the right-hand side into the
+residual workspace before measuring its norm, so repeated solves reuse the
+same prepared norm instead of allocating a one-shot reduction.
+
+## Prepared-reduction performance
+
+The provider-owned Criterion instrument compares identical 65,536-element
+operations before and after preparation with 100 samples. On an Intel Core
+Ultra 9 285K host and NVIDIA RTX 5080 (driver 610.47), prepared dot measured
+107.65 us versus 144.79 us one-shot (25.7% lower point estimate), and prepared
+L2 norm measured 122.28 us versus 158.89 us one-shot (23.0% lower). The 95%
+confidence intervals were 105.19--110.40 us and 141.65--148.34 us for dot,
+and 119.79--124.79 us and 150.88--169.24 us for L2 norm. This evidence covers
+uncontended provider dispatch latency on that machine; it does not establish
+whole-solver speedup or portability to other adapters.
+
+Reproduce the instrument in Hephaestus with:
+
+```sh
+cargo bench -p hephaestus-wgpu --bench prepared_map_reduction
+```
 
 ## Example
 
@@ -190,11 +211,9 @@ failure as an infrastructure failure.
 
 The next dependency-ordered increments are:
 
-1. Add Hephaestus `dot_into`/prepared reductions and prepared fused solver
-   dispatch so WGPU iterations reuse scalar and bind-group resources.
-2. Extract consumer-owned CG/GMRES recurrences from CFDrs and Kwavers and
+1. Extract consumer-owned CG/GMRES recurrences from CFDrs and Kwavers and
    migrate their operator/preconditioner implementations to Athena.
-3. Add nonlinear solver policy only when a second concrete residual/Jacobian
+2. Add nonlinear solver policy only when a second concrete residual/Jacobian
    consumer establishes the shared contract.
 
 ## License
