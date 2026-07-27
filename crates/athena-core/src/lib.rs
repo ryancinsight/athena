@@ -33,4 +33,4 @@ pub use error::SolveError;
 pub use operator::LinearOperator;
 pub use preconditioner::{Identity, Preconditioner};
 pub use report::{IterationObserver, IterationState, NoObserver, SolveReport, Termination};
-pub use solver::{Cg, CgWorkspace, Gmres, GmresWorkspace};
+pub use solver::{BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, Gmres, GmresWorkspace};
