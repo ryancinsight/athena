@@ -20,4 +20,4 @@ pub mod preconditioner;
 pub use backend::LetoBackend;
 pub use error::LetoBackendError;
 pub use operator::{BorrowedDenseOperator, CsrOperator};
-pub use preconditioner::Jacobi;
+pub use preconditioner::{IncompleteLu, Jacobi, SuccessiveOverRelaxation};

@@ -1961,18 +1961,6 @@ dependencies = [
 ]
 
 [[patch.unused]]
-name = "tyche-core"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "hephaestus-cuda"
-version = "0.18.0"
-
-[[patch.unused]]
-name = "hephaestus-cuda"
-version = "0.18.0"
-
-[[patch.unused]]
 name = "consus-compression"
 version = "0.1.0"
 
@@ -2001,52 +1989,32 @@ name = "consus-zarr"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "hyperion"
+name = "hephaestus-cuda"
+version = "0.18.0"
+
+[[patch.unused]]
+name = "apollo-fft"
+version = "0.25.0"
+
+[[patch.unused]]
+name = "consus-core"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "coeus-autograd"
-version = "0.9.0"
+name = "consus-io"
+version = "0.1.0"
 
 [[patch.unused]]
-name = "coeus-core"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-optim"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-tensor"
-version = "0.9.0"
+name = "consus-zarr"
+version = "0.1.0"
 
 [[patch.unused]]
 name = "horae"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "iris"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "proteus"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "coeus-autograd"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-core"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-optim"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-tensor"
-version = "0.9.0"
+name = "hephaestus-cuda"
+version = "0.18.0"
 
 [[patch.unused]]
 name = "asclepius"
@@ -2057,8 +2025,20 @@ name = "asclepius-coeus"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "apollo-fft"
-version = "0.25.0"
+name = "coeus-autograd"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-core"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-optim"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-tensor"
+version = "0.9.0"
 
 [[patch.unused]]
 name = "ritk-core"
@@ -2077,17 +2057,37 @@ name = "ritk-registration"
 version = "0.53.0"
 
 [[patch.unused]]
-name = "consus-core"
+name = "proteus"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "consus-io"
+name = "iris"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "consus-zarr"
+name = "tyche-core"
 version = "0.1.0"
 
 [[patch.unused]]
 name = "gaia"
 version = "0.3.0"
+
+[[patch.unused]]
+name = "hyperion"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "coeus-autograd"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-core"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-optim"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-tensor"
+version = "0.9.0"

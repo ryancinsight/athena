@@ -23,11 +23,19 @@ pub enum LetoBackendError {
         /// Matrix column count.
         columns: usize,
     },
-    /// A Jacobi diagonal entry was zero.
+    /// A diagonal or pivot entry required by a preconditioner was zero.
     SingularDiagonal {
-        /// Index of the zero diagonal entry.
+        /// Index of the zero entry.
         index: usize,
     },
+    /// A row carried no stored diagonal entry, so the sparsity pattern cannot
+    /// support a triangular solve.
+    MissingDiagonal {
+        /// Row lacking a diagonal entry.
+        row: usize,
+    },
+    /// A relaxation factor fell outside the convergent open interval `(0, 2)`.
+    InvalidRelaxation,
 }
 
 impl From<leto::LetoError> for LetoBackendError {
@@ -50,7 +58,13 @@ impl fmt::Display for LetoBackendError {
                 write!(formatter, "operator must be square: got {rows} x {columns}")
             }
             Self::SingularDiagonal { index } => {
-                write!(formatter, "Jacobi diagonal is zero at index {index}")
+                write!(formatter, "diagonal is zero at index {index}")
+            }
+            Self::MissingDiagonal { row } => {
+                write!(formatter, "row {row} has no stored diagonal entry")
+            }
+            Self::InvalidRelaxation => {
+                formatter.write_str("relaxation factor must lie in the open interval (0, 2)")
             }
         }
     }
