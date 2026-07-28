@@ -19,5 +19,5 @@ pub mod preconditioner;
 
 pub use backend::LetoBackend;
 pub use error::LetoBackendError;
-pub use operator::{BorrowedDenseOperator, CsrOperator};
+pub use operator::{BorrowedDenseOperator, CsrOperator, RectangularCsrOperator};
 pub use preconditioner::{IncompleteLu, Jacobi, SuccessiveOverRelaxation};

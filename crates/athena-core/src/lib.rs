@@ -30,7 +30,9 @@ pub mod solver;
 pub use backend::KrylovBackend;
 pub use convergence::{ConvergencePolicy, InvalidConvergencePolicy};
 pub use error::SolveError;
-pub use operator::LinearOperator;
+pub use operator::{LinearOperator, RectangularOperator};
 pub use preconditioner::{Identity, Preconditioner};
 pub use report::{IterationObserver, IterationState, NoObserver, SolveReport, Termination};
-pub use solver::{BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, Gmres, GmresWorkspace};
+pub use solver::{
+    BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, Gmres, GmresWorkspace, Lsqr, LsqrWorkspace,
+};

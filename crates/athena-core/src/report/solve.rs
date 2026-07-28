@@ -14,13 +14,20 @@ pub enum Termination {
     NonPositiveCurvature,
     /// A scalar residual or recurrence coefficient became non-finite.
     NonFinite,
+    /// The normal-equation residual met the tolerance. An inconsistent
+    /// least-squares system keeps a residual bounded away from zero, so this
+    /// is the only criterion that can report its optimum.
+    NormalEquations,
 }
 
 impl Termination {
     /// Return whether this condition represents convergence.
     #[must_use]
     pub const fn converged(self) -> bool {
-        matches!(self, Self::InitialResidual | Self::Converged)
+        matches!(
+            self,
+            Self::InitialResidual | Self::Converged | Self::NormalEquations
+        )
     }
 }
 
