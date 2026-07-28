@@ -3,13 +3,15 @@ use core::marker::PhantomData;
 use athena_core::KrylovBackend;
 use bytemuck::Pod;
 use eunomia::RealField;
-use hephaestus_core::{ComputeDevice, DenseVectorOps, DeviceBuffer, HephaestusError, Result};
+use hephaestus_core::{
+    ComputeDevice, DenseVectorOps, DeviceBuffer, HephaestusError, Result, RetainedReductions,
+};
 
 /// Athena Krylov backend over any Hephaestus device.
 ///
 /// The backend pairs a device with the [`DenseVectorOps`] bundle prepared
 /// against it. Every vector operation an Athena recurrence performs resolves to
-/// that seam, so this one type serves WGPU, CUDA, Metal, ROCm, and any future
+/// that seam, so this one type serves WGPU, CUDA, Metal, `ROCm`, and any future
 /// Hephaestus backend — adding a device adds no code here.
 ///
 /// Full vectors stay device-resident across iterations. Only the convergence
@@ -23,7 +25,7 @@ pub struct HephaestusBackend<D, V, T> {
 impl<D, V, T> HephaestusBackend<D, V, T>
 where
     D: ComputeDevice + 'static,
-    V: DenseVectorOps<D, T> + 'static,
+    V: DenseVectorOps<D, T> + RetainedReductions<D, T> + 'static,
     T: RealField + Pod,
 {
     /// Pair a device with vector operations prepared against it.
@@ -53,20 +55,23 @@ where
 impl<D, V, T> KrylovBackend for HephaestusBackend<D, V, T>
 where
     D: ComputeDevice + 'static,
-    V: DenseVectorOps<D, T> + 'static,
+    V: DenseVectorOps<D, T> + RetainedReductions<D, T> + 'static,
     T: RealField + Pod,
 {
     type Scalar = T;
     type Error = HephaestusError;
     type Vector = D::Buffer<T>;
-    type PreparedDot = V::PreparedDot;
-    type PreparedNorm = V::PreparedNorm;
+    // Athena workspaces retain their reductions beside the vectors those
+    // reductions measure, which is what keeps a solve allocation-free, so
+    // this backend binds the retained rather than the borrowing form.
+    type PreparedDot = V::RetainedDot;
+    type PreparedNorm = V::RetainedNorm;
     type View<'a>
         = &'a D::Buffer<T>
     where
         Self: 'a;
     type ViewMut<'a>
-        = &'a D::Buffer<T>
+        = &'a mut D::Buffer<T>
     where
         Self: 'a;
 
@@ -78,8 +83,9 @@ where
         vector
     }
 
-    /// Device buffers carry interior mutability, so a writable view is the same
-    /// shared handle rather than a unique borrow.
+    /// A writable view is a unique borrow: Hephaestus operations that write a
+    /// buffer take `&mut`, so the shared handle a device buffer offers is not
+    /// sufficient at this boundary.
     fn view_mut<'a>(&'a self, vector: &'a mut Self::Vector) -> Self::ViewMut<'a> {
         vector
     }
@@ -110,7 +116,7 @@ where
         left: Self::View<'_>,
         right: Self::View<'_>,
     ) -> Result<Self::PreparedDot> {
-        self.operations.prepare_dot(&self.device, left, right)
+        self.operations.retain_dot(&self.device, left, right)
     }
 
     fn dot_prepared(
@@ -120,11 +126,11 @@ where
         right: Self::View<'_>,
     ) -> Result<Self::Scalar> {
         self.operations
-            .dot_prepared(&self.device, prepared, left, right)
+            .dot_retained(&self.device, prepared, left, right)
     }
 
     fn prepare_norm_l2(&self, vector: Self::View<'_>) -> Result<Self::PreparedNorm> {
-        self.operations.prepare_norm_l2(&self.device, vector)
+        self.operations.retain_norm_l2(&self.device, vector)
     }
 
     fn norm_l2_prepared(
@@ -133,7 +139,7 @@ where
         vector: Self::View<'_>,
     ) -> Result<Self::Scalar> {
         self.operations
-            .norm_l2_prepared(&self.device, prepared, vector)
+            .norm_l2_retained(&self.device, prepared, vector)
     }
 
     fn residual(
