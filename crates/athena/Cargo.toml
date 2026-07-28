@@ -12,12 +12,12 @@ description = "CPU and GPU iterative linear solvers for Atlas"
 [features]
 default = ["cpu"]
 cpu = ["dep:athena-leto"]
-wgpu = ["dep:athena-wgpu"]
+accelerator = ["dep:athena-hephaestus"]
 
 [dependencies]
 athena-core.workspace = true
 athena-leto = { workspace = true, optional = true }
-athena-wgpu = { workspace = true, optional = true }
+athena-hephaestus = { workspace = true, optional = true }
 
 [dev-dependencies]
 eunomia.workspace = true

@@ -11,5 +11,7 @@
 #![deny(missing_docs)]
 
 mod backend;
+mod operator;
 
 pub use backend::HephaestusBackend;
+pub use operator::CsrOperator;

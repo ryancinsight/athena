@@ -1,21 +1,20 @@
 //! End-to-end conformance for the device-neutral Hephaestus backend.
 //!
-//! The backend is generic over the device; these cases instantiate it at WGPU
-//! because that is the backend testable on this host. The operator is built
-//! here from WGPU sparse storage rather than in the library, because
-//! `GpuCsrMatrix` and `spmv_into` are still per-backend and no device-neutral
-//! sparse seam exists yet.
+//! The backend and the operator are both generic over the device; these cases
+//! instantiate them at WGPU because that is the backend testable on this host.
+//! No solver, operator, or vector code below names a device API — only the
+//! device and its operation bundles do.
 
 use athena_core::{
     BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, ConvergencePolicy, Gmres, GmresWorkspace,
-    Identity, KrylovBackend, LinearOperator, SolveError,
+    Identity, KrylovBackend, SolveError,
 };
-use athena_hephaestus::HephaestusBackend;
-use hephaestus_core::{ComputeDevice, Result};
-use hephaestus_wgpu::{GpuCsrMatrix, WgpuDevice, WgpuVectorOps, spmv_into};
-use leto_ops::CsrMatrix;
+use athena_hephaestus::{CsrOperator, HephaestusBackend};
+use hephaestus_core::{ComputeDevice, HephaestusError};
+use hephaestus_wgpu::{GpuCsrMatrix, WgpuDevice, WgpuSparseOps, WgpuVectorOps};
 
 type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps, f32>;
+type Operator = CsrOperator<WgpuSparseOps, GpuCsrMatrix<f32>>;
 
 fn backend_or_skip() -> Option<Backend> {
     let device = match WgpuDevice::try_default("athena-hephaestus-contract") {
@@ -29,56 +28,29 @@ fn backend_or_skip() -> Option<Backend> {
     Some(HephaestusBackend::new(device, operations))
 }
 
-/// Square CSR operator resident in WGPU buffers.
-struct DeviceCsrOperator {
-    matrix: GpuCsrMatrix<f32>,
-    dimension: usize,
-}
-
-impl DeviceCsrOperator {
-    fn new(backend: &Backend, matrix: &CsrMatrix<f32>) -> Result<Self> {
-        let (rows, _) = matrix.shape();
-        Ok(Self {
-            matrix: GpuCsrMatrix::from_cpu(backend.device(), matrix)?,
-            dimension: rows,
-        })
-    }
-}
-
-impl LinearOperator<Backend> for DeviceCsrOperator {
-    fn dimension(&self) -> usize {
-        self.dimension
-    }
-
-    fn apply(
-        &self,
-        backend: &Backend,
-        input: <Backend as KrylovBackend>::View<'_>,
-        output: <Backend as KrylovBackend>::ViewMut<'_>,
-    ) -> Result<()> {
-        spmv_into(backend.device(), &self.matrix, input, output)
-    }
-}
-
-/// Symmetric positive definite: `[[4, 1], [1, 3]]`, with `x = [1, 2]` giving
+/// Symmetric positive definite `[[4, 1], [1, 3]]`, with `x = [1, 2]` giving
 /// `b = [6, 7]`.
-fn spd_matrix() -> CsrMatrix<f32> {
-    CsrMatrix::from_parts(
-        vec![4.0, 1.0, 1.0, 3.0],
-        vec![0, 1, 0, 1],
-        vec![0, 2, 4],
+fn spd_operator(backend: &Backend) -> Operator {
+    CsrOperator::from_parts(
+        WgpuSparseOps,
+        backend.device(),
+        &[4.0_f32, 1.0, 1.0, 3.0],
+        &[0, 1, 0, 1],
+        &[0, 2, 4],
         2,
         2,
     )
     .expect("invariant: manufactured CSR parts are valid")
 }
 
-/// Nonsymmetric: `[[4, 1], [2, 3]]`, with `x = [1, 2]` giving `b = [6, 8]`.
-fn nonsymmetric_matrix() -> CsrMatrix<f32> {
-    CsrMatrix::from_parts(
-        vec![4.0, 1.0, 2.0, 3.0],
-        vec![0, 1, 0, 1],
-        vec![0, 2, 4],
+/// Nonsymmetric `[[4, 1], [2, 3]]`, with `x = [1, 2]` giving `b = [6, 8]`.
+fn nonsymmetric_operator(backend: &Backend) -> Operator {
+    CsrOperator::from_parts(
+        WgpuSparseOps,
+        backend.device(),
+        &[4.0_f32, 1.0, 2.0, 3.0],
+        &[0, 1, 0, 1],
+        &[0, 2, 4],
         2,
         2,
     )
@@ -115,7 +87,7 @@ fn cg_solves_an_spd_system_on_device() {
     let Some(backend) = backend_or_skip() else {
         return;
     };
-    let operator = DeviceCsrOperator::new(&backend, &spd_matrix()).expect("invariant: upload");
+    let operator = spd_operator(&backend);
     let right_hand_side = upload(&backend, &[6.0, 7.0]);
     let mut solution = backend.allocate(2).expect("invariant: allocation");
     let mut workspace = CgWorkspace::new(&backend, 2).expect("invariant: workspace allocation");
@@ -140,8 +112,7 @@ fn gmres_solves_a_nonsymmetric_system_on_device() {
     let Some(backend) = backend_or_skip() else {
         return;
     };
-    let operator =
-        DeviceCsrOperator::new(&backend, &nonsymmetric_matrix()).expect("invariant: upload");
+    let operator = nonsymmetric_operator(&backend);
     let right_hand_side = upload(&backend, &[6.0, 8.0]);
     let mut solution = backend.allocate(2).expect("invariant: allocation");
     let mut workspace =
@@ -169,8 +140,7 @@ fn bicgstab_solves_a_nonsymmetric_system_on_device() {
     let Some(backend) = backend_or_skip() else {
         return;
     };
-    let operator =
-        DeviceCsrOperator::new(&backend, &nonsymmetric_matrix()).expect("invariant: upload");
+    let operator = nonsymmetric_operator(&backend);
     let right_hand_side = upload(&backend, &[6.0, 8.0]);
     let mut solution = backend.allocate(2).expect("invariant: allocation");
     let mut workspace =
@@ -199,7 +169,7 @@ fn repeated_solves_reuse_the_retained_reductions() {
     let Some(backend) = backend_or_skip() else {
         return;
     };
-    let operator = DeviceCsrOperator::new(&backend, &spd_matrix()).expect("invariant: upload");
+    let operator = spd_operator(&backend);
     let right_hand_side = upload(&backend, &[6.0, 7.0]);
     let mut workspace = CgWorkspace::new(&backend, 2).expect("invariant: workspace allocation");
 
@@ -225,7 +195,7 @@ fn dimension_mismatch_is_rejected() {
     let Some(backend) = backend_or_skip() else {
         return;
     };
-    let operator = DeviceCsrOperator::new(&backend, &spd_matrix()).expect("invariant: upload");
+    let operator = spd_operator(&backend);
     let right_hand_side = upload(&backend, &[6.0, 7.0, 1.0]);
     let mut solution = backend.allocate(2).expect("invariant: allocation");
     let mut workspace = CgWorkspace::new(&backend, 2).expect("invariant: workspace allocation");
@@ -241,4 +211,64 @@ fn dimension_mismatch_is_rejected() {
     );
 
     assert!(matches!(outcome, Err(SolveError::DimensionMismatch { .. })));
+}
+
+#[test]
+fn a_rectangular_matrix_is_rejected() {
+    let Some(backend) = backend_or_skip() else {
+        return;
+    };
+    let outcome = Operator::from_parts(
+        WgpuSparseOps,
+        backend.device(),
+        &[1.0_f32, 2.0],
+        &[0, 1],
+        &[0, 2],
+        1,
+        2,
+    );
+    assert!(matches!(
+        outcome,
+        Err(HephaestusError::DispatchFailed { .. })
+    ));
+}
+
+#[test]
+fn malformed_csr_structure_is_rejected_before_dispatch() {
+    // The seam takes raw parts, so the invariants a host matrix type would
+    // enforce at construction are validated at upload instead. Dispatching on
+    // malformed structure would read out of bounds on the device.
+    let Some(backend) = backend_or_skip() else {
+        return;
+    };
+    let device = backend.device();
+
+    // Column indices within a row must be strictly increasing.
+    assert!(
+        Operator::from_parts(
+            WgpuSparseOps,
+            device,
+            &[1.0_f32, 2.0],
+            &[1, 0],
+            &[0, 2],
+            1,
+            1
+        )
+        .is_err()
+    );
+    // row_ptr must end at the nonzero count.
+    assert!(
+        Operator::from_parts(
+            WgpuSparseOps,
+            device,
+            &[1.0_f32, 2.0],
+            &[0, 1],
+            &[0, 1],
+            1,
+            2
+        )
+        .is_err()
+    );
+    // Column indices must be inside the declared column count.
+    assert!(Operator::from_parts(WgpuSparseOps, device, &[1.0_f32], &[5], &[0, 1], 1, 1).is_err());
 }

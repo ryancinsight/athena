@@ -1,7 +1,8 @@
 //! Athena iterative linear solvers.
 //!
 //! `athena-core` owns backend-neutral solver law. Enable `cpu` for the Leto
-//! implementation and `wgpu` for the Hephaestus implementation.
+//! host implementation and `accelerator` for the Hephaestus implementation,
+//! which serves every Hephaestus device rather than one device API.
 //!
 //! # Examples
 //!
@@ -22,6 +23,6 @@ pub use athena_core::*;
 #[cfg(feature = "cpu")]
 pub use athena_leto as cpu;
 
-/// Hephaestus WGPU implementation.
-#[cfg(feature = "wgpu")]
-pub use athena_wgpu as wgpu;
+/// Hephaestus accelerator implementation.
+#[cfg(feature = "accelerator")]
+pub use athena_hephaestus as accelerator;

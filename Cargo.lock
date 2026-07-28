@@ -71,8 +71,8 @@ name = "athena"
 version = "0.1.0"
 dependencies = [
  "athena-core",
+ "athena-hephaestus",
  "athena-leto",
- "athena-wgpu",
  "eunomia",
  "hephaestus-core",
  "hephaestus-wgpu",
@@ -88,6 +88,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "athena-hephaestus"
+version = "0.1.0"
+dependencies = [
+ "athena-core",
+ "bytemuck",
+ "eunomia",
+ "hephaestus-core",
+ "hephaestus-wgpu",
+ "leto-ops",
+]
+
+[[package]]
 name = "athena-leto"
 version = "0.1.0"
 dependencies = [
@@ -96,18 +108,6 @@ dependencies = [
  "leto",
  "leto-ops",
  "stats_alloc",
-]
-
-[[package]]
-name = "athena-wgpu"
-version = "0.1.0"
-dependencies = [
- "athena-core",
- "bytemuck",
- "hephaestus-core",
- "hephaestus-wgpu",
- "leto",
- "leto-ops",
 ]
 
 [[package]]
@@ -484,6 +484,7 @@ dependencies = [
  "moirai",
  "moirai-gpu",
  "moirai-sync",
+ "smallvec",
  "themis",
  "wgpu",
  "windows 0.62.2",
@@ -1961,6 +1962,46 @@ dependencies = [
 ]
 
 [[patch.unused]]
+name = "ritk-core"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "ritk-dicom"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "ritk-io"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "ritk-registration"
+version = "0.53.0"
+
+[[patch.unused]]
+name = "proteus"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "coeus-autograd"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-core"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-optim"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-tensor"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "hyperion"
+version = "0.1.0"
+
+[[patch.unused]]
 name = "consus-compression"
 version = "0.1.0"
 
@@ -1989,23 +2030,19 @@ name = "consus-zarr"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "hephaestus-cuda"
-version = "0.18.0"
+name = "gaia"
+version = "0.3.0"
 
 [[patch.unused]]
-name = "apollo-fft"
-version = "0.25.0"
-
-[[patch.unused]]
-name = "consus-core"
+name = "asclepius"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "consus-io"
+name = "asclepius-coeus"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "consus-zarr"
+name = "tyche-core"
 version = "0.1.0"
 
 [[patch.unused]]
@@ -2017,77 +2054,17 @@ name = "hephaestus-cuda"
 version = "0.18.0"
 
 [[patch.unused]]
-name = "asclepius"
-version = "0.1.0"
+name = "hephaestus-metal"
+version = "0.18.0"
 
 [[patch.unused]]
-name = "asclepius-coeus"
-version = "0.1.0"
+name = "hephaestus-rocm"
+version = "0.18.0"
 
 [[patch.unused]]
-name = "coeus-autograd"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-core"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-optim"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-tensor"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "ritk-core"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "ritk-dicom"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "ritk-io"
-version = "0.2.0"
-
-[[patch.unused]]
-name = "ritk-registration"
-version = "0.53.0"
-
-[[patch.unused]]
-name = "proteus"
-version = "0.1.0"
+name = "apollo-fft"
+version = "0.25.0"
 
 [[patch.unused]]
 name = "iris"
 version = "0.1.0"
-
-[[patch.unused]]
-name = "tyche-core"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "gaia"
-version = "0.3.0"
-
-[[patch.unused]]
-name = "hyperion"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "coeus-autograd"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-core"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-optim"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-tensor"
-version = "0.9.0"
