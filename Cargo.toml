@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/athena",
     "crates/athena-core",
+    "crates/athena-hephaestus",
     "crates/athena-leto",
     "crates/athena-wgpu",
 ]
@@ -18,6 +19,7 @@ publish = false
 
 [workspace.dependencies]
 athena-core = { path = "crates/athena-core", version = "0.1.0" }
+athena-hephaestus = { path = "crates/athena-hephaestus", version = "0.1.0" }
 athena-leto = { path = "crates/athena-leto", version = "0.1.0" }
 athena-wgpu = { path = "crates/athena-wgpu", version = "0.1.0" }
 
