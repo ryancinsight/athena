@@ -1,0 +1,23 @@
+[package]
+name = "athena-hephaestus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "Device-neutral Hephaestus accelerator backend for Athena"
+
+[dependencies]
+athena-core.workspace = true
+bytemuck.workspace = true
+eunomia.workspace = true
+hephaestus-core.workspace = true
+
+[dev-dependencies]
+hephaestus-wgpu.workspace = true
+leto-ops.workspace = true
+
+[lints]
+workspace = true
