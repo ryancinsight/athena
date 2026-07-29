@@ -35,15 +35,51 @@ impl<T: RealScalar + RealField> SuccessiveOverRelaxation<T> {
     /// the underlying splitting, plus the shape and diagonal errors of
     /// [`DiagonalIndex`].
     pub fn from_csr(matrix: &CsrMatrix<T>, relaxation: T) -> Result<Self, LetoBackendError> {
+        Self::build(matrix, relaxation, false)
+    }
+
+    /// Build while treating a row with no stored diagonal as an identity row.
+    ///
+    /// A sparsity pattern may omit the diagonal of a row that carries no
+    /// self-coupling — an inactive degree of freedom, or a constraint row
+    /// eliminated during assembly. [`Self::from_csr`] rejects those, because a
+    /// splitting factor with a structurally absent pivot is undefined. This
+    /// constructor instead gives such a row an implied unit pivot, leaving it
+    /// unchanged by the sweep.
+    ///
+    /// The distinction is deliberate rather than defaulted: a caller that does
+    /// not know its assembly omits diagonals should hear about it.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::from_csr`], minus the missing-diagonal case.
+    pub fn from_csr_with_identity_rows(
+        matrix: &CsrMatrix<T>,
+        relaxation: T,
+    ) -> Result<Self, LetoBackendError> {
+        Self::build(matrix, relaxation, true)
+    }
+
+    fn build(
+        matrix: &CsrMatrix<T>,
+        relaxation: T,
+        identity_rows: bool,
+    ) -> Result<Self, LetoBackendError> {
         let zero = <T as NumericElement>::ZERO;
         let two = <T as NumericElement>::ONE + <T as NumericElement>::ONE;
         if !relaxation.is_finite() || relaxation <= zero || relaxation >= two {
             return Err(LetoBackendError::InvalidRelaxation);
         }
-        let diagonal = DiagonalIndex::new(matrix)?;
+        let diagonal = if identity_rows {
+            DiagonalIndex::new_optional(matrix)?
+        } else {
+            DiagonalIndex::new(matrix)?
+        };
         let (dimension, _) = matrix.shape();
         for row in 0..dimension {
-            if matrix.values()[diagonal.position(row)] == zero {
+            if let Some(position) = diagonal.position(row)
+                && matrix.values()[position] == zero
+            {
                 return Err(LetoBackendError::SingularDiagonal { index: row });
             }
         }

@@ -44,12 +44,12 @@ impl<T: RealScalar + RealField> IncompleteLu<T> {
 
         for row in 1..dimension {
             let row_span = row_ptr[row]..row_ptr[row + 1];
-            let row_diagonal = diagonal.position(row);
+            let row_diagonal = diagonal.required_position(row);
             // Strict lower entries of this row, in ascending column order,
             // which the CSR contract guarantees.
             for lower in row_span.start..row_diagonal {
                 let pivot_row = col_indices[lower];
-                let pivot_value = values[diagonal.position(pivot_row)];
+                let pivot_value = values[diagonal.required_position(pivot_row)];
                 if pivot_value == <T as NumericElement>::ZERO {
                     return Err(LetoBackendError::SingularDiagonal { index: pivot_row });
                 }
@@ -63,7 +63,7 @@ impl<T: RealScalar + RealField> IncompleteLu<T> {
                 // the source pattern already carries. Both rows are sorted, so
                 // one merge pass locates the shared columns.
                 let mut target = lower + 1;
-                let pivot_upper = diagonal.position(pivot_row) + 1..row_ptr[pivot_row + 1];
+                let pivot_upper = diagonal.required_position(pivot_row) + 1..row_ptr[pivot_row + 1];
                 for source in pivot_upper {
                     let column = col_indices[source];
                     while target < row_span.end && col_indices[target] < column {

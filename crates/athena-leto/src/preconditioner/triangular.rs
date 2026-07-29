@@ -11,7 +11,9 @@ use crate::LetoBackendError;
 /// `(diagonal, end)` by slicing rather than searching.
 #[derive(Clone, Debug)]
 pub(super) struct DiagonalIndex {
-    positions: Vec<usize>,
+    /// Value-array position of each row's diagonal, or `None` where the
+    /// sparsity pattern stores no diagonal entry for that row.
+    positions: Vec<Option<usize>>,
 }
 
 impl DiagonalIndex {
@@ -23,6 +25,28 @@ impl DiagonalIndex {
     /// Returns [`LetoBackendError::NonSquareOperator`] or
     /// [`LetoBackendError::MissingDiagonal`].
     pub(super) fn new<T: RealScalar>(matrix: &CsrMatrix<T>) -> Result<Self, LetoBackendError> {
+        let index = Self::new_optional(matrix)?;
+        for (row, position) in index.positions.iter().enumerate() {
+            if position.is_none() {
+                return Err(LetoBackendError::MissingDiagonal { row });
+            }
+        }
+        Ok(index)
+    }
+
+    /// Locate diagonal entries, tolerating rows that store none.
+    ///
+    /// A row without a stored diagonal carries no coupling to itself in the
+    /// pattern. Callers that can treat such a row as an identity row use this;
+    /// callers whose factorisation needs every pivot use [`Self::new`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LetoBackendError::NonSquareOperator`] for a rectangular
+    /// matrix.
+    pub(super) fn new_optional<T: RealScalar>(
+        matrix: &CsrMatrix<T>,
+    ) -> Result<Self, LetoBackendError> {
         let (rows, columns) = matrix.shape();
         if rows != columns {
             return Err(LetoBackendError::NonSquareOperator { rows, columns });
@@ -32,16 +56,19 @@ impl DiagonalIndex {
         let mut positions = Vec::with_capacity(rows);
         for row in 0..rows {
             let span = row_ptr[row]..row_ptr[row + 1];
-            let offset = col_indices[span.clone()]
-                .binary_search(&row)
-                .map_err(|_| LetoBackendError::MissingDiagonal { row })?;
-            positions.push(span.start + offset);
+            let offset = col_indices[span.clone()].binary_search(&row).ok();
+            positions.push(offset.map(|offset| span.start + offset));
         }
         Ok(Self { positions })
     }
 
-    pub(super) fn position(&self, row: usize) -> usize {
+    pub(super) fn position(&self, row: usize) -> Option<usize> {
         self.positions[row]
+    }
+
+    /// Diagonal position for a row a required-diagonal index was built for.
+    pub(super) fn required_position(&self, row: usize) -> usize {
+        self.positions[row].expect("invariant: required diagonal index stores every row")
     }
 }
 
@@ -61,7 +88,19 @@ pub(super) fn forward_substitute<T: RealScalar + RealField>(
 ) -> Result<(), LetoBackendError> {
     for row in 0..vector.len() {
         let start = row_ptr[row];
-        let pivot = diagonal.position(row);
+        // Without a stored diagonal the row has no self-coupling in the
+        // pattern; its strict lower part ends where the row does, and the
+        // implied pivot is one.
+        let Some(pivot) = diagonal.position(row) else {
+            let mut accumulated = vector[row];
+            for entry in start..row_ptr[row + 1] {
+                if col_indices[entry] < row {
+                    accumulated -= values[entry] * vector[col_indices[entry]];
+                }
+            }
+            vector[row] = accumulated;
+            continue;
+        };
         let mut accumulated = vector[row];
         for entry in start..pivot {
             accumulated -= values[entry] * vector[col_indices[entry]];
@@ -90,7 +129,7 @@ pub(super) fn back_substitute<T: RealScalar + RealField>(
 ) -> Result<(), LetoBackendError> {
     for row in (0..vector.len()).rev() {
         let end = row_ptr[row + 1];
-        let pivot = diagonal.position(row);
+        let pivot = diagonal.required_position(row);
         let mut accumulated = vector[row];
         for entry in pivot + 1..end {
             accumulated -= values[entry] * vector[col_indices[entry]];

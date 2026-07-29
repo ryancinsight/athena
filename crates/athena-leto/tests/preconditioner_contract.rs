@@ -282,3 +282,27 @@ fn solve_with<P: Preconditioner<LetoBackend<f64>>>(
     assert!(report.converged(), "preconditioned solve must converge");
     solution
 }
+
+#[test]
+fn identity_rows_are_opt_in_for_a_missing_diagonal() {
+    // An assembly may omit the diagonal of a row carrying no self-coupling.
+    // The default constructor rejects that, because a splitting factor with a
+    // structurally absent pivot is undefined; the identity-row constructor
+    // gives it an implied unit pivot and leaves the row unchanged.
+    let matrix = from_dense(&[&[2.0, 0.0, 0.0], &[1.0, 0.0, 0.0], &[0.0, 0.0, 4.0]]);
+
+    assert!(matches!(
+        SuccessiveOverRelaxation::from_csr(&matrix, 1.0),
+        Err(LetoBackendError::MissingDiagonal { row: 1 })
+    ));
+
+    let lenient = SuccessiveOverRelaxation::from_csr_with_identity_rows(&matrix, 1.0)
+        .expect("invariant: identity rows are permitted");
+    // Row 1 has a unit pivot, so it resolves to r[1] - 1*z[0]: with r = [2, 3, 8]
+    // that is z = [1, 3 - 1 = 2, 2].
+    let solved = apply(&lenient, &vector(&[2.0, 3.0, 8.0]));
+    let values = solved.as_slice().expect("invariant: contiguous");
+    assert!((values[0] - 1.0).abs() <= 1e-12, "{}", values[0]);
+    assert!((values[1] - 2.0).abs() <= 1e-12, "{}", values[1]);
+    assert!((values[2] - 2.0).abs() <= 1e-12, "{}", values[2]);
+}

@@ -1962,35 +1962,31 @@ dependencies = [
 ]
 
 [[patch.unused]]
-name = "gaia"
-version = "0.3.0"
+name = "iris"
+version = "0.1.0"
 
 [[patch.unused]]
-name = "ritk-core"
+name = "coeus-autograd"
 version = "0.9.0"
 
 [[patch.unused]]
-name = "ritk-dicom"
+name = "coeus-core"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-optim"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "coeus-tensor"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "hyperion"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "ritk-io"
-version = "0.2.0"
-
-[[patch.unused]]
-name = "ritk-registration"
-version = "0.53.0"
-
-[[patch.unused]]
-name = "asclepius"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "asclepius-coeus"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "iris"
+name = "proteus"
 version = "0.1.0"
 
 [[patch.unused]]
@@ -2022,36 +2018,16 @@ name = "consus-zarr"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "tyche-core"
+name = "asclepius"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "horae"
+name = "asclepius-coeus"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "coeus-autograd"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-core"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-optim"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-tensor"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "proteus"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "hyperion"
-version = "0.1.0"
+name = "gaia"
+version = "0.3.0"
 
 [[patch.unused]]
 name = "apollo-fft"
@@ -2068,3 +2044,27 @@ version = "0.18.0"
 [[patch.unused]]
 name = "hephaestus-rocm"
 version = "0.18.0"
+
+[[patch.unused]]
+name = "ritk-core"
+version = "0.9.0"
+
+[[patch.unused]]
+name = "ritk-dicom"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "ritk-io"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "ritk-registration"
+version = "0.53.0"
+
+[[patch.unused]]
+name = "horae"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "tyche-core"
+version = "0.1.0"
