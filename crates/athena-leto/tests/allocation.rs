@@ -68,9 +68,7 @@ fn repeated_cpu_solves_allocate_nothing_after_initialization() {
     }
     let change = region.change();
 
-    assert_eq!(change.allocations, 0);
-    assert_eq!(change.reallocations, 0);
-    assert_eq!(change.deallocations, 0);
+    assert_steady_state(change);
 }
 
 #[test]
@@ -122,9 +120,7 @@ fn repeated_gmres_solves_allocate_nothing_after_initialization() {
     }
     let change = region.change();
 
-    assert_eq!(change.allocations, 0);
-    assert_eq!(change.reallocations, 0);
-    assert_eq!(change.deallocations, 0);
+    assert_steady_state(change);
 }
 
 #[test]
@@ -176,7 +172,25 @@ fn repeated_bicgstab_solves_allocate_nothing_after_initialization() {
     }
     let change = region.change();
 
-    assert_eq!(change.allocations, 0);
-    assert_eq!(change.reallocations, 0);
-    assert_eq!(change.deallocations, 0);
+    assert_steady_state(change);
+}
+
+/// Assert the measured region performed no heap traffic at all.
+///
+/// Reports the entire `Stats` on failure. `assert_eq!` per field stops at
+/// the first mismatch, which tells you a count moved but not its shape --
+/// and shape is what identifies the culprit. Bytes separate one large
+/// buffer from several small ones, and a matching allocation/deallocation
+/// pair points at a temporary rather than retained state.
+#[track_caller]
+fn assert_steady_state(change: stats_alloc::Stats) {
+    assert_eq!(
+        (
+            change.allocations,
+            change.reallocations,
+            change.deallocations
+        ),
+        (0, 0, 0),
+        "warm solves must not touch the heap; observed {change:?}"
+    );
 }
