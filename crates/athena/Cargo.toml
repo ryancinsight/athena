@@ -31,16 +31,16 @@ name = "poisson_cpu"
 required-features = ["cpu"]
 
 [[example]]
-name = "poisson_wgpu"
-required-features = ["wgpu"]
+name = "poisson_accelerator"
+required-features = ["accelerator"]
 
 [[example]]
 name = "nonsymmetric_cpu"
 required-features = ["cpu"]
 
 [[example]]
-name = "nonsymmetric_wgpu"
-required-features = ["wgpu"]
+name = "nonsymmetric_accelerator"
+required-features = ["accelerator"]
 
 [lints]
 workspace = true

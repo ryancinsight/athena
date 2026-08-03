@@ -46,8 +46,8 @@ jobs:
         run: |
           cargo run -p athena --example poisson_cpu --features cpu
           cargo run -p athena --example nonsymmetric_cpu --features cpu
-          cargo run -p athena --example poisson_wgpu --no-default-features --features wgpu
-          cargo run -p athena --example nonsymmetric_wgpu --no-default-features --features wgpu
+          cargo run -p athena --example poisson_accelerator --no-default-features --features accelerator
+          cargo run -p athena --example nonsymmetric_accelerator --no-default-features --features accelerator
 
   supply-chain:
     runs-on: ubuntu-latest
