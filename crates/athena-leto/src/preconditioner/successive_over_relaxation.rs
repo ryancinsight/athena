@@ -32,8 +32,10 @@ impl<T: RealScalar + RealField> SuccessiveOverRelaxation<T> {
     ///
     /// Returns [`LetoBackendError::InvalidRelaxation`] unless `relaxation`
     /// lies in the open interval `(0, 2)`, the classical convergence range for
-    /// the underlying splitting, plus the shape and diagonal errors of
-    /// [`DiagonalIndex`].
+    /// the underlying splitting. Indexing the diagonal additionally returns
+    /// [`LetoBackendError::NonSquareOperator`] for a rectangular matrix and
+    /// [`LetoBackendError::MissingDiagonal`] when a row stores no diagonal
+    /// entry.
     pub fn from_csr(matrix: &CsrMatrix<T>, relaxation: T) -> Result<Self, LetoBackendError> {
         Self::build(matrix, relaxation, false)
     }
