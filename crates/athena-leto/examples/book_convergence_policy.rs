@@ -33,14 +33,20 @@ fn main() {
         matches!(result_neg, Err(InvalidConvergencePolicy::InvalidTolerance)),
         "negative tolerance must be rejected"
     );
-    println!("negative tolerance rejected: {}", InvalidConvergencePolicy::InvalidTolerance);
+    println!(
+        "negative tolerance rejected: {}",
+        InvalidConvergencePolicy::InvalidTolerance
+    );
 
     let result_zero = ConvergencePolicy::<f64>::new(1e-8, 1e-6, 0);
     assert!(
         matches!(result_zero, Err(InvalidConvergencePolicy::ZeroIterations)),
         "zero iterations must be rejected"
     );
-    println!("zero iterations rejected: {}", InvalidConvergencePolicy::ZeroIterations);
+    println!(
+        "zero iterations rejected: {}",
+        InvalidConvergencePolicy::ZeroIterations
+    );
 
     println!("all convergence-policy assertions passed");
 }

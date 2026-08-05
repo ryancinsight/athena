@@ -9,7 +9,9 @@
 //! operator to a known solution vector to get `b`, and then solves to recover
 //! the original solution.
 
-use athena_core::{Cg, CgWorkspace, ConvergencePolicy, Identity, KrylovBackend, LinearOperator, Termination};
+use athena_core::{
+    Cg, CgWorkspace, ConvergencePolicy, Identity, KrylovBackend, LinearOperator, Termination,
+};
 use athena_leto::{CsrOperator, LetoBackend};
 use leto::Array1;
 use leto_ops::CsrMatrix;
@@ -32,8 +34,7 @@ fn tridiagonal_spd(n: usize) -> CsrMatrix<f64> {
         }
         row_offsets.push(values.len());
     }
-    CsrMatrix::from_parts(values, columns, row_offsets, n, n)
-        .expect("valid tridiagonal CSR")
+    CsrMatrix::from_parts(values, columns, row_offsets, n, n).expect("valid tridiagonal CSR")
 }
 
 fn main() {
@@ -42,11 +43,8 @@ fn main() {
     let operator = CsrOperator::new(tridiagonal_spd(n)).expect("square SPD operator");
 
     // Manufacture b = A × x* where x* = [1, 2, 3, 4, 5].
-    let x_exact: Array1<f64> = Array1::from_shape_vec(
-        [n],
-        vec![1.0_f64, 2.0, 3.0, 4.0, 5.0],
-    )
-    .expect("valid vector");
+    let x_exact: Array1<f64> =
+        Array1::from_shape_vec([n], vec![1.0_f64, 2.0, 3.0, 4.0, 5.0]).expect("valid vector");
     let mut b = Array1::zeros([n]);
     operator
         .apply(&backend, backend.view(&x_exact), backend.view_mut(&mut b))
@@ -55,12 +53,8 @@ fn main() {
     println!("b = {:?}", b.as_slice().expect("contiguous"));
 
     // Solve A × x = b with CG.
-    let policy = ConvergencePolicy::<f64>::new(
-        256.0 * f64::EPSILON,
-        256.0 * f64::EPSILON,
-        200,
-    )
-    .expect("valid policy");
+    let policy = ConvergencePolicy::<f64>::new(256.0 * f64::EPSILON, 256.0 * f64::EPSILON, 200)
+        .expect("valid policy");
     let mut solution = Array1::zeros([n]);
     let mut workspace = CgWorkspace::new(&backend, n).expect("workspace allocation");
 
@@ -85,7 +79,11 @@ fn main() {
 
     // Verify solution ≈ x*.
     let sol = solution.as_slice().expect("contiguous");
-    for (i, (&got, &want)) in sol.iter().zip(x_exact.as_slice().expect("contiguous")).enumerate() {
+    for (i, (&got, &want)) in sol
+        .iter()
+        .zip(x_exact.as_slice().expect("contiguous"))
+        .enumerate()
+    {
         assert!(
             (got - want).abs() < 1e-9,
             "solution[{i}]: got {got}, want {want}"
