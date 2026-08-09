@@ -22,8 +22,8 @@ athena-hephaestus = { path = "crates/athena-hephaestus", version = "0.1.0" }
 athena-leto = { path = "crates/athena-leto", version = "0.1.0" }
 
 eunomia = { version = "0.8.0", git = "https://github.com/ryancinsight/eunomia", default-features = false }
-leto = { version = "0.40.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
-leto-ops = { version = "0.40.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
+leto = { version = "0.41.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
+leto-ops = { version = "0.41.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
 hephaestus-core = { version = "0.18.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false }
 hephaestus-wgpu = { version = "0.18.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false, features = ["sparse"] }
 bytemuck = { version = "1.25", features = ["derive"] }
