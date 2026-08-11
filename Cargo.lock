@@ -274,9 +274,9 @@ checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "futures"
-version = "0.3.33"
+version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a88cf1f829d945f548cf8fec32c61b1f202b6d93b45848602fc02af4b12ad218"
+checksum = "9a31d2a3fbaaeb2af2368bbdd904aa8e812d3c04a1ee10d3171f52d556e5d0a3"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -289,9 +289,9 @@ dependencies = [
 
 [[package]]
 name = "futures-channel"
-version = "0.3.33"
+version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "262590f4fe6afeb0bc83be1daa64e52657fe185690a958af7f3ad0e92085c5ae"
+checksum = "b1f9e3d69d39e4862ffed03ed071a76f9a13ba1d9109d355b0f0aa6b15e393c4"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -299,15 +299,15 @@ dependencies = [
 
 [[package]]
 name = "futures-core"
-version = "0.3.33"
+version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cd50c473c80f6d7c3670a752354b8e569b1a7cbfdc0419ec88e5edad85e0dc7"
+checksum = "92d699e522242e69e3003b94ecc1f960f3a5e015aa7c5d7486e65ad01dd94f5e"
 
 [[package]]
 name = "futures-executor"
-version = "0.3.33"
+version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6754879cc9f2c66f88c6e5c35344bb0bdb0708b0352b1201815667c7eabc7458"
+checksum = "031b47cf1a3c6cc8bc2fc76cd437f521619387907d469316e7c0bc278f1f5432"
 dependencies = [
  "futures-core",
  "futures-task",
@@ -316,38 +316,38 @@ dependencies = [
 
 [[package]]
 name = "futures-io"
-version = "0.3.33"
+version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4577ecaa3c4f96589d473f679a71b596316f6641bc350038b962a5daf0085d7a"
+checksum = "53c0fa8157de1303bfffdaa1cc2a673bfffb60102f76b0ef4441659124373fed"
 
 [[package]]
 name = "futures-macro"
-version = "0.3.33"
+version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d6d3cde68c518367be28956066ddfef33813991b77a55005a69dae04bf3b10b"
+checksum = "9fb9654ba8355388abeb8dcb4fc62f511300867002afc858860463bdd9fe0c44"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.119",
+ "syn 3.0.3",
 ]
 
 [[package]]
 name = "futures-sink"
-version = "0.3.33"
+version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e34418ac499d6305c2fb5ad0ed2f6ac998c5f8ca209b4510f7f94242c647e307"
+checksum = "1944426bf7d03f1d14f708785e4b33efd750b36d48a157b836b3efc15ede8e1d"
 
 [[package]]
 name = "futures-task"
-version = "0.3.33"
+version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b231ed28831efb4a61a08580c4bc233ec56bc009f4cd8f52da2c3cb97df0c109"
+checksum = "cd417de3d1d015fc3bfd2b1ea46dfc7bab72ef86f1cc7cc9c78e728b34a6d1fd"
 
 [[package]]
 name = "futures-util"
-version = "0.3.33"
+version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a77a90a256fce34da66415271e30f94ee91c57b04b8a2c042d9cf3220179deaa"
+checksum = "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -413,7 +413,7 @@ dependencies = [
 
 [[package]]
 name = "hephaestus-core"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "aequitas",
  "bytemuck",
@@ -425,7 +425,7 @@ dependencies = [
 
 [[package]]
 name = "hephaestus-wgpu"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "bytemuck",
  "eunomia",
@@ -444,7 +444,7 @@ dependencies = [
 
 [[package]]
 name = "hermes-simd"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -456,7 +456,7 @@ dependencies = [
 
 [[package]]
 name = "hermes-simd-core"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "bytemuck",
  "eunomia",
@@ -467,7 +467,7 @@ dependencies = [
 
 [[package]]
 name = "hermes-simd-intrinsics"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -475,7 +475,7 @@ dependencies = [
 
 [[package]]
 name = "hermes-simd-macros"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -484,7 +484,7 @@ dependencies = [
 
 [[package]]
 name = "hermes-simd-types"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "hermes-simd-core",
  "hermes-simd-intrinsics",
@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "leto"
-version = "0.41.0"
+version = "0.42.0"
 dependencies = [
  "aequitas",
  "bytemuck",
@@ -531,7 +531,7 @@ dependencies = [
 
 [[package]]
 name = "leto-ops"
-version = "0.41.0"
+version = "0.42.0"
 dependencies = [
  "bytemuck",
  "eunomia",
@@ -607,7 +607,7 @@ dependencies = [
 
 [[package]]
 name = "mnemosyne-arena"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "eunomia",
  "mnemosyne-backend",
@@ -628,7 +628,7 @@ version = "0.2.0"
 
 [[package]]
 name = "mnemosyne-decay"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "mnemosyne-arena",
  "mnemosyne-backend",
@@ -637,7 +637,7 @@ dependencies = [
 
 [[package]]
 name = "mnemosyne-heap"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "melinoe",
  "mnemosyne-arena",
@@ -650,7 +650,7 @@ dependencies = [
 
 [[package]]
 name = "mnemosyne-local"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "melinoe",
  "mnemosyne-arena",
@@ -664,7 +664,7 @@ dependencies = [
 
 [[package]]
 name = "mnemosyne-memory"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "eunomia",
  "mnemosyne-arena",
@@ -691,7 +691,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-async"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "futures",
  "libc",
@@ -706,7 +706,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-async-macros"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -715,7 +715,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-core"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bytemuck",
  "libc",
@@ -726,7 +726,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-executor"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "melinoe",
  "mnemosyne-memory",
@@ -739,7 +739,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-gpu"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "mnemosyne-memory-core",
  "moirai-core",
@@ -749,7 +749,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-iter"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "futures",
  "libc",
@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-pal"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "js-sys",
  "libc",
@@ -778,7 +778,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-parallel"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "melinoe",
  "moirai-core",
@@ -788,7 +788,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-runtime"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "melinoe",
  "moirai-async",
@@ -804,7 +804,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-scheduler"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "mnemosyne-memory",
  "moirai-core",
@@ -815,7 +815,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-sync"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "libc",
  "moirai-core",
@@ -824,7 +824,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-transport"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bytemuck",
  "moirai-core",
@@ -834,7 +834,7 @@ dependencies = [
 
 [[package]]
 name = "moirai-utils"
-version = "0.4.0"
+version = "0.5.0"
 
 [[package]]
 name = "munge"
@@ -1895,6 +1895,102 @@ dependencies = [
 ]
 
 [[patch.unused]]
+name = "hephaestus-cuda"
+version = "0.19.0"
+
+[[patch.unused]]
+name = "hephaestus-metal"
+version = "0.19.0"
+
+[[patch.unused]]
+name = "hephaestus-rocm"
+version = "0.19.0"
+
+[[patch.unused]]
+name = "apollo-fft"
+version = "0.26.0"
+
+[[patch.unused]]
+name = "apollo-nufft"
+version = "0.7.0"
+
+[[patch.unused]]
+name = "apollo-sht"
+version = "0.7.0"
+
+[[patch.unused]]
+name = "coeus-autograd"
+version = "0.10.0"
+
+[[patch.unused]]
+name = "coeus-core"
+version = "0.10.0"
+
+[[patch.unused]]
+name = "coeus-leto"
+version = "0.10.0"
+
+[[patch.unused]]
+name = "coeus-nn"
+version = "0.10.0"
+
+[[patch.unused]]
+name = "coeus-ops"
+version = "0.10.0"
+
+[[patch.unused]]
+name = "coeus-optim"
+version = "0.10.0"
+
+[[patch.unused]]
+name = "coeus-tensor"
+version = "0.10.0"
+
+[[patch.unused]]
+name = "moirai-http"
+version = "0.5.0"
+
+[[patch.unused]]
+name = "horae"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "hyperion"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "consus-compression"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "consus-core"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "consus-hdf5"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "consus-io"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "consus-npy"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "consus-onnx"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "asclepius"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "asclepius-coeus"
+version = "0.1.0"
+
+[[patch.unused]]
 name = "ritk-core"
 version = "0.9.0"
 
@@ -1923,47 +2019,7 @@ name = "ritk-vtk"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "moirai-http"
-version = "0.4.0"
-
-[[patch.unused]]
 name = "proteus"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "consus-compression"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "consus-core"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "consus-hdf5"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "consus-io"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "consus-npy"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "consus-onnx"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "consus-zarr"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "gaia"
-version = "0.3.0"
-
-[[patch.unused]]
-name = "hyperion"
 version = "0.1.0"
 
 [[patch.unused]]
@@ -1971,69 +2027,9 @@ name = "tyche-core"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "coeus-autograd"
-version = "0.9.0"
+name = "gaia"
+version = "0.3.0"
 
 [[patch.unused]]
-name = "coeus-core"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-leto"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-nn"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-ops"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-optim"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "coeus-tensor"
-version = "0.9.0"
-
-[[patch.unused]]
-name = "iris"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "apollo-fft"
-version = "0.25.0"
-
-[[patch.unused]]
-name = "apollo-nufft"
-version = "0.7.0"
-
-[[patch.unused]]
-name = "apollo-sht"
-version = "0.7.0"
-
-[[patch.unused]]
-name = "horae"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "hephaestus-cuda"
-version = "0.18.0"
-
-[[patch.unused]]
-name = "hephaestus-metal"
-version = "0.18.0"
-
-[[patch.unused]]
-name = "hephaestus-rocm"
-version = "0.18.0"
-
-[[patch.unused]]
-name = "asclepius"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "asclepius-coeus"
+name = "iris-viz"
 version = "0.1.0"
