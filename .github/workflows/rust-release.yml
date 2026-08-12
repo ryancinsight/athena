@@ -1,0 +1,43 @@
+name: Crates.io Release
+
+# Publishing is driven by a GitHub Release whose tag is `crate-<package>-v<version>`.
+# The release event carries the identity; workflow_dispatch validates a package
+# without publishing, which is the way to rehearse a release safely.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Workspace package to validate without publishing
+        required: true
+        type: string
+      version:
+        description: Exact Cargo package version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crates-release-${{ github.event.release.tag_name || inputs.package }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # Gate stays here: the shared validate job has no prefix check and fails
+    # closed, so a non-crate tag would go from a silent skip to a red run.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.release.tag_name, 'crate-')
+    # Body owned once by Atlas (ADR 0035), pinned by SHA like any action.
+    uses: ryancinsight/atlas/.github/workflows/crates-publish.yml@58012ab384da59514623d7eb0c02c1fe5e4dc723
+    permissions:
+      contents: read
+      id-token: write # OIDC trusted publishing; no stored registry token.
+    with:
+      rust-toolchain: "1.97.0"
+      dispatch-package: ${{ inputs.package }}
+      dispatch-version: ${{ inputs.version }}
