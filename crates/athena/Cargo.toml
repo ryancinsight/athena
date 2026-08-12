@@ -1,12 +1,12 @@
 [package]
 # Registry name only. The crates.io name `athena` belongs to an unrelated
-# third-party crate, so this publishes as `athena-solver` while `[lib] name`
+# third-party crate, so this publishes as `athena-krylov` while `[lib] name`
 # keeps the import path `athena` — the same split the stack uses for
 # `moirai-runtime`, `mnemosyne-memory`, `themis-topology`, `iris-viz`, and
 # `gaia-mesh`. Consumers write
-# `athena = { package = "athena-solver", version = "0.1.0" }` and every
+# `athena = { package = "athena-krylov", version = "0.1.0" }` and every
 # `use athena::…` is unchanged.
-name = "athena-solver"
+name = "athena-krylov"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
