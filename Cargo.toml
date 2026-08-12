@@ -14,7 +14,9 @@ rust-version = "1.95"
 authors = ["Ryan Clanton <ryanclanton@outlook.com>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ryancinsight/athena"
-publish = false
+# The workspace is published to crates.io; individual crates opt out with
+# their own `publish = false` if they are ever build-only.
+publish = true
 
 [workspace.dependencies]
 athena-core = { path = "crates/athena-core", version = "0.1.0" }
