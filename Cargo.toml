@@ -8,7 +8,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.95"
 authors = ["Ryan Clanton <ryanclanton@outlook.com>"]
@@ -19,9 +19,9 @@ repository = "https://github.com/ryancinsight/athena"
 publish = true
 
 [workspace.dependencies]
-athena-core = { path = "crates/athena-core", version = "0.1.0" }
-athena-hephaestus = { path = "crates/athena-hephaestus", version = "0.1.0" }
-athena-leto = { path = "crates/athena-leto", version = "0.1.0" }
+athena-core = { path = "crates/athena-core", version = "0.1.1" }
+athena-hephaestus = { path = "crates/athena-hephaestus", version = "0.1.1" }
+athena-leto = { path = "crates/athena-leto", version = "0.1.1" }
 
 eunomia = { version = "0.8.0", git = "https://github.com/ryancinsight/eunomia", default-features = false }
 leto = { version = "0.42.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
