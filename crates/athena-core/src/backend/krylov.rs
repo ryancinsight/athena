@@ -13,6 +13,17 @@ pub trait KrylovBackend {
     type Error;
     /// Owned, reusable vector storage.
     type Vector;
+    /// Owned, reusable storage for a fixed count of equal-length vectors.
+    ///
+    /// A Krylov basis is a set of vectors allocated together once, written one
+    /// at a time, and read repeatedly within an iteration. Naming that set a
+    /// backend type instead of a `Vec<Self::Vector>` moves its residency
+    /// decision to the backend that owns the memory: a host backend places the
+    /// whole set in one contiguous extent and lends offset subviews, while a
+    /// device backend keeps independent buffers because allocation and binding
+    /// there are per-buffer. Recurrences see indexed views either way and
+    /// contain no layout assumption.
+    type VectorBlock;
     /// Backend-owned fixed-buffer dot-product resources.
     type PreparedDot;
     /// Backend-owned fixed-buffer Euclidean-norm resources.
@@ -33,11 +44,44 @@ pub trait KrylovBackend {
     /// Returns the backend allocation failure.
     fn allocate(&self, len: usize) -> Result<Self::Vector, Self::Error>;
 
+    /// Allocate `count` zero-initialized vectors of length `len` as one block.
+    ///
+    /// # Errors
+    ///
+    /// Returns the backend allocation failure, including a `count * len`
+    /// extent the backend cannot represent.
+    fn allocate_block(&self, count: usize, len: usize) -> Result<Self::VectorBlock, Self::Error>;
+
     /// Borrow an immutable vector view.
     fn view<'a>(&'a self, vector: &'a Self::Vector) -> Self::View<'a>;
 
     /// Borrow a writable vector view.
     fn view_mut<'a>(&'a self, vector: &'a mut Self::Vector) -> Self::ViewMut<'a>;
+
+    /// Borrow vector `index` of `block` immutably.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `index` is not less than the `count` the block was
+    /// allocated with. Every caller in this crate indexes a const-bounded
+    /// basis, so the bound is structural rather than input-dependent.
+    fn block_view<'a>(&'a self, block: &'a Self::VectorBlock, index: usize) -> Self::View<'a>;
+
+    /// Borrow vector `index` of `block` for writing.
+    ///
+    /// Blocks lend one vector at a time. A recurrence that must hold two
+    /// vectors at once keeps them in separate blocks, which is what makes the
+    /// disjointness a type fact rather than a runtime check.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `index` is not less than the `count` the block was
+    /// allocated with.
+    fn block_view_mut<'a>(
+        &'a self,
+        block: &'a mut Self::VectorBlock,
+        index: usize,
+    ) -> Self::ViewMut<'a>;
 
     /// Return an owned vector's logical length.
     fn vector_len(&self, vector: &Self::Vector) -> usize;

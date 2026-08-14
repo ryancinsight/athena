@@ -8,6 +8,7 @@ use crate::{
 
 use super::{
     super::dimension::validate_dimension,
+    cycle::{ArnoldiOutcome, CycleOutcome, CycleProgress, GmresState, Stage},
     rotation::{ScalarFailure, back_substitute, givens},
 };
 
@@ -226,12 +227,12 @@ where
         self.backend
             .copy(
                 self.backend.view(&self.workspace.residual),
-                self.backend.view_mut(&mut self.workspace.basis[0]),
+                self.backend.block_view_mut(&mut self.workspace.basis, 0),
             )
             .map_err(SolveError::Backend)?;
         self.backend
             .scale(
-                self.backend.view_mut(&mut self.workspace.basis[0]),
+                self.backend.block_view_mut(&mut self.workspace.basis, 0),
                 B::Scalar::ONE / residual_norm,
             )
             .map_err(SolveError::Backend)
@@ -285,9 +286,9 @@ where
         self.preconditioner
             .apply(
                 self.backend,
-                self.backend.view(&self.workspace.basis[column]),
+                self.backend.block_view(&self.workspace.basis, column),
                 self.backend
-                    .view_mut(&mut self.workspace.preconditioned_basis[column]),
+                    .block_view_mut(&mut self.workspace.preconditioned_basis, column),
             )
             .map_err(SolveError::Backend)?;
         state.preconditioner_applications += 1;
@@ -295,7 +296,7 @@ where
             .apply(
                 self.backend,
                 self.backend
-                    .view(&self.workspace.preconditioned_basis[column]),
+                    .block_view(&self.workspace.preconditioned_basis, column),
                 self.backend.view_mut(&mut self.workspace.work),
             )
             .map_err(SolveError::Backend)?;
@@ -318,7 +319,7 @@ where
                 .dot_prepared(
                     &self.workspace.work_basis_dot[row],
                     self.backend.view(&self.workspace.work),
-                    self.backend.view(&self.workspace.basis[row]),
+                    self.backend.block_view(&self.workspace.basis, row),
                 )
                 .map_err(SolveError::Backend)?;
             let index = GmresWorkspace::<B, RESTART>::hessenberg_index(row, column);
@@ -329,7 +330,7 @@ where
             self.backend
                 .axpy(
                     self.backend.view_mut(&mut self.workspace.work),
-                    self.backend.view(&self.workspace.basis[row]),
+                    self.backend.block_view(&self.workspace.basis, row),
                     -coefficient,
                 )
                 .map_err(SolveError::Backend)?;
@@ -356,12 +357,14 @@ where
         self.backend
             .copy(
                 self.backend.view(&self.workspace.work),
-                self.backend.view_mut(&mut self.workspace.basis[column + 1]),
+                self.backend
+                    .block_view_mut(&mut self.workspace.basis, column + 1),
             )
             .map_err(SolveError::Backend)?;
         self.backend
             .scale(
-                self.backend.view_mut(&mut self.workspace.basis[column + 1]),
+                self.backend
+                    .block_view_mut(&mut self.workspace.basis, column + 1),
                 B::Scalar::ONE / next_norm,
             )
             .map_err(SolveError::Backend)?;
@@ -415,7 +418,7 @@ where
                 .axpy(
                     self.backend.view_mut(self.solution),
                     self.backend
-                        .view(&self.workspace.preconditioned_basis[index]),
+                        .block_view(&self.workspace.preconditioned_basis, index),
                     self.workspace.coefficients[index],
                 )
                 .map_err(SolveError::Backend)?;
@@ -444,57 +447,5 @@ where
                 self.backend.view(&self.workspace.residual),
             )
             .map_err(SolveError::Backend)
-    }
-}
-
-enum Stage<S, T> {
-    Continue(S),
-    Complete(SolveReport<T>),
-}
-
-struct CycleOutcome {
-    vectors_used: usize,
-    happy_breakdown: bool,
-}
-
-enum CycleProgress {
-    Ready(CycleOutcome),
-    Terminated(Termination),
-}
-
-enum ArnoldiOutcome {
-    Ready { happy_breakdown: bool },
-    Failed(ScalarFailure),
-}
-
-struct GmresState<T> {
-    initial_residual: T,
-    last_residual: T,
-    threshold: T,
-    iterations: usize,
-    operator_applications: usize,
-    preconditioner_applications: usize,
-}
-
-impl<T: Copy> GmresState<T> {
-    const fn report(&self, termination: Termination) -> SolveReport<T> {
-        SolveReport::new(
-            termination,
-            self.iterations,
-            self.operator_applications,
-            self.preconditioner_applications,
-            self.initial_residual,
-            self.last_residual,
-            self.threshold,
-        )
-    }
-}
-
-impl ScalarFailure {
-    const fn termination(self) -> Termination {
-        match self {
-            Self::Breakdown => Termination::Breakdown,
-            Self::NonFinite => Termination::NonFinite,
-        }
     }
 }

@@ -9,11 +9,18 @@ use crate::KrylovBackend;
 /// reductions bound to the workspace vectors. A workspace can serve repeated
 /// solves with the same vector length and restart width without allocating or
 /// rebuilding accelerator dispatch resources.
+///
+/// The two Arnoldi vector sets are [`KrylovBackend::VectorBlock`]s rather than
+/// `Vec<B::Vector>`, matching the scalar arrays beside them, which are already
+/// flat `Vec<B::Scalar>` addressed by an index function. Keeping the basis and
+/// the preconditioned basis in separate blocks is what lets the recurrence
+/// hold one of each at once: blocks lend a single vector at a time, so the
+/// disjointness the Arnoldi step needs is a field-level type fact.
 pub struct GmresWorkspace<B: KrylovBackend, const RESTART: usize> {
     pub(super) residual: B::Vector,
     pub(super) work: B::Vector,
-    pub(super) basis: Vec<B::Vector>,
-    pub(super) preconditioned_basis: Vec<B::Vector>,
+    pub(super) basis: B::VectorBlock,
+    pub(super) preconditioned_basis: B::VectorBlock,
     pub(super) residual_norm: B::PreparedNorm,
     pub(super) work_norm: B::PreparedNorm,
     pub(super) work_basis_dot: Vec<B::PreparedDot>,
@@ -50,22 +57,16 @@ impl<B: KrylovBackend, const RESTART: usize> GmresWorkspace<B, RESTART> {
             .checked_mul(RESTART)
             .expect("invariant: GMRES scalar workspace size fits usize");
 
-        let mut basis = Vec::with_capacity(basis_len);
-        for _ in 0..basis_len {
-            basis.push(backend.allocate(len)?);
-        }
-        let mut preconditioned_basis = Vec::with_capacity(RESTART);
-        for _ in 0..RESTART {
-            preconditioned_basis.push(backend.allocate(len)?);
-        }
+        let basis = backend.allocate_block(basis_len, len)?;
+        let preconditioned_basis = backend.allocate_block(RESTART, len)?;
         let residual = backend.allocate(len)?;
         let work = backend.allocate(len)?;
         let residual_norm = backend.prepare_norm_l2(backend.view(&residual))?;
         let work_norm = backend.prepare_norm_l2(backend.view(&work))?;
         let mut work_basis_dot = Vec::with_capacity(basis_len);
-        for basis_vector in &basis {
+        for index in 0..basis_len {
             work_basis_dot
-                .push(backend.prepare_dot(backend.view(&work), backend.view(basis_vector))?);
+                .push(backend.prepare_dot(backend.view(&work), backend.block_view(&basis, index))?);
         }
 
         Ok(Self {

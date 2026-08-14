@@ -36,6 +36,14 @@ pub enum LetoBackendError {
     },
     /// A relaxation factor fell outside the convergent open interval `(0, 2)`.
     InvalidRelaxation,
+    /// A contiguous vector block would span more elements than `usize` can
+    /// address.
+    BlockExtentOverflow {
+        /// Requested vector count.
+        count: usize,
+        /// Requested length of each vector.
+        len: usize,
+    },
 }
 
 impl From<leto::LetoError> for LetoBackendError {
@@ -66,6 +74,10 @@ impl fmt::Display for LetoBackendError {
             Self::InvalidRelaxation => {
                 formatter.write_str("relaxation factor must lie in the open interval (0, 2)")
             }
+            Self::BlockExtentOverflow { count, len } => write!(
+                formatter,
+                "vector block of {count} x {len} elements exceeds the addressable range"
+            ),
         }
     }
 }

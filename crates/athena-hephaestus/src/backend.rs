@@ -61,6 +61,11 @@ where
     type Scalar = T;
     type Error = HephaestusError;
     type Vector = D::Buffer<T>;
+    // A device block stays a set of independent buffers. Hephaestus allocates,
+    // binds, and dispatches per buffer, so a single flat device allocation
+    // would have to be re-split into per-vector bindings at every use — the
+    // host backend's contiguity is a host-memory win with no device analogue.
+    type VectorBlock = Vec<D::Buffer<T>>;
     // Athena workspaces retain their reductions beside the vectors those
     // reductions measure, which is what keeps a solve allocation-free, so
     // this backend binds the retained rather than the borrowing form.
@@ -79,8 +84,16 @@ where
         self.device.alloc_zeroed(len)
     }
 
+    fn allocate_block(&self, count: usize, len: usize) -> Result<Self::VectorBlock> {
+        (0..count).map(|_| self.device.alloc_zeroed(len)).collect()
+    }
+
     fn view<'a>(&'a self, vector: &'a Self::Vector) -> Self::View<'a> {
         vector
+    }
+
+    fn block_view<'a>(&'a self, block: &'a Self::VectorBlock, index: usize) -> Self::View<'a> {
+        &block[index]
     }
 
     /// A writable view is a unique borrow: Hephaestus operations that write a
@@ -88,6 +101,14 @@ where
     /// sufficient at this boundary.
     fn view_mut<'a>(&'a self, vector: &'a mut Self::Vector) -> Self::ViewMut<'a> {
         vector
+    }
+
+    fn block_view_mut<'a>(
+        &'a self,
+        block: &'a mut Self::VectorBlock,
+        index: usize,
+    ) -> Self::ViewMut<'a> {
+        &mut block[index]
     }
 
     fn vector_len(&self, vector: &Self::Vector) -> usize {

@@ -1,6 +1,7 @@
 //! Restarted right-preconditioned GMRES.
 
 mod algorithm;
+mod cycle;
 mod rotation;
 mod workspace;
 

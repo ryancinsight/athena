@@ -2,11 +2,30 @@
 
 [![CI](https://github.com/ryancinsight/athena/actions/workflows/ci.yml/badge.svg)](https://github.com/ryancinsight/athena/actions/workflows/ci.yml)
 
-Athena is Atlas's iterative-solver provider. Its complete vertical contracts
-are preconditioned conjugate gradient (PCG) for symmetric positive-definite
-linear systems and restarted right-preconditioned GMRES for general
-nonsymmetric systems. Leto CPU and Hephaestus WGPU execution share one
-backend-neutral recurrence per solver family.
+Athena is Atlas's iterative-solver provider. It ships four complete vertical
+contracts:
+
+| Solver | System | Operator contract | Storage per solve |
+| --- | --- | --- | --- |
+| `Cg` | symmetric positive-definite | `LinearOperator` | 4 vectors |
+| `Gmres<_, RESTART>` | general nonsymmetric | `LinearOperator` | `2·RESTART + 3` vectors |
+| `BiCgStab` | general nonsymmetric | `LinearOperator` | 7 vectors |
+| `Lsqr` | rectangular least squares | `RectangularOperator` | 5 vectors (2 × `rows`, 3 × `columns`) |
+
+Preconditioned conjugate gradient (PCG) and restarted GMRES are the
+symmetric and general square recurrences. `BiCGSTAB` solves the same general
+systems as GMRES in constant storage — no restart parameter and no `O(n·m)`
+Arnoldi basis — at the cost of a non-monotone residual and two operator
+applications per iteration; the choice between them trades storage against
+residual smoothness, and neither is a fallback for the other. LSQR minimises
+`‖A·x − b‖₂` for rectangular
+operators by Golub–Kahan bidiagonalisation, never forming `AᵀA` and so never
+squaring the condition number.
+
+Leto CPU and Hephaestus accelerator execution share one backend-neutral
+recurrence per solver family. PCG, GMRES, and `BiCGSTAB` run on both; LSQR
+runs on any backend, but `RectangularOperator` is implemented for Leto only,
+so its shipped execution is CPU.
 
 Athena is independently versioned and consumed by the
 [Atlas multiphysics stack](https://github.com/ryancinsight/atlas). The
@@ -17,10 +36,11 @@ cross-repository ownership and migration boundary is recorded in
 
 Athena owns:
 
-- matrix-free square-operator and preconditioner contracts;
+- matrix-free square-operator, rectangular-operator, and preconditioner
+  contracts;
 - validated absolute-plus-relative convergence policy;
-- PCG and restarted GMRES recurrences, numerical termination, and scalar
-  telemetry;
+- PCG, restarted GMRES, `BiCGSTAB`, and LSQR recurrences, numerical
+  termination, and scalar telemetry;
 - reusable, allocation-stable solver workspaces;
 - Leto and Hephaestus implementations of the solver-specific vector
   recurrences.
@@ -35,9 +55,9 @@ Athena does not own:
 - domain equations, discretization, nonlinear residual construction, or time
   integration.
 
-This boundary removes CG and GMRES orchestration from Leto without wrapping or
+This boundary removes Krylov orchestration from Leto without wrapping or
 mirroring Leto's APIs. `leto_ops::CsrMatrix` remains the single CSR
-representation used by both CPU and WGPU operators.
+representation used by both CPU and accelerator operators.
 
 ## Architecture
 
@@ -46,49 +66,57 @@ crates/
 ├── athena/                    # curated facade and runnable examples
 ├── athena-core/
 │   └── src/
-│       ├── backend/           # GAT-based borrowed vector family
+│       ├── backend/           # GAT-based borrowed vector and block family
 │       ├── convergence/       # validated residual policy
-│       ├── operator/          # matrix-free operator seam
+│       ├── operator/          # square and rectangular operator seams
 │       ├── preconditioner/    # preconditioner seam and Identity ZST
 │       ├── report/            # allocation-free scalar telemetry
 │       └── solver/
+│           ├── bicgstab/      # generic BiCGSTAB recurrence and workspace
 │           ├── cg/            # generic PCG recurrence and workspace
-│           └── gmres/         # generic restarted GMRES recurrence/workspace
+│           ├── gmres/         # generic restarted GMRES recurrence/workspace
+│           └── lsqr/          # generic LSQR recurrence and workspace
 ├── athena-leto/
 │   └── src/
-│       ├── backend/           # Array1 and zero-copy array views
-│       ├── operator/          # CSR and borrowed CowStorage dense operators
-│       └── preconditioner/    # Jacobi inverse diagonal
-└── athena-wgpu/
+│       ├── backend/           # Array1, zero-copy views, contiguous blocks
+│       ├── operator/          # square/rectangular CSR and CowStorage dense
+│       └── preconditioner/    # Jacobi, incomplete LU, triangular, SOR
+└── athena-hephaestus/
     └── src/
-        ├── backend/kernels/   # prepared fused/vector WGSL kernels
-        └── operator/          # Hephaestus GpuCsrMatrix adapter
+        ├── backend.rs         # device-neutral DenseVectorOps binding
+        └── operator.rs        # Hephaestus GpuCsrMatrix adapter
 ```
 
-Every `lib.rs` and `mod.rs` is a manifest. Operation families live in leaf
-modules and no source file exceeds the repository's 500-line target.
+Every `lib.rs` and `mod.rs` is a manifest and operation families live in leaf
+modules. One file exceeds the repository's 500-line target:
+`athena-core/src/solver/bicgstab/algorithm.rs`, at 575 lines. It is recorded
+as debt rather than claimed clean, and it is the only exception.
 
-The `athena` facade enables the Leto CPU backend by default; the `wgpu` feature
-adds Hephaestus execution. `athena-core` is the `no_std + alloc`,
-infrastructure-independent contract crate. Consumers that only need
-convergence policy, iteration observation, or backend-neutral solver traits do
-not acquire Leto or Hephaestus dependencies.
+The `athena` facade enables the Leto CPU backend by default through the `cpu`
+feature; the `accelerator` feature adds Hephaestus execution. `athena-core` is
+the `no_std + alloc`, infrastructure-independent contract crate. Consumers
+that only need convergence policy, iteration observation, or backend-neutral
+solver traits do not acquire Leto or Hephaestus dependencies.
 
 `KrylovBackend` uses generic associated view types so the core recurrence
-borrows Leto `ArrayView1`/`ArrayViewMut1` on CPU and typed
-`WgpuBuffer<f32>` references on WGPU. `Cg<B>`,
-`Gmres<B, const RESTART: usize>`, `Identity`, and `LetoBackend<T>` are
-zero-sized policy markers. Static dispatch monomorphizes each recurrence at
-the backend and restart-width boundary; no trait object or per-element backend
-branch exists.
+borrows Leto `ArrayView1`/`ArrayViewMut1` on CPU and typed device-buffer
+references on an accelerator. `Cg<B>`, `Gmres<B, const RESTART: usize>`,
+`BiCgStab<B>`, `Lsqr<B>`, `Identity`, and `LetoBackend<T>` are zero-sized
+policy markers. Static dispatch monomorphizes each recurrence at the backend
+and restart-width boundary; no trait object or per-element backend branch
+exists.
 
-The CPU implementation performs no allocation after `CgWorkspace` or
-`GmresWorkspace` construction. GMRES stores exactly `RESTART + 1` Arnoldi
-vectors, `RESTART` preconditioned vectors, and const-bounded host scalar
-storage. `BorrowedDenseOperator` holds Leto `CowStorage` and does not detach
-because operator application is read-only. On WGPU, full vectors remain
-device-resident and Athena uses prepared fused PCG kernels, prepared scale and
-AXPY kernels, and Hephaestus prepared dot/norm reductions. Workspace
+The CPU implementation performs no allocation after workspace construction.
+GMRES stores exactly `RESTART + 1` Arnoldi vectors, `RESTART` preconditioned
+vectors, and const-bounded host scalar storage. Those two vector sets are
+`KrylovBackend::VectorBlock` values rather than `Vec<Vector>`, so each backend
+chooses its own residency: the Leto block is one contiguous allocation lent
+out as offset subviews, while an accelerator block stays a set of independent
+device buffers, which is what its allocator and bind-group model require.
+`BorrowedDenseOperator` holds Leto `CowStorage` and does not detach because
+operator application is read-only. On an accelerator, full vectors remain
+device-resident and Athena uses prepared scale and AXPY kernels plus
+Hephaestus prepared dot/norm reductions. Workspace
 construction fixes each reduction's input allocations and creates its output,
 scratch, pipeline, and bind-group resources once. Iterations dispatch those
 plans without rebuilding provider resources; only the convergence scalar
@@ -155,34 +183,56 @@ assert!(report.converged());
 # }
 ```
 
-The runnable `poisson_cpu` and `poisson_wgpu` examples solve the same
+The runnable `poisson_cpu` and `poisson_accelerator` examples solve the same
 manufactured two-cell Poisson system with PCG. `nonsymmetric_cpu` and
-`nonsymmetric_wgpu` solve the same three-variable nonsymmetric system with
-restarted GMRES. The WGPU examples acquire a real Hephaestus device and have
-no CPU fallback.
+`nonsymmetric_accelerator` solve the same three-variable nonsymmetric system
+with restarted GMRES. The accelerator examples acquire a real Hephaestus
+device and have no CPU fallback.
 
 ## Numerical contract
 
-PCG requires a symmetric positive-definite operator and preconditioner.
-Athena reports non-positive curvature, exact recurrence breakdown,
-non-finite values, or iteration-budget exhaustion as explicit terminal values.
-GMRES uses right preconditioning, modified Gram--Schmidt Arnoldi
-orthogonalization, scaled Givens rotations, and true-residual recomputation
-before convergence. Its restart width is a structural const generic.
-Convergence uses
+Every solver shares one convergence test:
 
 ```text
 ||r||₂ <= max(absolute_tolerance, relative_tolerance * ||b||₂).
 ```
 
-The recurrence follows Hestenes and Stiefel,
+PCG requires a symmetric positive-definite operator and preconditioner.
+Athena reports non-positive curvature, exact recurrence breakdown,
+non-finite values, or iteration-budget exhaustion as explicit terminal values.
+
+GMRES uses right preconditioning, modified Gram--Schmidt Arnoldi
+orthogonalization, scaled Givens rotations, and true-residual recomputation
+before convergence. Its restart width is a structural const generic.
+
+`BiCGSTAB` also preconditions on the right, so the recurrence residual is the
+residual of the original system and the convergence policy applies to it
+directly; left preconditioning would instead measure `‖M⁻¹(b − A·x)‖`, which
+differs from the true residual by up to `κ(M)`. Its residual is non-monotone
+by construction, so it too recomputes the true residual before declaring
+convergence, and it reports the `ρ` and `ω` breakdowns of the two-term
+recurrence as explicit terminal values.
+
+LSQR terminates on two distinct criteria because a least-squares system has
+two. A consistent system is detected on the residual itself. An inconsistent
+one — the genuine least-squares case — has a residual bounded away from zero,
+so its criterion is the normal-equation residual `‖Aᵀr‖` relative to `‖r‖`,
+reported as `Termination::NormalEquations`. Testing only the residual would
+run such a solve to the iteration cap despite it having found the exact
+minimiser.
+
+The CG recurrence follows Hestenes and Stiefel,
 [*Methods of Conjugate Gradients for Solving Linear Systems*,
 Journal of Research of the National Bureau of Standards 49(6), 1952,
 pp. 409–436](https://nvlpubs.nist.gov/nistpubs/jres/049/jresv49n6p409_a1b.pdf),
 and the preconditioned algorithm in Netlib's
 [*Templates for the Solution of Linear Systems*, §2.3.1](https://www.netlib.org/templates/templates.html).
 Restarted GMRES and right preconditioning follow §§2.3.4 and 3.1.2 of the same
-reference.
+reference. `BiCGSTAB` follows van der Vorst (1992), *Bi-CGSTAB: a fast and
+smoothly converging variant of Bi-CG for the solution of nonsymmetric linear
+systems*, SIAM J. Sci. Stat. Comput. 13(2), 631–644. LSQR follows Paige and
+Saunders (1982), *LSQR: An algorithm for sparse linear equations and sparse
+least squares*, ACM TOMS 8(1), 43–71.
 
 ## Verification
 
@@ -198,14 +248,22 @@ cargo deny check
 ```
 
 The CPU contract suite is generic over every shipped CPU scalar (`f32` and
-`f64`) and checks manufactured SPD and nonsymmetric solutions, identity and
-Jacobi preconditioning, forced multi-cycle restart, borrowed dense storage,
-observer semantics, termination values, dimension errors, allocation
-stability, and zero-sized markers. The WGPU suite runs both manufactured
-systems through real Hephaestus allocation, CSR upload, SpMV, reductions, and
-Athena kernels, then downloads each final solution once. A local machine
-without an adapter records the unavailable lane; CI treats adapter acquisition
-failure as an infrastructure failure.
+`f64`) and checks manufactured SPD, nonsymmetric, consistent overdetermined,
+inconsistent, and underdetermined solutions; identity, Jacobi, incomplete-LU,
+triangular, and SOR preconditioning; forced multi-cycle restart; borrowed
+dense storage; adjoint application against the dense product; observer
+semantics; termination values; dimension errors; allocation stability for CG,
+GMRES, and `BiCGSTAB`; contiguity, zero-initialization, and non-aliasing of
+the vector blocks; and zero-sized markers. The accelerator suite runs the
+manufactured SPD and nonsymmetric systems through real Hephaestus allocation,
+CSR upload, SpMV, reductions, and Athena kernels with CG, GMRES, and
+`BiCGSTAB`, then downloads each final solution once. A local machine without
+an adapter records the unavailable lane; CI treats adapter acquisition failure
+as an infrastructure failure.
+
+The allocation cases measure the process-global allocator through
+`stats_alloc`, so they are only meaningful one-per-process — `cargo nextest
+run` supplies that isolation and the threaded `cargo test` harness does not.
 
 ## Roadmap
 

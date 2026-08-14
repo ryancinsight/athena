@@ -17,7 +17,7 @@ pub mod operator;
 /// Leto-backed preconditioners.
 pub mod preconditioner;
 
-pub use backend::LetoBackend;
+pub use backend::{LetoBackend, LetoVectorBlock};
 pub use error::LetoBackendError;
 pub use operator::{
     BorrowedCsrOperator, BorrowedDenseOperator, CsrOperator, RectangularCsrOperator,

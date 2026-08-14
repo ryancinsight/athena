@@ -4,8 +4,29 @@ All notable changes to Athena are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking.** `KrylovBackend` gains the `VectorBlock` associated type and
+  the `allocate_block`, `block_view`, and `block_view_mut` methods, so a
+  backend owns the residency of a fixed-count vector set instead of
+  `athena-core` fixing it as `Vec<Vector>`. `GmresWorkspace` holds its Arnoldi
+  basis and preconditioned basis as blocks: the Leto backend places each set
+  in one contiguous allocation lent out as offset subviews, while the
+  Hephaestus backend keeps independent device buffers, which is what its
+  per-buffer allocation and binding model requires. Downstream implementors of
+  `KrylovBackend` must add the three methods and bind `VectorBlock`;
+  `Vec<Self::Vector>` with indexed borrows reproduces the previous behaviour
+  exactly. Consumers that only call the seam are unaffected. See
+  [ADR 0003](docs/adr/0003-krylov-vector-block-seam.md).
+
 ### Added
 
+- `LetoVectorBlock`, the contiguous host storage backing the Leto
+  `VectorBlock`, and an `athena-leto` backend-seam conformance suite that pins
+  block contiguity, zero-initialization, non-aliasing between neighbouring
+  vectors, and out-of-range rejection.
+- `LetoBackendError::BlockExtentOverflow` for a vector block whose
+  `count * len` extent exceeds the addressable range.
 - Backend-neutral PCG recurrence with GAT-based provider views, reusable
   workspace, validated convergence policy, and allocation-free reports.
 - Restarted right-preconditioned GMRES with a const-generic restart width,

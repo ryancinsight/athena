@@ -5,7 +5,7 @@ use eunomia::RealField;
 use leto::{Array1, ArrayView1, ArrayViewMut1};
 use leto_ops::{RealScalar, dot};
 
-use crate::LetoBackendError;
+use crate::{LetoBackendError, LetoVectorBlock};
 
 /// Zero-sized Leto CPU backend marker.
 ///
@@ -25,6 +25,7 @@ impl<T: RealScalar + RealField> KrylovBackend for LetoBackend<T> {
     type Scalar = T;
     type Error = LetoBackendError;
     type Vector = Array1<T>;
+    type VectorBlock = LetoVectorBlock<T>;
     type PreparedDot = LetoPreparedDot;
     type PreparedNorm = LetoPreparedNorm;
     type View<'a>
@@ -41,6 +42,13 @@ impl<T: RealScalar + RealField> KrylovBackend for LetoBackend<T> {
         Ok(Array1::zeros([len]))
     }
 
+    /// One allocation holds the whole set; see [`LetoVectorBlock`] for the
+    /// placement argument and the alignment trade it accepts.
+    #[inline]
+    fn allocate_block(&self, count: usize, len: usize) -> Result<Self::VectorBlock, Self::Error> {
+        LetoVectorBlock::new(count, len)
+    }
+
     #[inline]
     fn view<'a>(&'a self, vector: &'a Self::Vector) -> Self::View<'a> {
         vector.view()
@@ -49,6 +57,20 @@ impl<T: RealScalar + RealField> KrylovBackend for LetoBackend<T> {
     #[inline]
     fn view_mut<'a>(&'a self, vector: &'a mut Self::Vector) -> Self::ViewMut<'a> {
         vector.view_mut()
+    }
+
+    #[inline]
+    fn block_view<'a>(&'a self, block: &'a Self::VectorBlock, index: usize) -> Self::View<'a> {
+        block.view(index)
+    }
+
+    #[inline]
+    fn block_view_mut<'a>(
+        &'a self,
+        block: &'a mut Self::VectorBlock,
+        index: usize,
+    ) -> Self::ViewMut<'a> {
+        block.view_mut(index)
     }
 
     #[inline]
