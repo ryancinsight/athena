@@ -9,3 +9,4 @@
 | [0001](0001-cpu-gpu-krylov-boundary.md) | Own Krylov orchestration above Leto and Hephaestus | Accepted |
 | [0002](0002-restarted-gmres-contract.md) | Add restarted right-preconditioned GMRES | Accepted |
 | [0003](0003-krylov-vector-block-seam.md) | Move Krylov vector-set residency onto the backend seam | Accepted |
+| [0004](0004-derived-progress-termination.md) | Terminate on derived stagnation and divergence criteria | Accepted |

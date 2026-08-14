@@ -1,6 +1,9 @@
 //! Value-semantic restarted-GMRES CPU conformance.
 
-use athena_core::{ConvergencePolicy, Gmres, GmresWorkspace, Identity, SolveError, Termination};
+use athena_core::{
+    ConvergencePolicy, Gmres, GmresWorkspace, Identity, IterationObserver, IterationState,
+    SolveError, Termination,
+};
 use athena_leto::{CsrOperator, Jacobi, LetoBackend};
 use eunomia::{FloatElement, RealField};
 use leto::Array1;
@@ -249,4 +252,103 @@ fn gmres_zero_right_hand_side_converges_without_iteration() {
 
     assert_eq!(report.termination, Termination::InitialResidual);
     assert_eq!(report.iterations, 0);
+}
+
+/// Collect every observed residual so the history a stalled solve produces is
+/// checkable. `IterationObserver` is the seam Athena provides for residual
+/// history; the solver never allocates one implicitly, which is what keeps a
+/// warm solve allocation-free.
+#[derive(Default)]
+struct ResidualHistory {
+    samples: Vec<f64>,
+}
+
+impl IterationObserver<f64> for ResidualHistory {
+    fn observe(&mut self, state: IterationState<f64>) {
+        self.samples.push(state.residual_norm);
+    }
+}
+
+/// The cyclic down-shift `A e_i = e_{i+1}` with `b = e_1` is the exact
+/// stagnation case for restarted GMRES: `A b` is orthogonal to `b`, so
+/// GMRES(1) minimises `‖b − α A b‖` at `α = 0` and every cycle returns the
+/// iterate unchanged with the residual still at `‖b‖ = 1`. Greenbaum, Ptak and
+/// Strakos (1996), *Any nonincreasing convergence curve is possible for
+/// GMRES*, SIAM J. Matrix Anal. Appl. 17(3), 465-469, construct the general
+/// family this is the simplest member of.
+fn cyclic_shift_matrix(order: usize) -> CsrMatrix<f64> {
+    let values = vec![1.0; order];
+    let columns = (0..order).map(|row| (row + order - 1) % order).collect();
+    let offsets = (0..=order).collect();
+    CsrMatrix::from_parts(values, columns, offsets, order, order)
+        .expect("invariant: one unit entry per row is a valid CSR permutation")
+}
+
+#[test]
+fn gmres_reports_stagnation_with_a_residual_history() {
+    let backend = LetoBackend::<f64>::default();
+    let operator = CsrOperator::new(cyclic_shift_matrix(4)).expect("invariant: matrix is square");
+    let mut right_hand_side = Array1::zeros([4]);
+    right_hand_side
+        .as_slice_mut()
+        .expect("invariant: Array1 is contiguous")[0] = 1.0;
+    let mut solution = Array1::zeros([4]);
+    let mut workspace =
+        GmresWorkspace::<_, 1>::new(&backend, 4).expect("invariant: host allocation succeeds");
+    let policy = ConvergencePolicy::new(1.0e-12, 1.0e-12, 32).expect("invariant: valid policy");
+    let mut history = ResidualHistory::default();
+
+    let report = Gmres::<LetoBackend<f64>, 1>::solve_with_observer(
+        &backend,
+        &operator,
+        &Identity,
+        &right_hand_side,
+        &mut solution,
+        &mut workspace,
+        policy,
+        &mut history,
+    )
+    .expect("invariant: the stalled solve has valid dimensions");
+
+    assert_eq!(report.termination, Termination::Stagnated);
+    assert!(!report.converged());
+
+    // The stall is detected on the first unproductive cycle, not after the
+    // 32-iteration budget drains.
+    assert_eq!(report.iterations, 1);
+    assert!(report.final_residual_norm >= report.initial_residual_norm);
+
+    assert!(!history.samples.is_empty());
+    for sample in &history.samples {
+        assert!((sample - 1.0).abs() <= 8.0 * f64::EPSILON);
+    }
+}
+
+#[test]
+fn gmres_makes_progress_where_the_shift_operator_is_not_orthogonal() {
+    // The guard for the case above: a system GMRES(1) can reduce must not be
+    // classified as stagnant, or the detector would be a false positive that
+    // merely happens to agree with the stalling case.
+    let backend = LetoBackend::<f64>::default();
+    let operator = CsrOperator::new(nonsymmetric_matrix()).expect("invariant: matrix is square");
+    let right_hand_side = Array1::from_shape_vec([3], vec![2.0, -1.0, 4.0])
+        .expect("invariant: vector shape is exact");
+    let mut solution = Array1::zeros([3]);
+    let mut workspace =
+        GmresWorkspace::<_, 1>::new(&backend, 3).expect("invariant: host allocation succeeds");
+    let policy = ConvergencePolicy::new(1.0e-10, 1.0e-10, 64).expect("invariant: valid policy");
+
+    let report = Gmres::<LetoBackend<f64>, 1>::solve_into(
+        &backend,
+        &operator,
+        &Identity,
+        &right_hand_side,
+        &mut solution,
+        &mut workspace,
+        policy,
+    )
+    .expect("invariant: manufactured solve has valid dimensions");
+
+    assert_eq!(report.termination, Termination::Converged);
+    assert_manufactured_solution(&solution, 1.0e-8);
 }

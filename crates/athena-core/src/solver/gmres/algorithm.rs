@@ -4,6 +4,7 @@ use eunomia::NumericElement;
 use crate::{
     ConvergencePolicy, GmresWorkspace, IterationObserver, IterationState, KrylovBackend,
     LinearOperator, NoObserver, Preconditioner, SolveError, SolveReport, Termination,
+    residual_noise_floor,
 };
 
 use super::{
@@ -172,6 +173,7 @@ where
             initial_residual,
             last_residual: initial_residual,
             threshold,
+            residual_noise: residual_noise_floor(self.workspace.len(), right_hand_side_norm),
             iterations: 0,
             operator_applications: 1,
             preconditioner_applications: 0,
@@ -183,6 +185,7 @@ where
         mut state: GmresState<B::Scalar>,
     ) -> Result<SolveReport<B::Scalar>, SolveError<B::Error>> {
         while state.iterations < self.policy.max_iterations() {
+            let cycle_entry_residual = state.last_residual;
             self.prepare_cycle(state.last_residual)?;
             let remaining = self.policy.max_iterations() - state.iterations;
             let cycle_limit = core::cmp::min(RESTART, remaining);
@@ -217,8 +220,37 @@ where
             if cycle.happy_breakdown {
                 return Ok(state.report(Termination::Breakdown));
             }
+            if let Some(termination) = Self::progress_failure(&state, cycle_entry_residual) {
+                return Ok(state.report(termination));
+            }
         }
         Ok(state.report(Termination::MaxIterations))
+    }
+
+    /// Classify a completed, unconverged restart cycle by the progress it made.
+    ///
+    /// Runs after the convergence, breakdown, and non-finite tests, so it sees
+    /// only cycles that ended with work still to do. Both comparisons are
+    /// against [`GmresState::residual_noise`], the accuracy of one recomputed
+    /// residual: a difference smaller than that is a property of the
+    /// evaluation rather than of the iteration, and no threshold here is
+    /// tuned.
+    ///
+    /// The cycle, not the iteration, is the unit. Restarted GMRES only re-forms
+    /// the true residual at a restart, and the residual is monotone
+    /// non-increasing within a cycle by construction, so an inner iteration
+    /// carries no independent progress signal.
+    fn progress_failure(
+        state: &GmresState<B::Scalar>,
+        cycle_entry_residual: B::Scalar,
+    ) -> Option<Termination> {
+        if state.last_residual > state.initial_residual + state.residual_noise {
+            return Some(Termination::Diverged);
+        }
+        if cycle_entry_residual - state.last_residual <= state.residual_noise {
+            return Some(Termination::Stagnated);
+        }
+        None
     }
 
     fn prepare_cycle(&mut self, residual_norm: B::Scalar) -> Result<(), SolveError<B::Error>> {

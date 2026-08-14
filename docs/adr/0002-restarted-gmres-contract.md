@@ -80,6 +80,11 @@ remains the convergence control-flow boundary.
 - The convergence threshold remains
   `max(abs_tol, rel_tol * ||b||_2)`.
 - No tolerance is used to redefine algebraic zero.
+- A completed cycle that reduces the residual by no more than the accuracy of
+  the residual's own evaluation terminates as `Stagnated`, and a residual
+  exceeding the initial one by more than that accuracy terminates as
+  `Diverged`. Both scales are derived, not tuned; see
+  [ADR 0004](0004-derived-progress-termination.md).
 
 ## Rejected alternatives
 

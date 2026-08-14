@@ -38,6 +38,11 @@ pub(super) struct GmresState<T> {
     pub(super) initial_residual: T,
     pub(super) last_residual: T,
     pub(super) threshold: T,
+    /// Absolute accuracy of one recomputed residual norm, from
+    /// [`residual_noise_floor`](crate::residual_noise_floor). Fixed for the
+    /// solve because it depends only on the system size and `‖b‖`, both of
+    /// which are constant across cycles.
+    pub(super) residual_noise: T,
     pub(super) iterations: usize,
     pub(super) operator_applications: usize,
     pub(super) preconditioner_applications: usize,

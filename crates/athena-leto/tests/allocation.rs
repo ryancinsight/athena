@@ -39,7 +39,7 @@ fn repeated_cpu_solves_allocate_nothing_after_initialization() {
     let policy = ConvergencePolicy::new(64.0 * f64::EPSILON, 64.0 * f64::EPSILON, 4)
         .expect("invariant: valid policy");
 
-    Cg::<LetoBackend<f64>>::solve_into(
+    let warm_up = Cg::<LetoBackend<f64>>::solve_into(
         &backend,
         &operator,
         &Identity,
@@ -49,6 +49,7 @@ fn repeated_cpu_solves_allocate_nothing_after_initialization() {
         policy,
     )
     .expect("warm-up solve must succeed");
+    assert!(warm_up.converged());
     solution.fill(0.0);
 
     let region = Region::new(GLOBAL);
@@ -91,7 +92,7 @@ fn repeated_gmres_solves_allocate_nothing_after_initialization() {
     let policy = ConvergencePolicy::new(4096.0 * f64::EPSILON, 4096.0 * f64::EPSILON, 6)
         .expect("invariant: valid policy");
 
-    Gmres::<LetoBackend<f64>, 3>::solve_into(
+    let warm_up = Gmres::<LetoBackend<f64>, 3>::solve_into(
         &backend,
         &operator,
         &Identity,
@@ -101,6 +102,7 @@ fn repeated_gmres_solves_allocate_nothing_after_initialization() {
         policy,
     )
     .expect("warm-up solve must succeed");
+    assert!(warm_up.converged());
     solution.fill(0.0);
 
     let region = Region::new(GLOBAL);
@@ -143,7 +145,7 @@ fn repeated_bicgstab_solves_allocate_nothing_after_initialization() {
     let policy = ConvergencePolicy::new(4096.0 * f64::EPSILON, 4096.0 * f64::EPSILON, 32)
         .expect("invariant: valid policy");
 
-    BiCgStab::<LetoBackend<f64>>::solve_into(
+    let warm_up = BiCgStab::<LetoBackend<f64>>::solve_into(
         &backend,
         &operator,
         &Identity,
@@ -153,6 +155,7 @@ fn repeated_bicgstab_solves_allocate_nothing_after_initialization() {
         policy,
     )
     .expect("warm-up solve must succeed");
+    assert!(warm_up.converged());
     solution.fill(0.0);
 
     let region = Region::new(GLOBAL);

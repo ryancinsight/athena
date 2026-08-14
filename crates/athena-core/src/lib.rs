@@ -28,7 +28,7 @@ pub mod report;
 pub mod solver;
 
 pub use backend::KrylovBackend;
-pub use convergence::{ConvergencePolicy, InvalidConvergencePolicy};
+pub use convergence::{ConvergencePolicy, InvalidConvergencePolicy, residual_noise_floor};
 pub use error::SolveError;
 pub use operator::{LinearOperator, RectangularOperator};
 pub use preconditioner::{Identity, Preconditioner};

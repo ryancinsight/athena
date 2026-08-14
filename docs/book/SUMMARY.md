@@ -9,5 +9,6 @@
   - [Example: CG Solver](examples/cg_solver.md)
 - [4. BiCGSTAB](bicgstab.md)
 - [5. GMRES](gmres.md)
+- [6. LSQR](lsqr.md)
 # Part III — The Atlas Stack
-- [6. Position in the Stack](stack_position.md)
+- [7. Position in the Stack](stack_position.md)

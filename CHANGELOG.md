@@ -19,8 +19,25 @@ All notable changes to Athena are documented in this file.
   exactly. Consumers that only call the seam are unaffected. See
   [ADR 0003](docs/adr/0003-krylov-vector-block-seam.md).
 
+- Restarted GMRES classifies a completed, unconverged cycle by the progress it
+  made, so a stalled solve reports `Termination::Stagnated` at the first
+  unproductive cycle instead of consuming its whole budget and reporting
+  `Termination::MaxIterations`. A caller matching only on `MaxIterations` to
+  detect non-convergence should use `SolveReport::converged()`, which already
+  covers every non-converged variant. No signature changes; CG, BiCGSTAB, and
+  LSQR keep their existing terminations. See
+  [ADR 0004](docs/adr/0004-derived-progress-termination.md).
+- `SolveReport` is `#[must_use]`. Discarding it is how a non-converged
+  termination gets silently accepted, so ignoring one is now a warning.
+
 ### Added
 
+- `Termination::Stagnated` and `Termination::Diverged`, and
+  `residual_noise_floor`, the derived absolute accuracy of one recomputed
+  residual norm that both criteria are measured against. The floor is
+  `sqrt(len) * EPSILON * ||b||`, published with its derivation and its limits
+  so a caller writing a custom convergence test can use the same scale rather
+  than a tuned tolerance.
 - `LetoVectorBlock`, the contiguous host storage backing the Leto
   `VectorBlock`, and an `athena-leto` backend-seam conformance suite that pins
   block contiguity, zero-initialization, non-aliasing between neighbouring
