@@ -75,7 +75,12 @@ impl<T> LetoVectorBlock<T> {
     /// The offset is zero because [`Self::span`] has already positioned the
     /// backing slice. Carrying the offset in the layout instead would leave
     /// every downstream `as_slice` resolving against the block's base pointer.
-    const fn vector_layout(&self) -> Layout<1> {
-        Layout::new([self.len], [1], 0)
+    fn vector_layout(&self) -> Layout<1> {
+        // A dense unit-stride rank-1 layout at offset 0 addresses `[0, len)`,
+        // so the only way this can fail is a length past `isize::MAX`, which
+        // no allocated block can reach. `Layout` validation is not `const`, so
+        // this is no longer a `const fn`.
+        Layout::c_contiguous([self.len])
+            .expect("invariant: dense rank-1 layout over an allocated block is valid")
     }
 }
