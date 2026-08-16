@@ -44,10 +44,10 @@ jobs:
         run: cargo doc --workspace --no-deps --all-features
       - name: Examples
         run: |
-          cargo run -p athena --example poisson_cpu --features cpu
-          cargo run -p athena --example nonsymmetric_cpu --features cpu
-          cargo run -p athena --example poisson_accelerator --no-default-features --features accelerator
-          cargo run -p athena --example nonsymmetric_accelerator --no-default-features --features accelerator
+          cargo run -p athena-krylov --example poisson_cpu --features cpu
+          cargo run -p athena-krylov --example nonsymmetric_cpu --features cpu
+          cargo run -p athena-krylov --example poisson_accelerator --no-default-features --features accelerator
+          cargo run -p athena-krylov --example nonsymmetric_accelerator --no-default-features --features accelerator
 
   supply-chain:
     runs-on: ubuntu-latest

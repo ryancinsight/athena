@@ -6,6 +6,13 @@ All notable changes to Athena are documented in this file.
 
 ### Changed
 
+- Refresh the locked Atlas provider graph to Leto `2beb4f17`, Hermes
+  `eb1a2f87`, Hephaestus `dc7b72c6`, Eunomia `88c685f2`, and their current
+  Mnemosyne, Moirai, and Themis dependencies. The update is dependency-ordered
+  so Hermes 0.7 is consumed through the provider graph without a compatibility
+  path; all-feature check, strict Clippy, 63/63 Nextest, doctests, Rustdoc,
+  audit, and cargo-deny pass.
+
 - **Breaking.** `KrylovBackend` gains the `VectorBlock` associated type and
   the `allocate_block`, `block_view`, and `block_view_mut` methods, so a
   backend owns the residency of a fixed-count vector set instead of
