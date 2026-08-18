@@ -9,6 +9,15 @@
 //! operator to a known solution vector to get `b`, and then solves to recover
 //! the original solution.
 
+// The book includes this file verbatim as a tested code sample. `mdbook test`
+// spawns rustdoc against a staged library path rather than a cargo target, so
+// every crate the sample names has to be declared; cargo itself resolves these
+// from the extern prelude and ignores the declarations.
+extern crate athena_core;
+extern crate athena_leto;
+extern crate leto;
+extern crate leto_ops;
+
 use athena_core::{
     Cg, CgWorkspace, ConvergencePolicy, Identity, KrylovBackend, LinearOperator, Termination,
 };

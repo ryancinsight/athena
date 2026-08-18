@@ -20,3 +20,14 @@ jobs:
       id-token: write
     with:
       output-path: target/book/athena
+      # Book samples are `{{#include}}`s of the crates' own runnable examples,
+      # so `mdbook test` compiles and runs exactly the code the chapters show.
+      mdbook-test: true
+      # athena-leto's dependency closure covers every crate the samples name
+      # (athena-core, eunomia, leto, leto-ops); the workflow stages one
+      # plain-named rlib per crate for `mdbook test --library-path`.
+      cargo-package: athena-leto
+      # Must match rust-toolchain.toml: cargo build honours the pin while
+      # mdbook spawns rustdoc from the installed default, and a mismatch
+      # fails E0514 (crate compiled by an incompatible rustc).
+      rust-toolchain: "1.97.0"

@@ -6,6 +6,11 @@ language = "en"
 [build]
 build-dir = "../../target/book/athena"
 create-missing = false
+
+# `mdbook test` compiles fenced `rust` blocks as doctests; the edition must
+# match the workspace so book samples parse exactly as the crates do.
+[rust]
+edition = "2024"
 [output.html]
 no-section-label = false
 mathjax-support = true

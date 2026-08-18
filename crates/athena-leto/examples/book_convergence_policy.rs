@@ -5,6 +5,12 @@
 //! one is fallible — invalid tolerances (negative, NaN, infinity) or zero
 //! iteration counts are rejected at the boundary.
 
+// The book includes this file verbatim as a tested code sample. `mdbook test`
+// spawns rustdoc against a staged library path rather than a cargo target, so
+// every crate the sample names has to be declared; cargo itself resolves these
+// from the extern prelude and ignores the declaration.
+extern crate athena_core;
+
 use athena_core::{ConvergencePolicy, InvalidConvergencePolicy};
 
 fn main() {
