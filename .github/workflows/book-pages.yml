@@ -1,33 +1,65 @@
 name: Deploy mdBook
+
 on:
+
   push:
+
     branches: [main]
+
     paths: ["docs/book/**",".github/workflows/book-pages.yml"]
+
   pull_request:
+
     paths: ["docs/book/**",".github/workflows/book-pages.yml"]
+
   workflow_dispatch:
+
 permissions:
+
   contents: read
+
 concurrency:
+
   group: book-pages-${{ github.ref }}
+
   cancel-in-progress: true
+
 jobs:
+
   deploy:
-    uses: ryancinsight/atlas/.github/workflows/book-pages.yml@20c93980d3f8bceda7cc4a40f5969c5e2f0f64e8
+
+    uses: ryancinsight/atlas/.github/workflows/book-pages.yml@20c93980f7c98f2e23a89c4a0540f16c8f2d7239
+
     permissions:
+
       contents: read
+
       pages: write
+
       id-token: write
+
     with:
+
       output-path: target/book/athena
+
       # Book samples are `{{#include}}`s of the crates' own runnable examples,
+
       # so `mdbook test` compiles and runs exactly the code the chapters show.
+
       mdbook-test: true
+
       # athena-leto's dependency closure covers every crate the samples name
+
       # (athena-core, eunomia, leto, leto-ops); the workflow stages one
+
       # plain-named rlib per crate for `mdbook test --library-path`.
+
       cargo-package: athena-leto
+
       # Must match rust-toolchain.toml: cargo build honours the pin while
+
       # mdbook spawns rustdoc from the installed default, and a mismatch
+
       # fails E0514 (crate compiled by an incompatible rustc).
+
       rust-toolchain: "1.97.0"
