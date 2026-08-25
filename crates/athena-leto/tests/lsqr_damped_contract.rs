@@ -3,7 +3,7 @@
 //! The damped problem is `min ‖A·x − b‖₂ + λ·‖x‖₂`, which the algorithm solves
 //! exactly as `min ‖[A; λI]·x − [b; 0]‖₂`. The recurrence is the same
 //! bidiagonalisation as the unregularised case with one extra `λ²` term in
-//! the diagonal update at every step (Paige & Saunders 1982, §4, eqn 4.4).
+//! the Givens rotation at every step (Paige & Saunders 1982, §4, eqn 4.4).
 //!
 //! The contract being checked:
 //!
@@ -14,22 +14,16 @@
 //!   equations `(AᵀA + λ²I)·x = Aᵀb`. The contract test verifies this by
 //!   comparing the damped LSQR iterate to a direct SPD solve of the augmented
 //!   system on a small manufactured problem.
-//! - Tikhonov regularisation stabilises an ill-conditioned `A` whose
-//!   unregularised LSQR diverges or stalls: the damped solve converges
-//!   monotonically while the unregularised solve does not.
-//! - The damped residual norm `‖A·x − b‖₂ + λ·‖x‖₂` is bounded above by the
-//!   unregularised residual at the same iteration count for any `λ > 0`.
+//! - Tikhonov regularisation shrinks the iterate norm on a noise-perturbed
+//!   problem, trading a small bias for stability.
 //! - The damping is a single scalar on the call site; no extra workspace, no
 //!   extra operator application, and the iteration budget is the same as
 //!   unregularised.
-//!
-//! The reference test is a `2×2` overdetermined `A = [[1, ε], [1, -ε]]` with
-//! a small `ε`, where the unregularised normal equations `(AᵀA)·x = Aᵀb` have
-//! a `1/ε²` condition number and any noise in `b` corrupts the unregularised
-//! iterate, while a modest `λ` keeps the damped iterate within the round-off
-//! envelope of the manufactured `x`.
+//! - `f32` parity: the damped path runs in the operator's native precision
+//!   and converges to the same analytic point as `f64` within `f32`'s wider
+//!   round-off.
 
-use athena_core::{ConvergencePolicy, KrylovBackend, Lsqr, LsqrWorkspace, RectangularOperator};
+use athena_core::{ConvergencePolicy, Lsqr, LsqrWorkspace, RectangularOperator};
 use athena_leto::{LetoBackend, RectangularCsrOperator};
 use eunomia::{FloatElement, RealField};
 use leto::Array1;
@@ -115,7 +109,8 @@ fn zero_damping_matches_undamped_solve_f64() {
     // A 4x2 overdetermined consistent system, identical to the unregularised
     // contract test, with a deliberately mid-rank `A` so the unregularised
     // solve is not trivial.
-    let operator = dense_operator::<f64>(&[&[1.0, 0.0], &[0.0, 1.0], &[1.0, 1.0], &[2.0, -1.0]]);
+    let operator =
+        dense_operator::<f64>(&[&[1.0, 0.0], &[0.0, 1.0], &[1.0, 1.0], &[2.0, -1.0]]);
     let right_hand_side = vector::<f64>(&[2.0, -1.0, 1.0, 5.0]);
 
     let (undamped, undamped_report) = solve_with_damping(&operator, &right_hand_side, 64, 0.0);
@@ -145,28 +140,24 @@ fn damped_solve_matches_augmented_normal_equations() {
     // the columns `[1, 1]` and `[ε, -ε]` are nearly parallel for small `ε`.
     let epsilon = 1.0e-6;
     let operator = dense_operator::<f64>(&[&[1.0, epsilon], &[1.0, -epsilon]]);
-    // Manufactured right-hand side: a clean `[1, 0]` would let the unregularised
-    // solve find it; we add a tiny `b` so the augmented solve differs from the
-    // unregularised one and the damping matters.
     let right_hand_side = vector::<f64>(&[1.0, 0.0]);
 
     // Compute the direct augmented-normal-equation solve:
     //   x* = (AᵀA + λ²I)⁻¹ · Aᵀb
     // for the same `λ` we hand to LSQR, and assert the LSQR iterate matches
-    // to a small multiple of the working precision. This is the optimality
-    // contract: LSQR with Tikhonov damping converges to the same point as
-    // the SPD normal-equation solve.
+    // to the convergence envelope of the chosen condition number. This is
+    // the optimality contract: LSQR with Tikhonov damping converges to the
+    // same point as the SPD normal-equation solve.
     let lambda = 1.0e-2;
     let lambda_sq = lambda * lambda;
-    // AᵀA = [[2, 0], [0, 2ε²]]
+    // AᵀA = [[2, 0], [0, 2ε²]] (AᵀA is diagonal for this A)
     let ata_00 = 2.0_f64;
-    let ata_01 = 0.0_f64;
     let ata_11 = 2.0 * epsilon * epsilon;
     // Aᵀb = [1, ε]
     let atb_0 = 1.0_f64;
     let atb_1 = epsilon;
-    // (AᵀA + λ²I) is diagonal (AᵀA is diagonal here), so the inverse is
-    // the entrywise reciprocal of (AᵀA + λ²I):
+    // (AᵀA + λ²I) is diagonal here, so its inverse is the entrywise
+    // reciprocal:
     //   x0 = (ata_00 + λ²)⁻¹ · atb_0
     //   x1 = (ata_11 + λ²)⁻¹ · atb_1
     let direct_x0 = atb_0 / (ata_00 + lambda_sq);
@@ -201,21 +192,17 @@ fn damped_solve_matches_augmented_normal_equations() {
     assert!(report.converged(), "got {:?}", report.termination);
 }
 
-/// The damped objective `‖A·x − b‖₂ + λ·‖x‖₂` is bounded above by the
-/// unregularised objective at the same iterate; the contract is `λ > 0`
-/// strictly improves the regularised objective relative to the unregularised
-/// solve on a noise-perturbed `b`.
+/// The damped objective `‖A·x − b‖₂ + λ·‖x‖₂` shrinks the iterate on a
+/// noise-perturbed problem; the contract is `λ > 0` strictly improves the
+/// regularised objective relative to the unregularised solve.
 #[test]
 fn damping_reduces_objective_on_perturbed_right_hand_side() {
     // Identity-style problem: a 4x2 `A` with well-conditioned columns, but
     // a right-hand side perturbed by a small bias that the unregularised
-    // solve inherits, while the regularised solve trades a small bias for
-    // stability.
-    let operator = dense_operator::<f64>(&[&[1.0, 0.0], &[0.0, 1.0], &[1.0, 1.0], &[0.0, 1.0]]);
-    // True solution is `[1, 1]`, but the RHS carries a small `δ` in the first
-    // entry that the unregularised solve faithfully tracks. The damped solve
-    // shrinks `x` toward zero, so the residual grows but `λ·‖x‖₂` shrinks
-    // fast enough that `‖r‖ + λ·‖x‖` is smaller.
+    // solve faithfully tracks. The damped solve shrinks `x` toward zero,
+    // so the damped `‖x‖₂` is strictly less.
+    let operator =
+        dense_operator::<f64>(&[&[1.0, 0.0], &[0.0, 1.0], &[1.0, 1.0], &[0.0, 1.0]]);
     let delta = 1.0e-1;
     let right_hand_side = vector::<f64>(&[1.0 + delta, 1.0, 2.0, 1.0]);
 
@@ -223,11 +210,6 @@ fn damping_reduces_objective_on_perturbed_right_hand_side() {
     let lambda = 5.0e-1;
     let (damped_solution, _) = solve_with_damping(&operator, &right_hand_side, 64, lambda);
 
-    // The unregularised solve finds the LS minimiser of `‖A·x − b‖`. On
-    // this `A` the LS minimiser for `b = [1+δ, 1, 2, 1]` is `[1, 1] - δ·p`
-    // for some `p`; with `δ = 0.1` the iterate is around `[0.95, 1.0]`. The
-    // damped solve, with `λ = 0.5`, pulls the iterate toward zero, so the
-    // damped `‖x‖₂` is strictly less.
     let undamped_x_norm = l2(&undamped_solution);
     let damped_x_norm = l2(&damped_solution);
     assert!(
@@ -236,16 +218,10 @@ fn damping_reduces_objective_on_perturbed_right_hand_side() {
     );
 }
 
-/// `λ > 0` is invariant under sign flip of `λ` for `λ ≥ 0`: the damped
-/// recurrence is `ρ = √(ρ_bar² + β² + λ²)`, so `λ` enters only as `λ²`. A
-/// negative `λ` would be `sqrt` of a negative number and is rejected by the
-/// algorithm; the contract here is positive `λ` works at any value, including
-/// the round-off envelope.
+/// `λ = 1` on a 1×1 system yields the analytic minimiser of
+/// `‖x − 1‖² + ‖x‖² = (x − 1/2)² + 1/4`, namely `x = 0.5`.
 #[test]
 fn damping_tolerates_extreme_lambda_values() {
-    // Single-equation, single-unknown: `A = [[1]]`, `b = [1]`. The unregularised
-    // solve returns `x = 1`; a `λ = 1` solve returns `x = 1 / (1 + 1) = 0.5`
-    // (the analytic minimiser of `‖x − 1‖² + ‖x‖²`).
     let operator = dense_operator::<f64>(&[&[1.0]]);
     let right_hand_side = vector::<f64>(&[1.0]);
 
@@ -268,49 +244,47 @@ fn damped_solve_works_in_f32() {
     let operator = dense_operator::<f32>(&[&[1.0, 1.0e-3], &[1.0, -1.0e-3]]);
     let right_hand_side = vector::<f32>(&[1.0, 0.0]);
 
-    let lambda = 1.0e-2_f32;
-    let (solution, report) = solve_with_damping(&operator, &right_hand_side, 4096, lambda.into());
+    let lambda_f32 = 1.0e-2_f32;
+    let (solution, report) =
+        solve_with_damping(&operator, &right_hand_side, 4096, lambda_f32.into());
 
-    // The `f32` working precision is roughly `1.2e-7`; for a system with
-    // condition number `κ ≈ (2 + λ²) / (2e-6 + λ²) ≈ 19609`, the per-step
-    // reduction factor is `(√κ − 1) / (√κ + 1) ≈ 0.986`. After 4096
-    // iterations, the iterate's error is bounded by
-    // `error_0 · 0.986^4096 ≈ error_0 · e^(-58)`. With an initial iterate
-    // bounded by `1`, this gives a bound of `~1e-25` for an unconstrained
-    // problem; in the f32 working precision, the round-off envelope is the
-    // limiting factor, so the bound below is the convergence envelope, not
-    // the round-off floor.
+    // For a system with condition number `κ ≈ (2 + λ²) / (2e-6 + λ²) ≈ 19609`,
+    // the per-step reduction factor is `(√κ − 1) / (√κ + 1) ≈ 0.986`. After
+    // 4096 iterations, the iterate's error is bounded by
+    // `error_0 · 0.986^4096 ≈ error_0 · e^(-58)`. The bound below is the
+    // convergence envelope, well inside the round-off floor.
     let bound = 1.0e-2;
-    // Reference solve: x* = (AᵀA + λ²I)⁻¹ · Aᵀb; computed in f64 to avoid
-    // propagation of f32 round-off into the oracle. AᵀA here is diagonal in
-    // the (column) basis where the columns `[1, 1]` and `[1e-3, -1e-3]` are
-    // orthogonal at the precision of the input, so the inverse is the
-    // entrywise reciprocal of (AᵀA + λ²I):
+    // Reference solve: x* = (AᵀA + λ²I)⁻¹ · Aᵀb in f64 to avoid propagation
+    // of f32 round-off into the oracle. AᵀA is diagonal here:
     //   AᵀA = [[2, 0], [0, 2e-6]]
     //   (AᵀA + λ²I) = [[2 + λ², 0], [0, 2e-6 + λ²]]
     //   x* = [1 / (2 + λ²), 1e-3 / (2e-6 + λ²)]
+    let lambda = f64::from(lambda_f32);
+    let lambda_sq = lambda * lambda;
     let ata_00 = 2.0_f64;
     let ata_11 = 2.0e-6_f64;
-    let lambda_sq = (lambda as f64) * (lambda as f64);
     let atb_0 = 1.0_f64;
     let atb_1 = 1.0e-3_f64;
     let direct_x0 = atb_0 / (ata_00 + lambda_sq);
     let direct_x1 = atb_1 / (ata_11 + lambda_sq);
+
+    let solution_x0 = f64::from(solution[0]);
+    let solution_x1 = f64::from(solution[1]);
     assert!(
-        ((solution[0] as f64) - direct_x0).abs() <= bound as f64,
+        (solution_x0 - direct_x0).abs() <= bound,
         "f32 x0 LSQR={:.6}, direct={:.6}, diff={:.3e}, bound={:.3e}",
-        solution[0] as f64,
+        solution_x0,
         direct_x0,
-        (solution[0] as f64 - direct_x0).abs(),
-        bound as f64
+        (solution_x0 - direct_x0).abs(),
+        bound
     );
     assert!(
-        ((solution[1] as f64) - direct_x1).abs() <= bound as f64,
+        (solution_x1 - direct_x1).abs() <= bound,
         "f32 x1 LSQR={:.6}, direct={:.6}, diff={:.3e}, bound={:.3e}",
-        solution[1] as f64,
+        solution_x1,
         direct_x1,
-        (solution[1] as f64 - direct_x1).abs(),
-        bound as f64
+        (solution_x1 - direct_x1).abs(),
+        bound
     );
     assert!(report.converged(), "got {:?}", report.termination);
 }
