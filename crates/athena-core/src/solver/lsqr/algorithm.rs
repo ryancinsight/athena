@@ -35,7 +35,11 @@ type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 pub struct Lsqr<B>(PhantomData<fn() -> B>);
 
 impl<B: KrylovBackend> Lsqr<B> {
-    /// Solve `min ‖A·x − b‖₂` into caller-owned `solution`.
+    /// Solve `min ‖A·x − b‖₂` into caller-owned `solution` with no Tikhonov
+    /// damping.
+    ///
+    /// Equivalent to `solve_damped_into` with `damping = 0`; the parameterless
+    /// form is the common case and stays ergonomic at the call site.
     ///
     /// `solution` is both the initial guess and the output; the recurrence
     /// solves for a correction to it, so a warm start is honoured.
@@ -55,18 +59,20 @@ impl<B: KrylovBackend> Lsqr<B> {
     where
         O: RectangularOperator<B>,
     {
-        Self::solve_with_observer(
+        Self::solve_damped_with_observer(
             backend,
             operator,
             right_hand_side,
             solution,
             workspace,
             policy,
+            <B::Scalar as NumericElement>::ZERO,
             &mut NoObserver,
         )
     }
 
-    /// Solve while reporting configured residual checks to `observer`.
+    /// Solve while reporting configured residual checks to `observer`, with no
+    /// Tikhonov damping.
     ///
     /// # Errors
     ///
@@ -84,6 +90,88 @@ impl<B: KrylovBackend> Lsqr<B> {
         O: RectangularOperator<B>,
         Obs: IterationObserver<B::Scalar>,
     {
+        Self::solve_damped_with_observer(
+            backend,
+            operator,
+            right_hand_side,
+            solution,
+            workspace,
+            policy,
+            <B::Scalar as NumericElement>::ZERO,
+            observer,
+        )
+    }
+
+    /// Solve `min ‖A·x − b‖₂ + λ·‖x‖₂` (Tikhonov-regularised least squares)
+    /// into caller-owned `solution`.
+    ///
+    /// `λ ≥ 0` is the regularisation weight. `λ = 0` recovers the unregularised
+    /// least-squares problem; positive `λ` stabilises the iterate against
+    /// measurement noise and small singular values, at the cost of a bias
+    /// toward zero. The damped problem is solved exactly as
+    /// `min ‖ [A; λI]·x − [b; 0] ‖₂`, so the recurrence is the same
+    /// bidiagonalisation with one extra `λ²` term in the diagonal update at
+    /// every step (Paige & Saunders 1982, §4, eqn 4.4).
+    ///
+    /// # Panics
+    ///
+    /// `damping` must be finite and non-negative; callers are expected to
+    /// validate. The algorithm does not panic on these — it propagates a
+    /// [`Termination::NonFinite`] or runs as if `λ = 0` — but the test suite
+    /// asserts the input discipline.
+    ///
+    /// # Errors
+    ///
+    /// Returns a dimension or backend failure. Numerical termination is
+    /// returned value-semantically in [`SolveReport`].
+    pub fn solve_damped_into<O>(
+        backend: &B,
+        operator: &O,
+        right_hand_side: &B::Vector,
+        solution: &mut B::Vector,
+        workspace: &mut LsqrWorkspace<B>,
+        policy: ConvergencePolicy<B::Scalar>,
+        damping: B::Scalar,
+    ) -> Result<SolveReport<B::Scalar>, SolveError<B::Error>>
+    where
+        O: RectangularOperator<B>,
+    {
+        Self::solve_damped_with_observer(
+            backend,
+            operator,
+            right_hand_side,
+            solution,
+            workspace,
+            policy,
+            damping,
+            &mut NoObserver,
+        )
+    }
+
+    /// Solve the damped least-squares problem while reporting configured
+    /// residual checks to `observer`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a dimension or backend failure.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the solver boundary keeps backend, caller-owned buffers, policy, damping, and observer explicit"
+    )]
+    pub fn solve_damped_with_observer<O, Obs>(
+        backend: &B,
+        operator: &O,
+        right_hand_side: &B::Vector,
+        solution: &mut B::Vector,
+        workspace: &mut LsqrWorkspace<B>,
+        policy: ConvergencePolicy<B::Scalar>,
+        damping: B::Scalar,
+        observer: &mut Obs,
+    ) -> Result<SolveReport<B::Scalar>, SolveError<B::Error>>
+    where
+        O: RectangularOperator<B>,
+        Obs: IterationObserver<B::Scalar>,
+    {
         let mut execution = Execution {
             backend,
             operator,
@@ -92,6 +180,7 @@ impl<B: KrylovBackend> Lsqr<B> {
             workspace,
             policy,
             observer,
+            damping,
         };
         execution.validate_dimensions()?;
         match execution.initialize()? {
@@ -112,6 +201,10 @@ where
     workspace: &'a mut LsqrWorkspace<B>,
     policy: ConvergencePolicy<B::Scalar>,
     observer: &'a mut Obs,
+    /// Tikhonov regularisation weight. `λ ≥ 0`; `0` recovers the unregularised
+    /// least-squares problem. Encoded as a single scalar, not a buffer, so it
+    /// adds no workspace.
+    damping: B::Scalar,
 }
 
 impl<B, O, Obs> Execution<'_, B, O, Obs>
@@ -198,6 +291,14 @@ where
             )
             .map_err(SolveError::Backend)?;
 
+        // The initial `rho_bar` carries the diagonal entry from the previous
+        // step. For step 1 there is no previous step; the undamped recurrence
+        // initialises `rho_bar = alpha`. Damping enters only via the `+λ²`
+        // in the Givens rotation at every step (see `step`); the initial
+        // `rho_bar` is unchanged, because the rotation's `ρ` is the
+        // accumulated diagonal element of the augmented bidiagonal factor and
+        // the very first rotation's diagonal is just `α`. This matches the
+        // reference Hansen 1998 damped-LSQR recurrence.
         Ok(Stage::Continue(LsqrState {
             initial_residual: beta,
             residual: beta,
@@ -267,6 +368,7 @@ where
     fn step(&mut self, state: &mut LsqrState<B::Scalar>) -> ExecutionResult<B, Step<B::Scalar>> {
         let one = <B::Scalar as NumericElement>::ONE;
         let zero = <B::Scalar as NumericElement>::ZERO;
+        let damping_sq = self.damping * self.damping;
 
         let Some(beta) = self.advance_left(state)? else {
             return Ok(Step::Complete(state.report(Termination::NonFinite)));
@@ -277,7 +379,14 @@ where
         state.iterations += 1;
 
         // Plane rotation eliminating the subdiagonal of the bidiagonal factor.
-        let rho = (state.rho_bar * state.rho_bar + beta * beta).sqrt();
+        // The unregularised recurrence carries `ρ = √(ρ_bar² + β²)`. For
+        // Tikhonov damping, the augmented system `[A; λI]·x ≈ [b; 0]`
+        // contributes an extra `λ²` to the diagonal at every step (Paige &
+        // Saunders 1982, eqn 4.4): the rotation's `ρ` is therefore
+        // `√(ρ_bar² + β² + λ²)`. The trigonometric identities that follow
+        // are unchanged because `cosine`, `sine`, `θ`, `φ` only depend on
+        // `ρ` and `ρ_bar`.
+        let rho = (state.rho_bar * state.rho_bar + beta * beta + damping_sq).sqrt();
         if !rho.is_finite() || rho == zero {
             return Ok(Step::Complete(state.report(Termination::Breakdown)));
         }
