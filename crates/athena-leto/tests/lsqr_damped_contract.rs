@@ -115,16 +115,12 @@ fn zero_damping_matches_undamped_solve_f64() {
     // A 4x2 overdetermined consistent system, identical to the unregularised
     // contract test, with a deliberately mid-rank `A` so the unregularised
     // solve is not trivial.
-    let operator = dense_operator::<f64>(&[
-        &[1.0, 0.0],
-        &[0.0, 1.0],
-        &[1.0, 1.0],
-        &[2.0, -1.0],
-    ]);
+    let operator = dense_operator::<f64>(&[&[1.0, 0.0], &[0.0, 1.0], &[1.0, 1.0], &[2.0, -1.0]]);
     let right_hand_side = vector::<f64>(&[2.0, -1.0, 1.0, 5.0]);
 
     let (undamped, undamped_report) = solve_with_damping(&operator, &right_hand_side, 64, 0.0);
-    let (zero_damped, zero_damped_report) = solve_with_damping(&operator, &right_hand_side, 64, 0.0);
+    let (zero_damped, zero_damped_report) =
+        solve_with_damping(&operator, &right_hand_side, 64, 0.0);
 
     // The damped-with-zero and the undamped runs must agree on the iterate to
     // a few round-off units; the public API surfaces one of them, the other
@@ -215,12 +211,7 @@ fn damping_reduces_objective_on_perturbed_right_hand_side() {
     // a right-hand side perturbed by a small bias that the unregularised
     // solve inherits, while the regularised solve trades a small bias for
     // stability.
-    let operator = dense_operator::<f64>(&[
-        &[1.0, 0.0],
-        &[0.0, 1.0],
-        &[1.0, 1.0],
-        &[0.0, 1.0],
-    ]);
+    let operator = dense_operator::<f64>(&[&[1.0, 0.0], &[0.0, 1.0], &[1.0, 1.0], &[0.0, 1.0]]);
     // True solution is `[1, 1]`, but the RHS carries a small `δ` in the first
     // entry that the unregularised solve faithfully tracks. The damped solve
     // shrinks `x` toward zero, so the residual grows but `λ·‖x‖₂` shrinks
