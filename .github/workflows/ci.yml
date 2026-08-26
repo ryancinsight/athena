@@ -57,6 +57,23 @@ jobs:
           cargo run -p athena-krylov --example poisson_accelerator --no-default-features --features accelerator
           cargo run -p athena-krylov --example nonsymmetric_accelerator --no-default-features --features accelerator
 
+  # The strict zero-traffic contract is #[ignore]d in the default suite because
+  # it flakes on some hosted Linux runners; skipping it there made the gate
+  # vacuous. This job runs the contract and its bounded-traffic classifier
+  # explicitly: the classifier fails only when traffic scales with solve count
+  # or memory is retained, so an environment-fixed burst reports green while a
+  # real solve-path allocation fails closed.
+  allocation-instrument:
+    name: Allocation instrument
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: taiki-e/install-action@nextest
+      - name: Run allocation contracts with ignored tests enabled
+        run: cargo nextest run -p athena-leto --test allocation --run-ignored ignored-only
+
   supply-chain:
     runs-on: ubuntu-latest
     steps:
