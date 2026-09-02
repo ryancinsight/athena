@@ -11,6 +11,7 @@ description = "Backend-neutral operator, preconditioner, and convergence contrac
 
 [dependencies]
 eunomia.workspace = true
+mnemosyne-arena.workspace = true
 
 [lints]
 workspace = true

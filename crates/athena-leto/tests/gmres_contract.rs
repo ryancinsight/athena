@@ -8,6 +8,7 @@ use athena_leto::{CsrOperator, Jacobi, LetoBackend};
 use eunomia::{FloatElement, RealField};
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
+use mnemosyne_arena::ScratchElement;
 
 fn nonsymmetric_matrix<T>() -> CsrMatrix<T>
 where
@@ -56,7 +57,7 @@ where
 
 fn verifies_nonsymmetric_solution<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + FloatElement + ScratchElement + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     let matrix = nonsymmetric_matrix();
