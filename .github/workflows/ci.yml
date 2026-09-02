@@ -67,6 +67,13 @@ jobs:
     name: Allocation instrument
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Pin glibc to a single arena so per-thread tcache churn cannot
+      # produce allocation traffic the solver does not cause. If the
+      # strict zero-traffic contract passes under this pin, it names
+      # glibc arena churn as the environment noise and clears the way
+      # for unconditionally re-enabling the strict test.
+      MALLOC_ARENA_MAX: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.95.0
