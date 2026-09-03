@@ -38,7 +38,11 @@ fn mnemosyne_scratch_pool_is_used_for_safe_arena_backed_temporary_storage() {
     pool.with_scratch(16, |scratch| {
         assert_eq!(scratch.len(), 16);
         scratch.fill(1.25);
-        assert!(scratch.iter().all(|value| (*value - 1.25).abs() <= f64::EPSILON));
+        assert!(
+            scratch
+                .iter()
+                .all(|value| (*value - 1.25).abs() <= f64::EPSILON)
+        );
     });
 }
 
