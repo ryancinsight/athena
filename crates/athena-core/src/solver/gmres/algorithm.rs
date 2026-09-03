@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 use eunomia::NumericElement;
-use mnemosyne_arena::ScratchElement;
 
 use crate::{
     ConvergencePolicy, GmresWorkspace, IterationObserver, IterationState, KrylovBackend,
@@ -20,10 +19,7 @@ type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Gmres<B, const RESTART: usize>(PhantomData<fn() -> B>);
 
-impl<B: KrylovBackend, const RESTART: usize> Gmres<B, RESTART>
-where
-    B::Scalar: ScratchElement,
-{
+impl<B: KrylovBackend, const RESTART: usize> Gmres<B, RESTART> {
     /// Solve `A x = b` into caller-owned `solution`.
     ///
     /// # Errors
@@ -102,7 +98,6 @@ where
 struct Execution<'a, B, O, P, Obs, const RESTART: usize>
 where
     B: KrylovBackend,
-    B::Scalar: ScratchElement,
 {
     backend: &'a B,
     operator: &'a O,
@@ -117,7 +112,6 @@ where
 impl<B, O, P, Obs, const RESTART: usize> Execution<'_, B, O, P, Obs, RESTART>
 where
     B: KrylovBackend,
-    B::Scalar: ScratchElement,
     O: LinearOperator<B>,
     P: Preconditioner<B>,
     Obs: IterationObserver<B::Scalar>,
