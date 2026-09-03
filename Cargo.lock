@@ -70,6 +70,7 @@ name = "athena-core"
 version = "0.1.1"
 dependencies = [
  "eunomia",
+ "mnemosyne-arena",
 ]
 
 [[package]]
@@ -106,6 +107,8 @@ dependencies = [
  "eunomia",
  "leto",
  "leto-ops",
+ "mnemosyne-arena",
+ "mnemosyne-memory",
  "stats_alloc",
 ]
 
@@ -280,7 +283,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "eunomia"
 version = "0.8.0"
-source = "git+https://github.com/ryancinsight/eunomia#3daaf31274c4a0fac03ae46809fe35dcb39d284d"
+source = "git+https://github.com/ryancinsight/eunomia#a296e12cc98a40d0e65410370a531584d0d91ae3"
 dependencies = [
  "bytemuck",
  "libm",
@@ -489,7 +492,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/hermes.git#875f5c61f5f94c0a7d6821326bcb86761515c531"
+source = "git+https://github.com/ryancinsight/hermes.git#13909f661bd11471f1533da3ec4898bf88ed43a6"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -503,9 +506,8 @@ dependencies = [
 [[package]]
 name = "hermes-simd-core"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/hermes.git#875f5c61f5f94c0a7d6821326bcb86761515c531"
+source = "git+https://github.com/ryancinsight/hermes.git#13909f661bd11471f1533da3ec4898bf88ed43a6"
 dependencies = [
- "bytemuck",
  "eunomia",
  "mnemosyne-memory",
  "rkyv",
@@ -515,7 +517,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-intrinsics"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/hermes.git#875f5c61f5f94c0a7d6821326bcb86761515c531"
+source = "git+https://github.com/ryancinsight/hermes.git#13909f661bd11471f1533da3ec4898bf88ed43a6"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -524,7 +526,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-macros"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/hermes.git#875f5c61f5f94c0a7d6821326bcb86761515c531"
+source = "git+https://github.com/ryancinsight/hermes.git#13909f661bd11471f1533da3ec4898bf88ed43a6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -534,7 +536,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-types"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/hermes.git#875f5c61f5f94c0a7d6821326bcb86761515c531"
+source = "git+https://github.com/ryancinsight/hermes.git#13909f661bd11471f1533da3ec4898bf88ed43a6"
 dependencies = [
  "hermes-simd-core",
  "hermes-simd-intrinsics",
@@ -576,7 +578,7 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 [[package]]
 name = "leto"
 version = "0.43.0"
-source = "git+https://github.com/ryancinsight/leto.git#d296cccc627dc51a68d3ac30c58bad682f5229fb"
+source = "git+https://github.com/ryancinsight/leto.git#1af889cba0b4114e3325d7965617fe6d11eb4982"
 dependencies = [
  "aequitas",
  "eunomia",
@@ -588,7 +590,7 @@ dependencies = [
 [[package]]
 name = "leto-ops"
 version = "0.43.0"
-source = "git+https://github.com/ryancinsight/leto.git#d296cccc627dc51a68d3ac30c58bad682f5229fb"
+source = "git+https://github.com/ryancinsight/leto.git#1af889cba0b4114e3325d7965617fe6d11eb4982"
 dependencies = [
  "eunomia",
  "hermes-simd",
