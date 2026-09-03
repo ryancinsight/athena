@@ -280,7 +280,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "eunomia"
 version = "0.8.0"
-source = "git+https://github.com/ryancinsight/eunomia#3a8836e32c4a5f6202591432b2eb16d1b2b14891"
+source = "git+https://github.com/ryancinsight/eunomia#3daaf31274c4a0fac03ae46809fe35dcb39d284d"
 dependencies = [
  "bytemuck",
  "libm",
@@ -489,7 +489,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/hermes.git#78c81ca41b0b28bba7b1534cab97826b0a44a5e1"
+source = "git+https://github.com/ryancinsight/hermes.git#875f5c61f5f94c0a7d6821326bcb86761515c531"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -503,7 +503,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-core"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/hermes.git#78c81ca41b0b28bba7b1534cab97826b0a44a5e1"
+source = "git+https://github.com/ryancinsight/hermes.git#875f5c61f5f94c0a7d6821326bcb86761515c531"
 dependencies = [
  "bytemuck",
  "eunomia",
@@ -515,7 +515,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-intrinsics"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/hermes.git#78c81ca41b0b28bba7b1534cab97826b0a44a5e1"
+source = "git+https://github.com/ryancinsight/hermes.git#875f5c61f5f94c0a7d6821326bcb86761515c531"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -524,7 +524,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-macros"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/hermes.git#78c81ca41b0b28bba7b1534cab97826b0a44a5e1"
+source = "git+https://github.com/ryancinsight/hermes.git#875f5c61f5f94c0a7d6821326bcb86761515c531"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -534,7 +534,7 @@ dependencies = [
 [[package]]
 name = "hermes-simd-types"
 version = "0.7.0"
-source = "git+https://github.com/ryancinsight/hermes.git#78c81ca41b0b28bba7b1534cab97826b0a44a5e1"
+source = "git+https://github.com/ryancinsight/hermes.git#875f5c61f5f94c0a7d6821326bcb86761515c531"
 dependencies = [
  "hermes-simd-core",
  "hermes-simd-intrinsics",
