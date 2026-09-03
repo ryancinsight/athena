@@ -1,6 +1,6 @@
+use alloc::vec;
 use alloc::vec::Vec;
 use eunomia::NumericElement;
-use mnemosyne_arena::{AlignedVec, ScratchElement};
 
 use crate::KrylovBackend;
 
@@ -13,14 +13,11 @@ use crate::KrylovBackend;
 ///
 /// The two Arnoldi vector sets are [`KrylovBackend::VectorBlock`]s rather than
 /// `Vec<B::Vector>`, matching the scalar arrays beside them, which are already
-/// flat [`AlignedVec<B::Scalar>`] slices addressed by an index function.
+/// flat [`Vec<B::Scalar>`] slices addressed by an index function.
 /// Keeping the basis and the preconditioned basis in separate blocks is what
 /// lets the recurrence hold one of each at once: blocks lend a single vector
 /// at a time, so the disjointness the Arnoldi step needs is a field-level type fact.
-pub struct GmresWorkspace<B: KrylovBackend, const RESTART: usize>
-where
-    B::Scalar: ScratchElement,
-{
+pub struct GmresWorkspace<B: KrylovBackend, const RESTART: usize> {
     pub(super) residual: B::Vector,
     pub(super) work: B::Vector,
     pub(super) basis: B::VectorBlock,
@@ -28,18 +25,15 @@ where
     pub(super) residual_norm: B::PreparedNorm,
     pub(super) work_norm: B::PreparedNorm,
     pub(super) work_basis_dot: Vec<B::PreparedDot>,
-    pub(super) hessenberg: AlignedVec<B::Scalar>,
-    pub(super) cosine: AlignedVec<B::Scalar>,
-    pub(super) sine: AlignedVec<B::Scalar>,
-    pub(super) transformed_residual: AlignedVec<B::Scalar>,
-    pub(super) coefficients: AlignedVec<B::Scalar>,
+    pub(super) hessenberg: Vec<B::Scalar>,
+    pub(super) cosine: Vec<B::Scalar>,
+    pub(super) sine: Vec<B::Scalar>,
+    pub(super) transformed_residual: Vec<B::Scalar>,
+    pub(super) coefficients: Vec<B::Scalar>,
     len: usize,
 }
 
-impl<B: KrylovBackend, const RESTART: usize> GmresWorkspace<B, RESTART>
-where
-    B::Scalar: ScratchElement,
-{
+impl<B: KrylovBackend, const RESTART: usize> GmresWorkspace<B, RESTART> {
     const VALID_RESTART: () = assert!(
         RESTART > 0 && RESTART < usize::MAX,
         "GMRES restart width must be in 1..usize::MAX"
@@ -84,11 +78,11 @@ where
             residual_norm,
             work_norm,
             work_basis_dot,
-            hessenberg: AlignedVec::zeroed(hessenberg_len),
-            cosine: AlignedVec::zeroed(RESTART),
-            sine: AlignedVec::zeroed(RESTART),
-            transformed_residual: AlignedVec::zeroed(basis_len),
-            coefficients: AlignedVec::zeroed(RESTART),
+            hessenberg: vec![B::Scalar::ZERO; hessenberg_len],
+            cosine: vec![B::Scalar::ZERO; RESTART],
+            sine: vec![B::Scalar::ZERO; RESTART],
+            transformed_residual: vec![B::Scalar::ZERO; basis_len],
+            coefficients: vec![B::Scalar::ZERO; RESTART],
             len,
         })
     }
