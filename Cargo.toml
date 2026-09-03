@@ -22,8 +22,8 @@ publish = true
 athena-core = { path = "crates/athena-core", version = "0.1.1" }
 athena-hephaestus = { path = "crates/athena-hephaestus", version = "0.1.1" }
 athena-leto = { path = "crates/athena-leto", version = "0.1.1" }
-mnemosyne = { package = "mnemosyne-memory", version = "0.7.0", git = "https://github.com/ryancinsight/Mnemosyne.git", rev = "caf66d0", features = ["eunomia"] }
-mnemosyne-arena = { version = "0.4.0", git = "https://github.com/ryancinsight/Mnemosyne.git", rev = "caf66d0", features = ["eunomia"] }
+mnemosyne = { package = "mnemosyne-memory", version = "0.7.0", git = "https://github.com/ryancinsight/Mnemosyne.git", rev = "98efee0", features = ["eunomia"] }
+mnemosyne-arena = { version = "0.4.0", git = "https://github.com/ryancinsight/Mnemosyne.git", rev = "98efee0", features = ["eunomia"] }
 
 eunomia = { version = "0.8.0", git = "https://github.com/ryancinsight/eunomia", default-features = false }
 leto = { version = "0.43.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
