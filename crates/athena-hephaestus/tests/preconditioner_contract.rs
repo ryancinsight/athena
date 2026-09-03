@@ -265,7 +265,14 @@ fn a_mismatched_operand_length_is_rejected_by_the_seam() {
         backend.view_mut(&mut output),
     );
 
-    assert!(outcome.is_err(), "a length mismatch must not be dispatched");
+    let Err(error) = outcome else {
+        panic!("a length mismatch must not be dispatched");
+    };
+    let message = error.to_string();
+    assert!(
+        message.contains('3') && message.contains('2'),
+        "the error must name the mismatched lengths (3 against 2): {message}"
+    );
 }
 
 /// Symmetric tridiagonal system whose diagonal is graded `1, 2, ... n`.
