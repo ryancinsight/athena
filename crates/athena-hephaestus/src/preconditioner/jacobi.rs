@@ -13,11 +13,11 @@ use crate::HephaestusBackend;
 /// an elementwise multiply rather than a divide. The multiply goes through
 /// [`DenseVectorOps`], so this preconditioner carries no device API of its own
 /// and serves every backend implementing that seam.
-pub struct Jacobi<D: ComputeDevice, T: Pod> {
+pub struct Jacobi<D: ComputeDevice, T: Pod + eunomia::Pod> {
     inverse_diagonal: D::Buffer<T>,
 }
 
-impl<D: ComputeDevice, T: Pod> Jacobi<D, T> {
+impl<D: ComputeDevice, T: Pod + eunomia::Pod> Jacobi<D, T> {
     /// Borrow the device-resident inverse diagonal.
     #[must_use]
     pub const fn inverse_diagonal(&self) -> &D::Buffer<T> {
@@ -31,7 +31,7 @@ impl<D: ComputeDevice, T: Pod> Jacobi<D, T> {
     }
 }
 
-impl<D: ComputeDevice, T: RealField + Pod> Jacobi<D, T> {
+impl<D: ComputeDevice, T: RealField + Pod + eunomia::Pod> Jacobi<D, T> {
     /// Invert the diagonal of a square matrix in canonical CSR form and upload
     /// it.
     ///
@@ -65,7 +65,7 @@ impl<D, V, T> Preconditioner<HephaestusBackend<D, V, T>> for Jacobi<D, T>
 where
     D: ComputeDevice + 'static,
     V: DenseVectorOps<D, T> + RetainedReductions<D, T> + 'static,
-    T: RealField + Pod,
+    T: RealField + Pod + eunomia::Pod,
 {
     /// `output = diagonal⁻¹ ⊙ residual`, one seam dispatch, entirely on device.
     ///

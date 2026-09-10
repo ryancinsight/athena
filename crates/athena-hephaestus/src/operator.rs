@@ -49,7 +49,7 @@ impl<S, M> CsrOperator<S, M> {
     ) -> Result<Self>
     where
         D: ComputeDevice,
-        T: Pod,
+        T: Pod + eunomia::Pod,
         S: SparseOperatorOps<D, T, Matrix = M>,
     {
         if rows != columns {
@@ -71,7 +71,7 @@ where
     D: ComputeDevice + 'static,
     V: DenseVectorOps<D, T> + RetainedReductions<D, T> + 'static,
     S: SparseOperatorOps<D, T, Matrix = M>,
-    T: RealField + Pod,
+    T: RealField + Pod + eunomia::Pod,
 {
     fn dimension(&self) -> usize {
         self.dimension
