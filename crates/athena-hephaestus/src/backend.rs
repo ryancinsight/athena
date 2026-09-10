@@ -26,7 +26,7 @@ impl<D, V, T> HephaestusBackend<D, V, T>
 where
     D: ComputeDevice + 'static,
     V: DenseVectorOps<D, T> + RetainedReductions<D, T> + 'static,
-    T: RealField + Pod,
+    T: RealField + Pod + eunomia::Pod,
 {
     /// Pair a device with vector operations prepared against it.
     ///
@@ -56,7 +56,7 @@ impl<D, V, T> KrylovBackend for HephaestusBackend<D, V, T>
 where
     D: ComputeDevice + 'static,
     V: DenseVectorOps<D, T> + RetainedReductions<D, T> + 'static,
-    T: RealField + Pod,
+    T: RealField + Pod + eunomia::Pod,
 {
     type Scalar = T;
     type Error = HephaestusError;
