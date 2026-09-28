@@ -15,3 +15,12 @@ pub(crate) fn validate_dimension<E>(
         })
     }
 }
+
+pub(crate) fn validate_dimensions<E>(
+    checks: &[(&'static str, usize, usize)],
+) -> Result<(), SolveError<E>> {
+    for (context, expected, actual) in checks {
+        validate_dimension(*context, *expected, *actual)?;
+    }
+    Ok(())
+}

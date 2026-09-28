@@ -11,7 +11,7 @@ use crate::{
     LinearOperator, Preconditioner, SolveError, SolveReport, Termination,
 };
 
-use super::super::dimension::validate_dimension;
+use super::super::dimension::validate_dimensions;
 
 type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 
@@ -38,17 +38,19 @@ where
 {
     pub(super) fn validate_dimensions(&self) -> Result<(), SolveError<B::Error>> {
         let dimension = self.operator.dimension();
-        validate_dimension(
-            "right-hand side",
-            dimension,
-            self.backend.vector_len(self.right_hand_side),
-        )?;
-        validate_dimension(
-            "solution",
-            dimension,
-            self.backend.vector_len(self.solution),
-        )?;
-        validate_dimension("BiCGSTAB workspace", dimension, self.workspace.len())
+        validate_dimensions(&[
+            (
+                "right-hand side",
+                dimension,
+                self.backend.vector_len(self.right_hand_side),
+            ),
+            (
+                "solution",
+                dimension,
+                self.backend.vector_len(self.solution),
+            ),
+            ("BiCGSTAB workspace", dimension, self.workspace.len()),
+        ])
     }
 
     pub(super) fn initialize(
