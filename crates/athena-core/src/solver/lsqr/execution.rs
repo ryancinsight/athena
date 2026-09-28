@@ -10,7 +10,7 @@ use crate::{
     RectangularOperator, SolveError, SolveReport, Termination,
 };
 
-use super::super::dimension::validate_dimension;
+use super::super::dimension::validate_dimensions;
 
 type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 
@@ -48,14 +48,16 @@ where
     fn validate_dimensions(&self) -> Result<(), SolveError<B::Error>> {
         let rows = self.operator.rows();
         let columns = self.operator.columns();
-        validate_dimension(
-            "right-hand side",
-            rows,
-            self.backend.vector_len(self.right_hand_side),
-        )?;
-        validate_dimension("solution", columns, self.backend.vector_len(self.solution))?;
-        validate_dimension("LSQR workspace rows", rows, self.workspace.rows())?;
-        validate_dimension("LSQR workspace columns", columns, self.workspace.columns())
+        validate_dimensions(&[
+            (
+                "right-hand side",
+                rows,
+                self.backend.vector_len(self.right_hand_side),
+            ),
+            ("solution", columns, self.backend.vector_len(self.solution)),
+            ("LSQR workspace rows", rows, self.workspace.rows()),
+            ("LSQR workspace columns", columns, self.workspace.columns()),
+        ])
     }
 
     /// `u = b − A·x₀`, normalised; then `v = Aᵀu`, normalised; `w = v`.

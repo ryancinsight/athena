@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    super::dimension::validate_dimension,
+    super::dimension::validate_dimensions,
     cycle::{ArnoldiOutcome, CycleOutcome, CycleProgress, GmresState, Stage},
     rotation::{ScalarFailure, back_substitute, givens},
 };
@@ -118,17 +118,19 @@ where
 {
     fn validate_dimensions(&self) -> Result<(), SolveError<B::Error>> {
         let dimension = self.operator.dimension();
-        validate_dimension(
-            "right-hand side",
-            dimension,
-            self.backend.vector_len(self.right_hand_side),
-        )?;
-        validate_dimension(
-            "solution",
-            dimension,
-            self.backend.vector_len(self.solution),
-        )?;
-        validate_dimension("GMRES workspace", dimension, self.workspace.len())
+        validate_dimensions(&[
+            (
+                "right-hand side",
+                dimension,
+                self.backend.vector_len(self.right_hand_side),
+            ),
+            (
+                "solution",
+                dimension,
+                self.backend.vector_len(self.solution),
+            ),
+            ("GMRES workspace", dimension, self.workspace.len()),
+        ])
     }
 
     fn initialize(&mut self) -> ExecutionResult<B, Stage<GmresState<B::Scalar>, B::Scalar>> {
