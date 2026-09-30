@@ -100,6 +100,7 @@ fn repeated_cpu_solves_allocate_nothing_after_initialization() {
 }
 
 #[test]
+#[ignore = "strict zero-traffic contract; run under --ignored by the hosted allocation-instrument job, which pins MALLOC_ARENA_MAX=1 (ATLAS-ATHENA-ALLOCATION-CONTRACT)"]
 fn repeated_gmres_solves_allocate_nothing_after_initialization() {
     mnemosyne::warm_current_thread();
     let backend = LetoBackend::<f64>::default();
