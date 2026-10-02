@@ -1,18 +1,24 @@
 //! Allocation contract for initialized CPU solves.
 //!
 //! The global allocator is [`mnemosyne::Mnemosyne`] wrapped in
-//! [`stats_alloc::StatsAlloc`] so that all solver allocations route through
-//! Mnemosyne (the project-wide memory back-end) and are simultaneously
-//! visible to the instrumentation. Each test calls
+//! [`mnemosyne::counting::CountingAllocator`] so that all solver allocations
+//! route through Mnemosyne (the project-wide memory back-end) and are
+//! simultaneously visible to the instrumentation. Each test calls
 //! [`mnemosyne::warm_current_thread`] before it starts measuring to flush
 //! thread-local-allocator initialization traffic (options parsing, arena
 //! segment acquisition) out of the measurement window.
 //!
-//! `stats_alloc::Region` measures the process-global allocator, so these
-//! cases are only meaningful when each runs in its own process. `cargo
-//! nextest run` provides that isolation; under the threaded `cargo test`
-//! harness one case observes the setup allocations of another and fails
-//! spuriously.
+//! [`measure`] counts the allocations of the calling thread only. A
+//! process-wide counter is invalid here: libtest runs the test body on a
+//! spawned thread while its main thread keeps inserting the running test into
+//! its bookkeeping collections, and parallel tests allocate concurrently, so a
+//! process-wide window occasionally absorbs traffic that is not the solver's.
+//! The cases are therefore independent under the threaded `cargo test` harness
+//! as well as under `cargo nextest run`.
+//!
+//! Under Miri the wrapper counts `System` instead of `Mnemosyne`: Miri reports
+//! undefined behavior inside `mnemosyne-local` itself (MN-LOCAL-MIRI-UB), which
+//! would mask a defect in the code under test.
 
 use athena_core::{
     BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, ConvergencePolicy, Gmres, GmresWorkspace,
@@ -21,18 +27,27 @@ use athena_core::{
 use athena_leto::{CsrOperator, LetoBackend};
 use leto::Array1;
 use leto_ops::CsrMatrix;
-use mnemosyne::Mnemosyne;
+use mnemosyne::counting::{AllocationDelta, CountingAllocator, measure};
 use mnemosyne::scratch::ScratchPool;
-use stats_alloc::{Region, StatsAlloc};
 
-static INSTRUMENTED_MNEMOSYNE: StatsAlloc<Mnemosyne> = StatsAlloc::new(Mnemosyne);
-
+#[cfg(miri)]
 #[global_allocator]
-static GLOBAL: &StatsAlloc<Mnemosyne> = &INSTRUMENTED_MNEMOSYNE;
+static GLOBAL: CountingAllocator<std::alloc::System> = CountingAllocator::new(std::alloc::System);
+
+#[cfg(not(miri))]
+#[global_allocator]
+static GLOBAL: CountingAllocator<mnemosyne::Mnemosyne> =
+    CountingAllocator::new(mnemosyne::Mnemosyne);
+
+/// Moves the allocator's per-thread initialization out of the window.
+fn warm() {
+    #[cfg(not(miri))]
+    mnemosyne::warm_current_thread();
+}
 
 #[test]
 fn mnemosyne_scratch_pool_is_used_for_safe_arena_backed_temporary_storage() {
-    mnemosyne::warm_current_thread();
+    warm();
     let pool = ScratchPool::<f64>::new();
 
     pool.with_scratch(16, |scratch| {
@@ -49,7 +64,7 @@ fn mnemosyne_scratch_pool_is_used_for_safe_arena_backed_temporary_storage() {
 #[test]
 #[ignore = "strict zero-traffic contract; run under --ignored by the hosted allocation-instrument job, which pins MALLOC_ARENA_MAX=1 (ATLAS-ATHENA-ALLOCATION-CONTRACT)"]
 fn repeated_cpu_solves_allocate_nothing_after_initialization() {
-    mnemosyne::warm_current_thread();
+    warm();
     let backend = LetoBackend::<f64>::default();
     let matrix = CsrMatrix::from_parts(
         vec![4.0_f64, 1.0, 1.0, 3.0],
@@ -80,22 +95,22 @@ fn repeated_cpu_solves_allocate_nothing_after_initialization() {
     assert!(warm_up.converged());
     solution.fill(0.0);
 
-    let region = Region::new(GLOBAL);
-    for _ in 0..16 {
-        let report = Cg::<LetoBackend<f64>>::solve_into(
-            &backend,
-            &operator,
-            &Identity,
-            &right_hand_side,
-            &mut solution,
-            &mut workspace,
-            policy,
-        )
-        .expect("measured solve must succeed");
-        assert!(report.converged());
-        solution.fill(0.0);
-    }
-    let change = region.change();
+    let ((), change) = measure(|| {
+        for _ in 0..16 {
+            let report = Cg::<LetoBackend<f64>>::solve_into(
+                &backend,
+                &operator,
+                &Identity,
+                &right_hand_side,
+                &mut solution,
+                &mut workspace,
+                policy,
+            )
+            .expect("measured solve must succeed");
+            assert!(report.converged());
+            solution.fill(0.0);
+        }
+    });
 
     assert_steady_state(change);
 }
@@ -103,7 +118,7 @@ fn repeated_cpu_solves_allocate_nothing_after_initialization() {
 #[test]
 #[ignore = "strict zero-traffic contract; run under --ignored by the hosted allocation-instrument job, which pins MALLOC_ARENA_MAX=1 (ATLAS-ATHENA-ALLOCATION-CONTRACT)"]
 fn repeated_gmres_solves_allocate_nothing_after_initialization() {
-    mnemosyne::warm_current_thread();
+    warm();
     let backend = LetoBackend::<f64>::default();
     let matrix = CsrMatrix::from_parts(
         vec![4.0_f64, 1.0, 2.0, 3.0, 1.0, 1.0, 2.0],
@@ -135,22 +150,22 @@ fn repeated_gmres_solves_allocate_nothing_after_initialization() {
     assert!(warm_up.converged());
     solution.fill(0.0);
 
-    let region = Region::new(GLOBAL);
-    for _ in 0..16 {
-        let report = Gmres::<LetoBackend<f64>, 3>::solve_into(
-            &backend,
-            &operator,
-            &Identity,
-            &right_hand_side,
-            &mut solution,
-            &mut workspace,
-            policy,
-        )
-        .expect("measured solve must succeed");
-        assert!(report.converged());
-        solution.fill(0.0);
-    }
-    let change = region.change();
+    let ((), change) = measure(|| {
+        for _ in 0..16 {
+            let report = Gmres::<LetoBackend<f64>, 3>::solve_into(
+                &backend,
+                &operator,
+                &Identity,
+                &right_hand_side,
+                &mut solution,
+                &mut workspace,
+                policy,
+            )
+            .expect("measured solve must succeed");
+            assert!(report.converged());
+            solution.fill(0.0);
+        }
+    });
 
     assert_steady_state(change);
 }
@@ -158,7 +173,7 @@ fn repeated_gmres_solves_allocate_nothing_after_initialization() {
 #[test]
 #[ignore = "strict zero-traffic contract; run under --ignored by the hosted allocation-instrument job, which pins MALLOC_ARENA_MAX=1 (ATLAS-ATHENA-ALLOCATION-CONTRACT)"]
 fn repeated_bicgstab_solves_allocate_nothing_after_initialization() {
-    mnemosyne::warm_current_thread();
+    warm();
     let backend = LetoBackend::<f64>::default();
     let matrix = CsrMatrix::from_parts(
         vec![4.0_f64, 1.0, 2.0, 3.0, 1.0, 1.0, 2.0],
@@ -190,35 +205,35 @@ fn repeated_bicgstab_solves_allocate_nothing_after_initialization() {
     assert!(warm_up.converged());
     solution.fill(0.0);
 
-    let region = Region::new(GLOBAL);
-    for _ in 0..16 {
-        let report = BiCgStab::<LetoBackend<f64>>::solve_into(
-            &backend,
-            &operator,
-            &Identity,
-            &right_hand_side,
-            &mut solution,
-            &mut workspace,
-            policy,
-        )
-        .expect("measured solve must succeed");
-        assert!(report.converged());
-        solution.fill(0.0);
-    }
-    let change = region.change();
+    let ((), change) = measure(|| {
+        for _ in 0..16 {
+            let report = BiCgStab::<LetoBackend<f64>>::solve_into(
+                &backend,
+                &operator,
+                &Identity,
+                &right_hand_side,
+                &mut solution,
+                &mut workspace,
+                policy,
+            )
+            .expect("measured solve must succeed");
+            assert!(report.converged());
+            solution.fill(0.0);
+        }
+    });
 
     assert_steady_state(change);
 }
 
 /// Assert the measured region performed no heap traffic at all.
 ///
-/// Reports the entire `Stats` on failure. `assert_eq!` per field stops at
+/// Reports the entire `AllocationDelta` on failure. `assert_eq!` per field stops at
 /// the first mismatch, which tells you a count moved but not its shape --
 /// and shape is what identifies the culprit. Bytes separate one large
 /// buffer from several small ones, and a matching allocation/deallocation
 /// pair points at a temporary rather than retained state.
 #[track_caller]
-fn assert_steady_state(change: stats_alloc::Stats) {
+fn assert_steady_state(change: AllocationDelta) {
     assert_eq!(
         (
             change.allocations,
@@ -253,7 +268,7 @@ fn assert_steady_state(change: stats_alloc::Stats) {
 #[test]
 #[ignore = "companion to repeated_gmres_solves_allocate_nothing_after_initialization; run under --ignored by the hosted allocation-instrument job"]
 fn warm_solve_heap_traffic_is_bounded_and_not_retained() {
-    mnemosyne::warm_current_thread();
+    warm();
     let backend = LetoBackend::<f64>::default();
     let matrix = CsrMatrix::from_parts(
         vec![4.0_f64, 1.0, 2.0, 3.0, 1.0, 1.0, 2.0],
@@ -272,7 +287,7 @@ fn warm_solve_heap_traffic_is_bounded_and_not_retained() {
     let policy = ConvergencePolicy::new(4096.0 * f64::EPSILON, 4096.0 * f64::EPSILON, 6)
         .expect("invariant: valid policy");
 
-    let mut measure = |solves: usize| -> stats_alloc::Stats {
+    let mut solve_window = |solves: usize| -> AllocationDelta {
         let warm_up = Gmres::<LetoBackend<f64>, 3>::solve_into(
             &backend,
             &operator,
@@ -286,26 +301,27 @@ fn warm_solve_heap_traffic_is_bounded_and_not_retained() {
         assert!(warm_up.converged());
         solution.fill(0.0);
 
-        let region = Region::new(GLOBAL);
-        for _ in 0..solves {
-            let report = Gmres::<LetoBackend<f64>, 3>::solve_into(
-                &backend,
-                &operator,
-                &Identity,
-                &right_hand_side,
-                &mut solution,
-                &mut workspace,
-                policy,
-            )
-            .expect("measured solve must succeed");
-            assert!(report.converged());
-            solution.fill(0.0);
-        }
-        region.change()
+        let ((), delta) = measure(|| {
+            for _ in 0..solves {
+                let report = Gmres::<LetoBackend<f64>, 3>::solve_into(
+                    &backend,
+                    &operator,
+                    &Identity,
+                    &right_hand_side,
+                    &mut solution,
+                    &mut workspace,
+                    policy,
+                )
+                .expect("measured solve must succeed");
+                assert!(report.converged());
+                solution.fill(0.0);
+            }
+        });
+        delta
     };
 
-    let single = measure(16);
-    let doubled = measure(32);
+    let single = solve_window(16);
+    let doubled = solve_window(32);
 
     // Property 1: no per-solve growth. Whatever fixed burst the environment
     // produces at region entry must repeat identically, not double.
@@ -317,11 +333,9 @@ fn warm_solve_heap_traffic_is_bounded_and_not_retained() {
          allocates: 16 solves {single:?}, 32 solves {doubled:?}"
     );
 
-    // Property 2: nothing retained *in steady state*. Allocated minus
-    // deallocated is the net heap growth of the measured window; a leak
-    // retains. The subtraction is on `i128` because a wrapping `usize`
-    // difference would read as "nothing retained" exactly when deallocated
-    // exceeds allocated.
+    // Property 2: nothing retained *in steady state*. `bytes_retained` is the
+    // net heap growth of the measured window (bytes acquired, counting growth
+    // by reallocation, minus bytes released); a leak retains.
     //
     // The oracle is the *second* window, and it is the sharper one. A leak
     // keeps its bytes across both windows, so the 32-solve window would show
@@ -331,12 +345,8 @@ fn warm_solve_heap_traffic_is_bounded_and_not_retained() {
     // the first window at `<= 0` therefore tests a transient rather than a
     // leak, and it fails on an allocation the second window proves was
     // released.
-    let net = |s: &stats_alloc::Stats| -> i128 {
-        i128::try_from(s.bytes_allocated).unwrap_or(i128::MAX)
-            - i128::try_from(s.bytes_deallocated).unwrap_or(i128::MAX)
-    };
-    let single_net = net(&single);
-    let doubled_net = net(&doubled);
+    let single_net = single.bytes_retained();
+    let doubled_net = doubled.bytes_retained();
     assert!(
         doubled_net <= 0,
         "warm solves retained heap memory in steady state: net bytes after 32 \

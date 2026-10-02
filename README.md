@@ -261,9 +261,10 @@ CSR upload, SpMV, reductions, and Athena kernels with CG, GMRES, and
 an adapter records the unavailable lane; CI treats adapter acquisition failure
 as an infrastructure failure.
 
-The allocation cases measure the process-global allocator through
-`stats_alloc`, so they are only meaningful one-per-process — `cargo nextest
-run` supplies that isolation and the threaded `cargo test` harness does not.
+The allocation cases wrap Mnemosyne in `mnemosyne::counting::CountingAllocator`,
+which counts per thread, so each case reads only the allocations of its own
+thread and is independent under both `cargo nextest run` and the threaded
+`cargo test` harness.
 
 ## Roadmap
 
