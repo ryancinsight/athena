@@ -1,10 +1,16 @@
 name: Crates.io Release
 
-# Publishing is driven by a GitHub Release whose tag is `crate-<package>-v<version>`.
-# The release event carries the identity; workflow_dispatch validates a package
-# without publishing, which is the way to rehearse a release safely.
+# A manifest version bump merged to main publishes itself (ADR 0068): the push
+# and schedule events call the shared publish-pending workflow. A GitHub Release
+# named `crate-<package>-v<version>` still publishes one crate through the
+# release event, and workflow_dispatch validates a package without publishing,
+# which is the way to rehearse a release safely.
 
 on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "18 6 * * *"
   release:
     types: [published]
   workflow_dispatch:
@@ -22,7 +28,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: crates-release-${{ github.event.release.tag_name || inputs.package }}
+  group: crates-release-${{ github.event.release.tag_name || inputs.package || github.event_name }}
   cancel-in-progress: false
 
 jobs:
@@ -59,3 +65,15 @@ jobs:
       rust-toolchain: "1.97.0"
       dispatch-package: ${{ inputs.package }}
       dispatch-version: ${{ inputs.version }}
+
+  # Version-change publishing: runs on push and schedule only, so the release
+  # and dispatch jobs above skip there and this job skips on theirs. It alone
+  # may create release tags and mint the OIDC token (ATLAS-PUB-010).
+  publish-pending:
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    uses: ryancinsight/atlas/.github/workflows/crates-publish-pending.yml@ee2b7200c4781e39b5ea3e379d2aa97947758099
+    permissions:
+      contents: write # creates the crate-<package>-v<version> releases
+      id-token: write # OIDC trusted publishing; no stored registry token.
+    with:
+      rust-toolchain: "1.97.0"
