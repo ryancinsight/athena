@@ -4,7 +4,7 @@
 # keeps the import path `athena` — the same split the stack uses for
 # `moirai-runtime`, `mnemosyne-memory`, `themis-topology`, `iris-viz`, and
 # `gaia-mesh`. Consumers write
-# `athena = { package = "athena-krylov", version = "0.1.0" }` and every
+# `athena = { package = "athena-krylov", version = "0.2.0" }` and every
 # `use athena::…` is unchanged.
 name = "athena-krylov"
 version.workspace = true

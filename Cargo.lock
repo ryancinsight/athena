@@ -67,15 +67,14 @@ dependencies = [
 
 [[package]]
 name = "athena-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "eunomia",
- "mnemosyne-arena",
 ]
 
 [[package]]
 name = "athena-hephaestus"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "athena-core",
  "bytemuck",
@@ -87,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "athena-krylov"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "athena-core",
  "athena-hephaestus",
@@ -101,7 +100,7 @@ dependencies = [
 
 [[package]]
 name = "athena-leto"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "athena-core",
  "eunomia",
