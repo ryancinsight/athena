@@ -12,6 +12,8 @@
 pub mod backend;
 /// Backend error vocabulary.
 pub mod error;
+/// Reusable restarted-GMRES workspaces: the runtime restart bridge.
+pub mod krylov;
 /// Leto-backed linear operators.
 pub mod operator;
 /// Leto-backed preconditioners.
@@ -19,6 +21,7 @@ pub mod preconditioner;
 
 pub use backend::{LetoBackend, LetoVectorBlock};
 pub use error::LetoBackendError;
+pub use krylov::KrylovWorkspace;
 pub use operator::{
     BorrowedCsrOperator, BorrowedDenseOperator, CsrOperator, RectangularCsrOperator,
 };
