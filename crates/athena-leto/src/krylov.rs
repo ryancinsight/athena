@@ -16,6 +16,7 @@ use athena_core::{
     ConvergencePolicy, Gmres, GmresWorkspace, IterationObserver, LinearOperator, NoObserver,
     Preconditioner, SolveError, SolveReport,
 };
+use core::fmt;
 use eunomia::RealField;
 use leto::Array1;
 use leto_ops::RealScalar;
@@ -216,6 +217,19 @@ where
             Ladder::W128(workspace) => run!(128, workspace),
             Ladder::W256(workspace) => run!(256, workspace),
         }
+    }
+}
+
+impl<T> fmt::Debug for KrylovWorkspace<T>
+where
+    T: RealScalar + RealField,
+{
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("KrylovWorkspace")
+            .field("dimension", &self.dimension)
+            .field("restart", &self.width())
+            .finish_non_exhaustive()
     }
 }
 
