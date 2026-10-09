@@ -6,14 +6,10 @@
 //! enum; none allocates per sweep except Jacobi's explicit previous-iterate
 //! snapshot, which its update contract requires.
 
+use super::scalars::diagonal_epsilon;
 use eunomia::{FloatElement, NumericElement, RealField};
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar, spmv as leto_spmv};
-
-#[inline]
-fn diagonal_epsilon<T: FloatElement>() -> T {
-    <T as FloatElement>::from_f64(1e-15)
-}
 
 fn residual<T>(matrix: &CsrMatrix<T>, b: &Array1<T>, x: &Array1<T>) -> Array1<T>
 where

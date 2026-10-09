@@ -28,6 +28,7 @@
 //! - Bramble, J. H. (1993). *Multigrid Methods.* Pitman Research Notes.
 //! - Stüben, K. (2001). "A review of algebraic multigrid." *JCAM* 128:281–309.
 
+mod amg;
 mod coarsening;
 mod config;
 mod interpolation;
@@ -36,6 +37,7 @@ mod restriction;
 mod scalars;
 mod smoothers;
 
+pub use amg::AlgebraicMultigrid;
 pub use coarsening::{
     AlgebraicDistances, CoarseningQuality, CoarseningResult, aggregation_coarsening,
     analyze_coarsening_quality, falgout_coarsening, hmis_coarsening, hybrid_coarsening,
