@@ -26,9 +26,12 @@ pub use operator::{
     BorrowedCsrOperator, BorrowedDenseOperator, CsrOperator, RectangularCsrOperator,
 };
 pub use preconditioner::{
-    AMGConfig, AMGHierarchy, AMGStatistics, BlockDiagonalPreconditioner, ChebyshevSmoother,
-    CoarseningStrategy, ComponentBlockPattern, ComponentBlockPreconditioner, CycleType,
-    GaussSeidelSmoother, IncompleteLu, InterpolationStrategy, Jacobi, JacobiSmoother,
-    MultigridLevel, SORSmoother, SimplePreconditioner, Smoother, SmootherType,
-    SuccessiveOverRelaxation, SymmetricGaussSeidelSmoother,
+    AMGConfig, AMGHierarchy, AMGStatistics, AlgebraicDistances, BlockDiagonalPreconditioner,
+    ChebyshevSmoother, CoarseningQuality, CoarseningResult, CoarseningStrategy,
+    ComponentBlockPattern, ComponentBlockPreconditioner, CycleType, GaussSeidelSmoother,
+    IncompleteLu, InterpolationStrategy, Jacobi, JacobiSmoother, MultigridLevel, SORSmoother,
+    SimplePreconditioner, Smoother, SmootherType, SuccessiveOverRelaxation,
+    SymmetricGaussSeidelSmoother, aggregation_coarsening, analyze_coarsening_quality,
+    falgout_coarsening, hmis_coarsening, hybrid_coarsening, pmis_coarsening,
+    ruge_stueben_coarsening,
 };

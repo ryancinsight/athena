@@ -28,10 +28,17 @@
 //! - Bramble, J. H. (1993). *Multigrid Methods.* Pitman Research Notes.
 //! - Stüben, K. (2001). "A review of algebraic multigrid." *JCAM* 128:281–309.
 
+mod coarsening;
 mod config;
 mod level;
+mod scalars;
 mod smoothers;
 
+pub use coarsening::{
+    AlgebraicDistances, CoarseningQuality, CoarseningResult, aggregation_coarsening,
+    analyze_coarsening_quality, falgout_coarsening, hmis_coarsening, hybrid_coarsening,
+    pmis_coarsening, ruge_stueben_coarsening,
+};
 pub use config::{AMGConfig, CoarseningStrategy, CycleType, InterpolationStrategy, SmootherType};
 pub use level::{AMGHierarchy, AMGStatistics, MultigridLevel, Smoother};
 pub use smoothers::{
