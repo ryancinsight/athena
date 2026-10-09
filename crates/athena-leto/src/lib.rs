@@ -25,4 +25,7 @@ pub use krylov::KrylovWorkspace;
 pub use operator::{
     BorrowedCsrOperator, BorrowedDenseOperator, CsrOperator, RectangularCsrOperator,
 };
-pub use preconditioner::{IncompleteLu, Jacobi, SuccessiveOverRelaxation};
+pub use preconditioner::{
+    BlockDiagonalPreconditioner, ComponentBlockPattern, ComponentBlockPreconditioner, IncompleteLu,
+    Jacobi, SimplePreconditioner, SuccessiveOverRelaxation,
+};
