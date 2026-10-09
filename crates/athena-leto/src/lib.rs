@@ -26,6 +26,9 @@ pub use operator::{
     BorrowedCsrOperator, BorrowedDenseOperator, CsrOperator, RectangularCsrOperator,
 };
 pub use preconditioner::{
-    BlockDiagonalPreconditioner, ComponentBlockPattern, ComponentBlockPreconditioner, IncompleteLu,
-    Jacobi, SimplePreconditioner, SuccessiveOverRelaxation,
+    AMGConfig, AMGHierarchy, AMGStatistics, BlockDiagonalPreconditioner, ChebyshevSmoother,
+    CoarseningStrategy, ComponentBlockPattern, ComponentBlockPreconditioner, CycleType,
+    GaussSeidelSmoother, IncompleteLu, InterpolationStrategy, Jacobi, JacobiSmoother,
+    MultigridLevel, SORSmoother, SimplePreconditioner, Smoother, SmootherType,
+    SuccessiveOverRelaxation, SymmetricGaussSeidelSmoother,
 };
