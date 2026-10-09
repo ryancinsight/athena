@@ -23,3 +23,13 @@ pub(super) fn ratio_of_counts(numerator: usize, denominator: usize) -> f64 {
         count_to_scalar::<f64>(numerator) / count_to_scalar::<f64>(denominator)
     }
 }
+
+/// The scale below which a diagonal counts as absent in this family.
+///
+/// The multigrid hierarchy assembles entries whose smallest physical scale
+/// is O(1); a diagonal below `1e-15` is structural absence or cancellation,
+/// not data - the recorded smoother and complexity fixtures pin this bound.
+/// The saddle family keeps its own `1e-14` tolerance in `saddle/matrix`.
+pub(super) fn diagonal_epsilon<T: FloatElement>() -> T {
+    <T as FloatElement>::from_f64(1e-15)
+}
