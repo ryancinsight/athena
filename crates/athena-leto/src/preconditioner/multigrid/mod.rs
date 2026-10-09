@@ -30,7 +30,9 @@
 
 mod coarsening;
 mod config;
+mod interpolation;
 mod level;
+mod restriction;
 mod scalars;
 mod smoothers;
 
@@ -40,7 +42,16 @@ pub use coarsening::{
     pmis_coarsening, ruge_stueben_coarsening,
 };
 pub use config::{AMGConfig, CoarseningStrategy, CycleType, InterpolationStrategy, SmootherType};
+pub use interpolation::{
+    InterpolationQuality, create_classical_interpolation, create_direct_interpolation,
+    create_standard_interpolation, validate_interpolation_operator,
+};
 pub use level::{AMGHierarchy, AMGStatistics, MultigridLevel, Smoother};
+pub use restriction::{
+    RestrictionQuality, create_full_weighting_restriction, create_half_weighting_restriction,
+    create_injection_restriction, create_restriction_from_interpolation, restrict_matrix,
+    restrict_vector, validate_restriction_operator,
+};
 pub use smoothers::{
     ChebyshevSmoother, GaussSeidelSmoother, JacobiSmoother, SORSmoother,
     SymmetricGaussSeidelSmoother,
