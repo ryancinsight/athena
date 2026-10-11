@@ -25,6 +25,7 @@ athena-leto = { path = "crates/athena-leto", version = "0.2.0" }
 mnemosyne = { package = "mnemosyne-memory", version = "0.9.0", git = "https://github.com/ryancinsight/Mnemosyne.git", features = ["eunomia"] }
 mnemosyne-arena = { version = "0.6.0", git = "https://github.com/ryancinsight/Mnemosyne.git", features = ["eunomia"] }
 
+tracing = "0.1"
 eunomia = { version = "0.9.0", git = "https://github.com/ryancinsight/eunomia", default-features = false }
 leto = { version = "0.45.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
 leto-ops = { version = "0.45.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }

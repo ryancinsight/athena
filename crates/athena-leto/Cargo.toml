@@ -14,6 +14,7 @@ athena-core.workspace = true
 eunomia.workspace = true
 leto.workspace = true
 leto-ops.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 mnemosyne = { workspace = true }

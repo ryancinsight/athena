@@ -18,6 +18,8 @@ pub mod krylov;
 pub mod operator;
 /// Leto-backed preconditioners.
 pub mod preconditioner;
+/// Tiered linear-solver fallback chain.
+pub mod solver_chain;
 
 pub use backend::{LetoBackend, LetoVectorBlock};
 pub use error::LetoBackendError;
@@ -39,3 +41,4 @@ pub use preconditioner::{
     hmis_coarsening, hybrid_coarsening, pmis_coarsening, restrict_matrix, restrict_vector,
     ruge_stueben_coarsening, validate_interpolation_operator, validate_restriction_operator,
 };
+pub use solver_chain::{LinearSolverChain, LinearSolverState};
