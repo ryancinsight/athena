@@ -39,8 +39,10 @@
 //! - Benzi, M., Golub, G.H. & Liesen, J. (2005). "Numerical solution of
 //!   saddle point problems." *Acta Numerica* 14:1–137.
 
+mod cold;
 mod direct;
+mod helpers;
 mod state;
-mod tiers;
+mod warm;
 
 pub use state::{LinearSolverChain, LinearSolverState};
