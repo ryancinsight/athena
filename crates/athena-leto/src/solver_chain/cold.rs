@@ -1,21 +1,16 @@
-//! The chain's tier methods: the two solve sequences and their per-tier
-//! helpers over the canonical workspace ladder.
+//! The chain's cold path: the zero-iterate solve sequence and the
+//! constructor/configurator surface.
 
-use super::direct::solve_direct_with_dense_retry;
-use super::state::{CachedAmg, LinearSolverChain, LinearSolverState};
-use athena_core::{
-    BiCgStab, BiCgStabWorkspace, ConvergencePolicy, Identity, LinearOperator, Preconditioner,
-    SolveReport, Termination,
-};
+use super::state::LinearSolverChain;
+use athena_core::{ConvergencePolicy, Identity};
 use eunomia::{FloatElement, NumericElement, RealField};
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
 use std::fmt::Debug;
 
 use crate::{
-    AMGConfig, AlgebraicMultigrid, BlockDiagonalPreconditioner, BorrowedCsrOperator,
-    ComponentBlockPreconditioner, IncompleteLu, KrylovWorkspace, LetoBackend, LetoBackendError,
-    SimplePreconditioner, SuccessiveOverRelaxation,
+    AMGConfig, AlgebraicMultigrid, BlockDiagonalPreconditioner, ComponentBlockPreconditioner,
+    IncompleteLu, LetoBackendError, SimplePreconditioner,
 };
 
 impl<T: RealField + Copy + FloatElement + RealScalar + Debug> LinearSolverChain<T> {

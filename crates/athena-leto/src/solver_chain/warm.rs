@@ -1,6 +1,12 @@
 //! The warm path: guess-started solve with reusable AMG/component state.
 
-use super::state::LinearSolverChain;
+use super::state::{LinearSolverChain, LinearSolverState};
+use eunomia::{FloatElement, NumericElement, RealField};
+use leto::Array1;
+use leto_ops::{CsrMatrix, RealScalar};
+use std::fmt::Debug;
+
+use crate::{LetoBackendError, SuccessiveOverRelaxation};
 
 impl<T: RealField + Copy + FloatElement + RealScalar + Debug> LinearSolverChain<T> {
     /// Solve with a warm start and reusable AMG/component state.

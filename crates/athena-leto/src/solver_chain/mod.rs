@@ -41,8 +41,8 @@
 
 mod cold;
 mod direct;
-mod helpers;
 mod state;
+mod tiers;
 mod warm;
 
 pub use state::{LinearSolverChain, LinearSolverState};

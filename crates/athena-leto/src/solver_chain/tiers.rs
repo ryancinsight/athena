@@ -1,13 +1,26 @@
-//! The chain's internal tier helpers over the canonical workspace ladder.
+//! The chain's tier bodies: the ladder sequence members and the per-tier execution engine.
 
 use super::direct::solve_direct_with_dense_retry;
 use super::state::{CachedAmg, LinearSolverChain, LinearSolverState};
+use athena_core::{
+    BiCgStab, BiCgStabWorkspace, Identity, LinearOperator, Preconditioner, SolveReport, Termination,
+};
+use eunomia::{FloatElement, NumericElement, RealField};
+use leto::Array1;
+use leto_ops::{CsrMatrix, RealScalar};
+use std::fmt::Debug;
+
+use crate::{
+    AMGConfig, AlgebraicMultigrid, BlockDiagonalPreconditioner, BorrowedCsrOperator,
+    ComponentBlockPreconditioner, IncompleteLu, KrylovWorkspace, LetoBackend, LetoBackendError,
+    SimplePreconditioner,
+};
 
 impl<T: RealField + Copy + FloatElement + RealScalar + Debug> LinearSolverChain<T> {
     /// The warm path's AMG tier with cached hierarchy reuse, gated on the
     /// exact CSR pattern; the cache is refreshed from the solve regardless
     /// of its outcome so the next warm solve reuses the freshest operators.
-    fn amg_cache_tier(
+    pub(super) fn amg_cache_tier(
         &self,
         matrix: &CsrMatrix<T>,
         right_hand_side: &Array1<T>,
@@ -69,7 +82,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar + Debug> LinearSolverChain<
         clippy::too_many_arguments,
         reason = "the warm tier boundary keeps system, buffers, block split, cache, and guess explicit"
     )]
-    fn warm_stateless_tiers(
+    pub(super) fn warm_stateless_tiers(
         &self,
         matrix: &CsrMatrix<T>,
         rhs: &Array1<T>,
@@ -160,7 +173,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar + Debug> LinearSolverChain<
     }
 
     /// The direct sparse-LU tier, exact for systems under the threshold.
-    fn direct_tier(
+    pub(super) fn direct_tier(
         &self,
         matrix: &CsrMatrix<T>,
         rhs: &Array1<T>,
@@ -185,7 +198,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar + Debug> LinearSolverChain<
 
     /// The terminal `BiCGSTAB` tier: unlike the tiers above this has nowhere to
     /// fall through to, so a non-convergence fails the chain.
-    fn last_resort(
+    pub(super) fn last_resort(
         &self,
         matrix: &CsrMatrix<T>,
         rhs: &Array1<T>,
@@ -210,7 +223,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar + Debug> LinearSolverChain<
         clippy::too_many_arguments,
         reason = "the tier boundary keeps the system, buffers, setup, and reset explicit"
     )]
-    fn tier<P>(
+    pub(super) fn tier<P>(
         &self,
         context: &str,
         matrix: &CsrMatrix<T>,
@@ -251,7 +264,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar + Debug> LinearSolverChain<
     /// A tier that converges returns the report; a tier that stalls, breaks
     /// down, or hits an infrastructure failure logs the outcome and returns
     /// `Ok(None)` so the chain falls through to the next tier.
-    fn gmres_tier<P>(
+    pub(super) fn gmres_tier<P>(
         &self,
         context: &str,
         matrix: &CsrMatrix<T>,
@@ -308,7 +321,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar + Debug> LinearSolverChain<
     }
 
     /// Run one `BiCGSTAB` tier. Same contract as [`Self::gmres_tier`].
-    fn bicgstab_tier(
+    pub(super) fn bicgstab_tier(
         &self,
         context: &str,
         matrix: &CsrMatrix<T>,
