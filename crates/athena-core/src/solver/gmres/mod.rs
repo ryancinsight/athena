@@ -2,6 +2,7 @@
 
 mod algorithm;
 mod cycle;
+mod execution;
 mod rotation;
 mod workspace;
 
