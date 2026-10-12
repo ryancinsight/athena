@@ -19,8 +19,8 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "aequitas"
-version = "0.2.1"
-source = "git+https://github.com/ryancinsight/aequitas#6ff991ce21d3012c435e475d85b9e14538138075"
+version = "0.2.2"
+source = "git+https://github.com/ryancinsight/aequitas#eadb2261b9926c4406d1299f1d671943e806c937"
 dependencies = [
  "eunomia",
  "typenum",
@@ -67,14 +67,14 @@ dependencies = [
 
 [[package]]
 name = "athena-core"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "eunomia",
 ]
 
 [[package]]
 name = "athena-hephaestus"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "athena-core",
  "bytemuck",
@@ -86,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "athena-krylov"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "athena-core",
  "athena-hephaestus",
@@ -100,7 +100,7 @@ dependencies = [
 
 [[package]]
 name = "athena-leto"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "athena-core",
  "eunomia",
@@ -281,8 +281,8 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "eunomia"
-version = "0.9.0"
-source = "git+https://github.com/ryancinsight/eunomia#597330084a898a1168d1726bf84b7c9f7ac44332"
+version = "0.9.1"
+source = "git+https://github.com/ryancinsight/eunomia#47e571489cc2c8dd00ba162864a9ef4bb81adefc"
 dependencies = [
  "bytemuck",
  "eunomia-derive",
@@ -292,8 +292,8 @@ dependencies = [
 
 [[package]]
 name = "eunomia-derive"
-version = "0.9.0"
-source = "git+https://github.com/ryancinsight/eunomia#597330084a898a1168d1726bf84b7c9f7ac44332"
+version = "0.9.1"
+source = "git+https://github.com/ryancinsight/eunomia#47e571489cc2c8dd00ba162864a9ef4bb81adefc"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -456,8 +456,8 @@ dependencies = [
 
 [[package]]
 name = "hephaestus-core"
-version = "0.19.1"
-source = "git+https://github.com/ryancinsight/hephaestus.git#07ca9f80308fbe4afa1931f018db841751538032"
+version = "0.20.1"
+source = "git+https://github.com/ryancinsight/hephaestus.git#acfc67612e0513b364ec0b3d2944b9328a834c1a"
 dependencies = [
  "aequitas",
  "eunomia",
@@ -468,8 +468,8 @@ dependencies = [
 
 [[package]]
 name = "hephaestus-wgpu"
-version = "0.19.1"
-source = "git+https://github.com/ryancinsight/hephaestus.git#07ca9f80308fbe4afa1931f018db841751538032"
+version = "0.20.1"
+source = "git+https://github.com/ryancinsight/hephaestus.git#acfc67612e0513b364ec0b3d2944b9328a834c1a"
 dependencies = [
  "eunomia",
  "futures",
@@ -485,8 +485,8 @@ dependencies = [
 
 [[package]]
 name = "hermes-simd"
-version = "0.8.0"
-source = "git+https://github.com/ryancinsight/hermes.git#fe806fdef722a972f7f53214fe3f22950225ff65"
+version = "0.8.1"
+source = "git+https://github.com/ryancinsight/hermes.git#f0138e4e9a521196d8b7c06420663581077488ff"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -499,8 +499,8 @@ dependencies = [
 
 [[package]]
 name = "hermes-simd-core"
-version = "0.8.0"
-source = "git+https://github.com/ryancinsight/hermes.git#fe806fdef722a972f7f53214fe3f22950225ff65"
+version = "0.8.1"
+source = "git+https://github.com/ryancinsight/hermes.git#f0138e4e9a521196d8b7c06420663581077488ff"
 dependencies = [
  "eunomia",
  "mnemosyne-memory",
@@ -510,8 +510,8 @@ dependencies = [
 
 [[package]]
 name = "hermes-simd-intrinsics"
-version = "0.8.0"
-source = "git+https://github.com/ryancinsight/hermes.git#fe806fdef722a972f7f53214fe3f22950225ff65"
+version = "0.8.1"
+source = "git+https://github.com/ryancinsight/hermes.git#f0138e4e9a521196d8b7c06420663581077488ff"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -520,8 +520,8 @@ dependencies = [
 
 [[package]]
 name = "hermes-simd-macros"
-version = "0.8.0"
-source = "git+https://github.com/ryancinsight/hermes.git#fe806fdef722a972f7f53214fe3f22950225ff65"
+version = "0.8.1"
+source = "git+https://github.com/ryancinsight/hermes.git#f0138e4e9a521196d8b7c06420663581077488ff"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -530,8 +530,8 @@ dependencies = [
 
 [[package]]
 name = "hermes-simd-types"
-version = "0.8.0"
-source = "git+https://github.com/ryancinsight/hermes.git#fe806fdef722a972f7f53214fe3f22950225ff65"
+version = "0.8.1"
+source = "git+https://github.com/ryancinsight/hermes.git#f0138e4e9a521196d8b7c06420663581077488ff"
 dependencies = [
  "hermes-simd-core",
  "hermes-simd-intrinsics",
@@ -566,8 +566,8 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "leto"
-version = "0.45.0"
-source = "git+https://github.com/ryancinsight/leto.git#36d69e9d113a0cb7eb85736d03171bd69675b5dc"
+version = "0.45.1"
+source = "git+https://github.com/ryancinsight/leto.git#24ea98e567f7caeb6516d1da5b6d298ab36f9723"
 dependencies = [
  "aequitas",
  "eunomia",
@@ -578,8 +578,8 @@ dependencies = [
 
 [[package]]
 name = "leto-ops"
-version = "0.45.0"
-source = "git+https://github.com/ryancinsight/leto.git#36d69e9d113a0cb7eb85736d03171bd69675b5dc"
+version = "0.45.1"
+source = "git+https://github.com/ryancinsight/leto.git#24ea98e567f7caeb6516d1da5b6d298ab36f9723"
 dependencies = [
  "eunomia",
  "hermes-simd",
@@ -775,8 +775,8 @@ dependencies = [
 
 [[package]]
 name = "moirai-core"
-version = "0.7.0"
-source = "git+https://github.com/ryancinsight/Moirai.git#eac3ce663c239cfd5273bc139e972880f7c0f3fb"
+version = "0.7.2"
+source = "git+https://github.com/ryancinsight/Moirai.git#970e1b1d88b28ad607c15ab97f5c057c8fcb82a5"
 dependencies = [
  "bytemuck",
  "libc",
@@ -787,8 +787,8 @@ dependencies = [
 
 [[package]]
 name = "moirai-sync"
-version = "0.7.0"
-source = "git+https://github.com/ryancinsight/Moirai.git#eac3ce663c239cfd5273bc139e972880f7c0f3fb"
+version = "0.7.2"
+source = "git+https://github.com/ryancinsight/Moirai.git#970e1b1d88b28ad607c15ab97f5c057c8fcb82a5"
 dependencies = [
  "libc",
  "moirai-core",
@@ -797,8 +797,8 @@ dependencies = [
 
 [[package]]
 name = "moirai-utils"
-version = "0.7.0"
-source = "git+https://github.com/ryancinsight/Moirai.git#eac3ce663c239cfd5273bc139e972880f7c0f3fb"
+version = "0.7.2"
+source = "git+https://github.com/ryancinsight/Moirai.git#970e1b1d88b28ad607c15ab97f5c057c8fcb82a5"
 
 [[package]]
 name = "munge"
