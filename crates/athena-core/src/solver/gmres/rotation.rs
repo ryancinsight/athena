@@ -1,35 +1,6 @@
 use eunomia::RealField;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum ScalarFailure {
-    Breakdown,
-    NonFinite,
-}
-
-pub(super) fn givens<T: RealField>(upper: T, lower: T) -> Result<(T, T), ScalarFailure> {
-    if !upper.is_finite() || !lower.is_finite() {
-        return Err(ScalarFailure::NonFinite);
-    }
-
-    let upper_magnitude = upper.abs();
-    let lower_magnitude = lower.abs();
-    let scale = if upper_magnitude > lower_magnitude {
-        upper_magnitude
-    } else {
-        lower_magnitude
-    };
-    if scale == T::ZERO {
-        return Ok((T::ONE, T::ZERO));
-    }
-
-    let scaled_upper = upper / scale;
-    let scaled_lower = lower / scale;
-    let radius = scale * (scaled_upper * scaled_upper + scaled_lower * scaled_lower).sqrt();
-    if !radius.is_finite() || radius == T::ZERO {
-        return Err(ScalarFailure::NonFinite);
-    }
-    Ok((upper / radius, lower / radius))
-}
+use super::super::rotation::ScalarFailure;
 
 pub(super) fn back_substitute<T: RealField, const RESTART: usize>(
     hessenberg: &[T],
