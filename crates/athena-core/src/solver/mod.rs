@@ -3,6 +3,7 @@
 mod bicgstab;
 mod cg;
 mod chebyshev;
+mod deflation;
 mod dimension;
 mod gmres;
 mod lsqr;
@@ -12,6 +13,7 @@ mod rotation;
 pub use bicgstab::{BiCgStab, BiCgStabWorkspace};
 pub use cg::{Cg, CgWorkspace};
 pub use chebyshev::{Chebyshev, ChebyshevWorkspace, SpectralBounds, SpectralBoundsError};
+pub use deflation::{DeflatedCg, DeflatedOperator, DeflationSubspace, DeflationSubspaceError};
 pub use gmres::{Gmres, GmresWorkspace};
 pub use lsqr::{Lsqr, LsqrWorkspace};
 pub use minres::{Minres, MinresWorkspace};
