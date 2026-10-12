@@ -34,7 +34,7 @@ pub use operator::{LinearOperator, RectangularOperator};
 pub use preconditioner::{Identity, Preconditioner};
 pub use report::{IterationObserver, IterationState, NoObserver, SolveReport, Termination};
 pub use solver::{
-    BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, Chebyshev, ChebyshevWorkspace, Gmres,
-    GmresWorkspace, Lsqr, LsqrWorkspace, Minres, MinresWorkspace, SpectralBounds,
-    SpectralBoundsError,
+    BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, Chebyshev, ChebyshevWorkspace, DeflatedCg,
+    DeflatedOperator, DeflationSubspace, DeflationSubspaceError, Gmres, GmresWorkspace, Lsqr,
+    LsqrWorkspace, Minres, MinresWorkspace, SpectralBounds, SpectralBoundsError,
 };
