@@ -1,6 +1,6 @@
 use crate::{SolveReport, Termination};
 
-use super::rotation::ScalarFailure;
+use super::super::rotation::ScalarFailure;
 
 /// Outcome of the pre-iteration phase: either running state or a finished
 /// report, so `initialize` can complete a solve without entering the loop.

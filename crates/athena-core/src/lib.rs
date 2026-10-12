@@ -35,4 +35,5 @@ pub use preconditioner::{Identity, Preconditioner};
 pub use report::{IterationObserver, IterationState, NoObserver, SolveReport, Termination};
 pub use solver::{
     BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, Gmres, GmresWorkspace, Lsqr, LsqrWorkspace,
+    Minres, MinresWorkspace,
 };

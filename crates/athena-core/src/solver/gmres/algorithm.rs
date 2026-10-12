@@ -7,10 +7,12 @@ use crate::{
     residual_noise_floor,
 };
 
+use super::super::rotation::{ScalarFailure, givens};
+
 use super::{
     super::dimension::validate_dimensions,
     cycle::{ArnoldiOutcome, CycleOutcome, CycleProgress, GmresState, Stage},
-    rotation::{ScalarFailure, back_substitute, givens},
+    rotation::back_substitute,
 };
 
 type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
