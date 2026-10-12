@@ -11,13 +11,13 @@ use athena::{
 use hephaestus_core::ComputeDevice;
 use hephaestus_wgpu::{GpuCsrMatrix, WgpuDevice, WgpuSparseOps, WgpuVectorOps};
 
-type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps, f32>;
+type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps<f32>, f32>;
 type Operator = CsrOperator<WgpuSparseOps, GpuCsrMatrix<f32>>;
 
 // dyn exception: top-level binary error aggregation is outside solver paths.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let device = WgpuDevice::try_default("athena-gmres-example")?;
-    let operations = WgpuVectorOps::new(&device)?;
+    let operations = WgpuVectorOps::<f32>::new(&device)?;
     let backend = Backend::new(device, operations);
 
     // Nonsymmetric [[4, 1, 0], [2, 3, 1], [0, 1, 2]].

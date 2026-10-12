@@ -12,13 +12,13 @@ use athena::{
 use hephaestus_core::ComputeDevice;
 use hephaestus_wgpu::{GpuCsrMatrix, WgpuDevice, WgpuSparseOps, WgpuVectorOps};
 
-type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps, f32>;
+type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps<f32>, f32>;
 type Operator = CsrOperator<WgpuSparseOps, GpuCsrMatrix<f32>>;
 
 // dyn exception: top-level binary error aggregation is outside solver paths.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let device = WgpuDevice::try_default("athena-example")?;
-    let operations = WgpuVectorOps::new(&device)?;
+    let operations = WgpuVectorOps::<f32>::new(&device)?;
     let backend = Backend::new(device, operations);
 
     // [[2, -1], [-1, 2]] with b = [0, 3] gives x = [1, 2].

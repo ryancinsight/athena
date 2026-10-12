@@ -13,7 +13,7 @@ use athena_hephaestus::{CsrOperator, HephaestusBackend};
 use hephaestus_core::{ComputeDevice, HephaestusError};
 use hephaestus_wgpu::{GpuCsrMatrix, WgpuDevice, WgpuSparseOps, WgpuVectorOps};
 
-type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps, f32>;
+type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps<f32>, f32>;
 type Operator = CsrOperator<WgpuSparseOps, GpuCsrMatrix<f32>>;
 
 fn backend_or_skip() -> Option<Backend> {
@@ -24,7 +24,7 @@ fn backend_or_skip() -> Option<Backend> {
             return None;
         }
     };
-    let operations = WgpuVectorOps::new(&device).expect("invariant: kernels compile");
+    let operations = WgpuVectorOps::<f32>::new(&device).expect("invariant: kernels compile");
     Some(HephaestusBackend::new(device, operations))
 }
 

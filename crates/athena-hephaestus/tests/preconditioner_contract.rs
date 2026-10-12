@@ -24,7 +24,7 @@ use athena_hephaestus::{CsrOperator, HephaestusBackend, Jacobi, inverse_diagonal
 use hephaestus_core::{ComputeDevice, HephaestusError};
 use hephaestus_wgpu::{GpuCsrMatrix, WgpuDevice, WgpuSparseOps, WgpuVectorOps};
 
-type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps, f32>;
+type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps<f32>, f32>;
 type Operator = CsrOperator<WgpuSparseOps, GpuCsrMatrix<f32>>;
 
 /// Symmetric positive definite `[[4, 1], [1, 3]]`. Its diagonal is `[4, 3]`, so
@@ -154,7 +154,8 @@ fn device_backend(case: &str) -> Option<Backend> {
     match WgpuDevice::try_default("athena-hephaestus-preconditioner") {
         Ok(device) => {
             eprintln!("DEVICE CASE EXECUTED ({case}) on {}", device.backend_name());
-            let operations = WgpuVectorOps::new(&device).expect("invariant: kernels compile");
+            let operations =
+                WgpuVectorOps::<f32>::new(&device).expect("invariant: kernels compile");
             Some(HephaestusBackend::new(device, operations))
         }
         Err(error) => {
