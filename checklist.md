@@ -8,6 +8,8 @@ Target: unreleased patch to 0.3.0; package publishing is excluded.
   full coarse spaces, equal/narrow bounds, and the existing analytic oracles.
 - [x] [patch] Update Rustdoc, README, and changelog.
 - [x] [patch] Local all-feature/default-feature checks, strict Clippy,
-  formatting, 136 native tests plus four explicit allocation tests, three
+  formatting, 136 native tests plus five explicit allocation tests, three
   doctests, warning-free Rustdoc, supply-chain and lockfile checks.
-- [ ] [patch] Complete hosted gates on the exact PR head before merging.
+Hosted gate completion and the exact checked head are tracked in PR #118.
+Merge requires green verification, allocation, lockfile, supply-chain, and
+informational SemVer checks; the release-only gate does not apply to this patch.

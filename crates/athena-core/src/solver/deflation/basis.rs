@@ -251,7 +251,8 @@ impl<B: KrylovBackend> DeflationSubspace<B> {
         vector: &B::Vector,
         target: &mut B::Vector,
     ) -> Result<(), B::Error> {
-        self.combine_coarse(backend, vector, target, &self.basis)
+        let mut coordinates = vec![B::Scalar::ZERO; self.width];
+        self.combine_coarse(backend, vector, target, &self.basis, &mut coordinates)
     }
 
     /// `target ← A U E⁻¹ Uᵀ vector`, using the cached images A U.
@@ -260,8 +261,9 @@ impl<B: KrylovBackend> DeflationSubspace<B> {
         backend: &B,
         vector: &B::Vector,
         target: &mut B::Vector,
+        coordinates: &mut [B::Scalar],
     ) -> Result<(), B::Error> {
-        self.combine_coarse(backend, vector, target, &self.images)
+        self.combine_coarse(backend, vector, target, &self.images, coordinates)
     }
 
     fn combine_coarse(
@@ -270,15 +272,15 @@ impl<B: KrylovBackend> DeflationSubspace<B> {
         vector: &B::Vector,
         target: &mut B::Vector,
         block: &B::VectorBlock,
+        coordinates: &mut [B::Scalar],
     ) -> Result<(), B::Error> {
-        let mut coordinates = Vec::with_capacity(self.width);
-        for column in 0..self.width {
-            coordinates.push(backend.dot(
+        for (column, coordinate) in coordinates.iter_mut().enumerate() {
+            *coordinate = backend.dot(
                 backend.block_view(&self.basis, column),
                 backend.view(vector),
-            )?);
+            )?;
         }
-        solve_in_place(&self.coarse, self.width, &self.pivots, &mut coordinates);
+        solve_in_place(&self.coarse, self.width, &self.pivots, coordinates);
         backend.copy(backend.block_view(block, 0), backend.view_mut(target))?;
         backend.scale(backend.view_mut(target), coordinates[0])?;
         for (index, coordinate) in coordinates.iter().enumerate().skip(1) {

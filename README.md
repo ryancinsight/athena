@@ -41,6 +41,8 @@ system `(A - A C A)y = (I - A C)(b - A x₀)` on the complement and recovers
 `b - A x` against the original RHS policy. The subspace must be built from
 the same operator used for the solve. Cached `A U` images require one extra
 basis-sized block and avoid a second base operator application per iteration.
+Coarse coordinate scratch is retained in `DeflatedOperator`, so repeated
+applications allocate no memory after construction.
 
 `Chebyshev` accepts positive ordered spectral bounds, including equal
 endpoints. A singleton spectrum implies `A = λ I`, so the normalised

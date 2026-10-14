@@ -1,3 +1,4 @@
+use alloc::{vec, vec::Vec};
 use core::cell::RefCell;
 use eunomia::NumericElement;
 
@@ -31,8 +32,14 @@ where
     /// composes through. They are allocated at construction and borrowed per
     /// call, so the operator is single-threaded per solve — `!Sync` by
     /// construction, matching the seam it serves.
-    scratch: RefCell<(B::Vector, B::Vector)>,
+    scratch: RefCell<ProjectionScratch<B>>,
     width: usize,
+}
+
+struct ProjectionScratch<B: KrylovBackend> {
+    projected: B::Vector,
+    image: B::Vector,
+    coordinates: Vec<B::Scalar>,
 }
 
 impl<'a, B, O> DeflatedOperator<'a, B, O>
@@ -55,7 +62,11 @@ where
         Ok(Self {
             operator,
             subspace,
-            scratch: RefCell::new((backend.allocate(dimension)?, backend.allocate(dimension)?)),
+            scratch: RefCell::new(ProjectionScratch {
+                projected: backend.allocate(dimension)?,
+                image: backend.allocate(dimension)?,
+                coordinates: vec![B::Scalar::ZERO; subspace.width()],
+            }),
             width: subspace.width(),
         })
     }
@@ -77,7 +88,11 @@ where
         output: B::ViewMut<'_>,
     ) -> Result<(), B::Error> {
         let mut scratch = self.scratch.borrow_mut();
-        let (projected, image) = &mut *scratch;
+        let ProjectionScratch {
+            projected,
+            image,
+            coordinates,
+        } = &mut *scratch;
         // projected <- (I - U U^T) v
         backend.copy(input, backend.view_mut(projected))?;
         for column in 0..self.width {
@@ -95,7 +110,8 @@ where
         // coupling to the coarse coordinates before the complement solve.
         self.operator
             .apply(backend, backend.view(projected), backend.view_mut(image))?;
-        self.subspace.coarse_image(backend, image, projected)?;
+        self.subspace
+            .coarse_image(backend, image, projected, coordinates)?;
         backend.axpy(
             backend.view_mut(image),
             backend.view(projected),

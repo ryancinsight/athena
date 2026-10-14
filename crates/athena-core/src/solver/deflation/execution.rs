@@ -5,6 +5,7 @@ use crate::{
     Cg, CgWorkspace, ConvergencePolicy, DeflationSubspace, Identity, KrylovBackend, LinearOperator,
     SolveError, SolveReport, Termination,
 };
+use alloc::vec;
 use eunomia::NumericElement;
 
 pub(super) struct Execution<'a, B: KrylovBackend, O> {
@@ -132,8 +133,9 @@ impl<B: KrylovBackend, O: LinearOperator<B>> Execution<'_, B, O> {
         complement: &mut B::Vector,
     ) -> Result<(), SolveError<B::Error>> {
         // g = (I - A C) r0. Q b alone discards coarse/complement coupling.
+        let mut coordinates = vec![B::Scalar::ZERO; self.subspace.width()];
         self.subspace
-            .coarse_image(self.backend, residual, image)
+            .coarse_image(self.backend, residual, image, &mut coordinates)
             .map_err(SolveError::Backend)?;
         self.backend
             .residual(
