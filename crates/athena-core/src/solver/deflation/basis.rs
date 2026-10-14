@@ -14,10 +14,12 @@ use super::lu::{CoarseFailure, factorise, solve_in_place};
 /// `Uᵀ A U`.
 ///
 /// Construction orthonormalises the input vectors (modified Gram–Schmidt) —
-/// the projected operator `(I − UUᵀ)·A·(I − UUᵀ)` is symmetric only for an
-/// orthonormal `U`, so the invariant is earned here, once, rather than
-/// assumed at every use — then assembles and factorises the coarse matrix
-/// with partial pivoting.
+/// the Euclidean complement projection needs an orthonormal `U`, so the
+/// invariant is earned here, once. Construction caches `A U` and factorises
+/// `E = Uᵀ A U` with partial pivoting. The Schur complement
+/// `A − A U E⁻¹ Uᵀ A` includes coarse/complement coupling for every supported
+/// basis; invariance is not required for correctness. The subspace must be
+/// used with the same operator it was built from.
 ///
 /// With an exact invariant subspace of `k` eigenvectors of an SPD operator,
 /// the deflated solve terminates in at most `n − k` iterations: the
@@ -26,6 +28,9 @@ use super::lu::{CoarseFailure, factorise, solve_in_place};
 /// oracle the deflation contract pins.
 pub struct DeflationSubspace<B: KrylovBackend> {
     basis: B::VectorBlock,
+    /// Cached operator images `A U`, shared by Schur applications and RHS
+    /// construction. Each deflated application still uses one base apply.
+    images: B::VectorBlock,
     /// The factorised coarse matrix `Uᵀ A U` (row-major, LU in place).
     coarse: Vec<B::Scalar>,
     /// Row-interchange record of the coarse factorisation.
@@ -156,12 +161,21 @@ impl<B: KrylovBackend> DeflationSubspace<B> {
         let mut image = backend
             .allocate(dimension)
             .map_err(|source| DeflationSubspaceError::Backend { source })?;
+        let mut images = backend
+            .allocate_block(width, dimension)
+            .map_err(|source| DeflationSubspaceError::Backend { source })?;
         for column in 0..width {
             operator
                 .apply(
                     backend,
                     backend.block_view(&basis, column),
                     backend.view_mut(&mut image),
+                )
+                .map_err(|source| DeflationSubspaceError::Backend { source })?;
+            backend
+                .copy(
+                    backend.view(&image),
+                    backend.block_view_mut(&mut images, column),
                 )
                 .map_err(|source| DeflationSubspaceError::Backend { source })?;
             for row in 0..width {
@@ -180,6 +194,7 @@ impl<B: KrylovBackend> DeflationSubspace<B> {
 
         Ok(Self {
             basis,
+            images,
             coarse,
             pivots,
             dimension,
@@ -236,20 +251,42 @@ impl<B: KrylovBackend> DeflationSubspace<B> {
         vector: &B::Vector,
         target: &mut B::Vector,
     ) -> Result<(), B::Error> {
-        let mut coordinates = Vec::with_capacity(self.width);
-        for column in 0..self.width {
-            coordinates.push(backend.dot(
+        let mut coordinates = vec![B::Scalar::ZERO; self.width];
+        self.combine_coarse(backend, vector, target, &self.basis, &mut coordinates)
+    }
+
+    /// `target ← A U E⁻¹ Uᵀ vector`, using the cached images A U.
+    pub(super) fn coarse_image(
+        &self,
+        backend: &B,
+        vector: &B::Vector,
+        target: &mut B::Vector,
+        coordinates: &mut [B::Scalar],
+    ) -> Result<(), B::Error> {
+        self.combine_coarse(backend, vector, target, &self.images, coordinates)
+    }
+
+    fn combine_coarse(
+        &self,
+        backend: &B,
+        vector: &B::Vector,
+        target: &mut B::Vector,
+        block: &B::VectorBlock,
+        coordinates: &mut [B::Scalar],
+    ) -> Result<(), B::Error> {
+        for (column, coordinate) in coordinates.iter_mut().enumerate() {
+            *coordinate = backend.dot(
                 backend.block_view(&self.basis, column),
                 backend.view(vector),
-            )?);
+            )?;
         }
-        solve_in_place(&self.coarse, self.width, &self.pivots, &mut coordinates);
-        backend.copy(backend.block_view(&self.basis, 0), backend.view_mut(target))?;
+        solve_in_place(&self.coarse, self.width, &self.pivots, coordinates);
+        backend.copy(backend.block_view(block, 0), backend.view_mut(target))?;
         backend.scale(backend.view_mut(target), coordinates[0])?;
         for (index, coordinate) in coordinates.iter().enumerate().skip(1) {
             backend.axpy(
                 backend.view_mut(target),
-                backend.block_view(&self.basis, index),
+                backend.block_view(block, index),
                 *coordinate,
             )?;
         }

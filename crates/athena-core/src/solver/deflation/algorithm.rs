@@ -1,23 +1,26 @@
+use alloc::{vec, vec::Vec};
 use core::cell::RefCell;
+use eunomia::NumericElement;
 
 use crate::{
-    Cg, CgWorkspace, ConvergencePolicy, DeflationSubspace, Identity, KrylovBackend, LinearOperator,
-    SolveError, SolveReport,
+    CgWorkspace, ConvergencePolicy, DeflationSubspace, KrylovBackend, LinearOperator, SolveError,
+    SolveReport,
 };
 
 use super::super::dimension::validate_dimensions;
 
-/// The two-sided projected operator `A_def = (I − UUᵀ)·A·(I − UUᵀ)`.
+/// The deflated Schur operator `Q·(A − A C A)·Q`, where
+/// `Q = I − UUᵀ` and `C = U·(Uᵀ A U)⁻¹·Uᵀ`.
 ///
-/// Symmetric for any orthonormal `U` — both projections are Euclidean
-/// orthogonal — and positive definite on the complement of `U`, where it
-/// acts as the restriction of the SPD base operator. That is what lets the
-/// deflated solve run through the ordinary CG recurrence.
+/// For SPD A this is symmetric and positive definite on U's complement:
+/// eliminating the coarse coordinates gives exactly this Schur complement.
+/// For nonzero `y` with `Uᵀ y = 0`, put `z = y − C A y`. Then
+/// `yᵀ(A − A C A)y = zᵀ A z > 0`: `Q z = y` ensures `z ≠ 0`.
+/// It annihilates U, including when U is not invariant under A. Invariance
+/// reduces it to Q A Q but is not required for correctness.
 ///
-/// `apply` needs one scratch vector for the intermediate
-/// `(I − UUᵀ)·v`; the scratch is allocated at construction and borrowed
-/// per call, so the operator is single-threaded per solve — `!Sync` by
-/// construction, matching the seam it serves.
+/// Cached A U images keep each apply to one base operator application.
+/// Internal scratch is borrowed per call, making this view `!Sync`.
 pub struct DeflatedOperator<'a, B, O>
 where
     B: KrylovBackend,
@@ -29,8 +32,14 @@ where
     /// composes through. They are allocated at construction and borrowed per
     /// call, so the operator is single-threaded per solve — `!Sync` by
     /// construction, matching the seam it serves.
-    scratch: RefCell<(B::Vector, B::Vector)>,
+    scratch: RefCell<ProjectionScratch<B>>,
     width: usize,
+}
+
+struct ProjectionScratch<B: KrylovBackend> {
+    projected: B::Vector,
+    image: B::Vector,
+    coordinates: Vec<B::Scalar>,
 }
 
 impl<'a, B, O> DeflatedOperator<'a, B, O>
@@ -53,7 +62,11 @@ where
         Ok(Self {
             operator,
             subspace,
-            scratch: RefCell::new((backend.allocate(dimension)?, backend.allocate(dimension)?)),
+            scratch: RefCell::new(ProjectionScratch {
+                projected: backend.allocate(dimension)?,
+                image: backend.allocate(dimension)?,
+                coordinates: vec![B::Scalar::ZERO; subspace.width()],
+            }),
             width: subspace.width(),
         })
     }
@@ -75,7 +88,11 @@ where
         output: B::ViewMut<'_>,
     ) -> Result<(), B::Error> {
         let mut scratch = self.scratch.borrow_mut();
-        let (projected, image) = &mut *scratch;
+        let ProjectionScratch {
+            projected,
+            image,
+            coordinates,
+        } = &mut *scratch;
         // projected <- (I - U U^T) v
         backend.copy(input, backend.view_mut(projected))?;
         for column in 0..self.width {
@@ -89,11 +106,18 @@ where
                 -coefficient,
             )?;
         }
-        // image <- A · projected, then re-project onto the complement: the
-        // second projection is what makes the operator symmetric for any
-        // orthonormal basis.
+        // image <- (A - A C A) Q v. The Schur correction removes
+        // coupling to the coarse coordinates before the complement solve.
         self.operator
             .apply(backend, backend.view(projected), backend.view_mut(image))?;
+        self.subspace
+            .coarse_image(backend, image, projected, coordinates)?;
+        backend.axpy(
+            backend.view_mut(image),
+            backend.view(projected),
+            -B::Scalar::ONE,
+        )?;
+        // Reproject roundoff out of U's directions.
         for column in 0..self.width {
             let coefficient = backend.dot(
                 backend.block_view(self.subspace.basis(), column),
@@ -111,12 +135,13 @@ where
 
 /// Zero-sized deflated-CG marker: two-level CG over a deflation subspace.
 ///
-/// The solve is two phases on one driver: the right-hand side's complement
-/// projection `(I − UUᵀ)·b` drives CG through the deflated operator
-/// `(I − UUᵀ)·A·(I − UUᵀ)` — symmetric for any orthonormal basis, positive
-/// definite on the complement — and the coarse correction
-/// `U·(Uᵀ A U)⁻¹·Uᵀ·b` resolves the deflated directions exactly, so the
-/// combined iterate is the solution of `A·x = b`.
+/// With `C = U·(Uᵀ A U)⁻¹·Uᵀ` and `r₀ = b − A x₀`, CG solves
+/// `(A − A C A) y = (I − A C) r₀` in U's Euclidean complement.
+/// The recovered iterate is `x = x₀ + y + C(r₀ − A y)`. Substitution gives
+/// `b − A x = (I − A C) r₀ − (A − A C A) y`, the Schur residual.
+/// Thus the combined solve is valid for any supported basis, including
+/// noninvariant ones. The final report checks `b − A x` explicitly against
+/// the original RHS policy; the incoming solution is the initial guess.
 ///
 /// With `U` an exact invariant subspace of `k` eigenvectors of an SPD
 /// operator, the CG phase terminates in at most `n − k` iterations: the
@@ -157,41 +182,18 @@ impl<B: KrylovBackend> DeflatedCg<B> {
             ),
             ("solution", dimension, backend.vector_len(solution)),
             ("CG workspace", dimension, workspace.len()),
+            ("deflation subspace", dimension, subspace.dimension()),
         ])?;
 
-        // Phase 1: the complement solve. The right-hand side's deflated
-        // directions are removed before the iteration starts, so the CG
-        // iterates stay in the complement where the deflated operator is
-        // positive definite.
-        let deflated_operator =
-            DeflatedOperator::new(backend, operator, subspace).map_err(SolveError::Backend)?;
-        let mut complement = backend.allocate(dimension).map_err(SolveError::Backend)?;
-        subspace
-            .project(backend, right_hand_side, &mut complement)
-            .map_err(SolveError::Backend)?;
-        let mut phase = backend.allocate(dimension).map_err(SolveError::Backend)?;
-        let report = Cg::<B>::solve_into(
+        super::execution::Execution {
             backend,
-            &deflated_operator,
-            &Identity,
-            &complement,
-            &mut phase,
+            operator,
+            subspace,
+            right_hand_side,
+            solution,
             workspace,
             policy,
-        )?;
-
-        // Phase 2: the coarse correction carries the deflated directions
-        // exactly, and the solution assembles the two levels.
-        subspace
-            .coarse_correction(backend, right_hand_side, solution)
-            .map_err(SolveError::Backend)?;
-        backend
-            .axpy(
-                backend.view_mut(solution),
-                backend.view(&phase),
-                <B::Scalar as eunomia::NumericElement>::ONE,
-            )
-            .map_err(SolveError::Backend)?;
-        Ok(report)
+        }
+        .solve()
     }
 }

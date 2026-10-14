@@ -20,17 +20,17 @@ pub(super) struct ChebyshevState<T> {
     initial_residual: T,
     threshold: T,
     last_residual: T,
-    /// The affine map's centre `μ = (λ_max + λ_min)/(λ_max − λ_min)`;
-    /// the Chebyshev arguments live above one, so the damping bound after
-    /// `k` steps is `1/T_k(μ)`.
-    mu: T,
+    /// Inverse affine centre `η = 1/μ`, in `[0, 1)`. A singleton
+    /// interval has `η = 0`, so the same recurrence becomes Richardson.
+    inverse_mu_squared: T,
     /// The base step scale `ω = 2/(λ_max + λ_min)`.
     omega: T,
-    /// Running ratio `w_k = T_k(μ)/T_{k−1}(μ)`, updated by
-    /// `w_{k+1} = 2μ − 1/w_k`. It stays in `[1, 2μ]`, so it never
-    /// overflows the way the exponentially growing `T_k(μ)` would.
+    /// Normalised ratio `v_k = w_k/μ`, updated by
+    /// `v_{k+1} = 2 − η²/v_k`. It stays in `[1, 2]` even when μ
+    /// is unrepresentable for a narrow interval.
     ratio: T,
-    /// The current step coefficient `τ_k = 2μ/w_k`, with `τ_1 = 1`.
+    /// The current step coefficient `τ_k = 2/v_k` for k ≥ 2;
+    /// the first step uses `τ_1 = 1`.
     tau: T,
     iterations: usize,
     operator_applications: usize,
@@ -96,6 +96,19 @@ where
     /// the spectral bounds. A residual already within policy completes the
     /// solve without iterating.
     pub(super) fn seed(&mut self) -> ExecutionResult<B, Stage<B::Scalar>> {
+        self.backend
+            .copy(
+                self.backend.view(self.right_hand_side),
+                self.backend.view_mut(&mut self.workspace.residual),
+            )
+            .map_err(SolveError::Backend)?;
+        let rhs_norm = self
+            .backend
+            .norm_l2_prepared(
+                &self.workspace.residual_norm,
+                self.backend.view(&self.workspace.residual),
+            )
+            .map_err(SolveError::Backend)?;
         self.operator
             .apply(
                 self.backend,
@@ -117,7 +130,7 @@ where
                 self.backend.view(&self.workspace.residual),
             )
             .map_err(SolveError::Backend)?;
-        let threshold = self.policy.threshold(initial_residual);
+        let threshold = self.policy.threshold(rhs_norm);
         if !initial_residual.is_finite() || !threshold.is_finite() {
             return Ok(Stage::Complete(SolveReport::new(
                 Termination::NonFinite,
@@ -143,15 +156,19 @@ where
 
         let minimum = self.bounds.minimum();
         let maximum = self.bounds.maximum();
+        let one = <B::Scalar as NumericElement>::ONE;
+        // Scale by the upper bound before adding/subtracting. This avoids
+        // overflow in λ_max + λ_min and division by a zero interval width.
+        let relative_minimum = minimum / maximum;
+        let inverse_mu = (one - relative_minimum) / (one + relative_minimum);
         Ok(Stage::Continue(ChebyshevState {
             initial_residual,
             threshold,
             last_residual: initial_residual,
-            mu: (maximum + minimum) / (maximum - minimum),
-            omega: (<B::Scalar as NumericElement>::ONE + <B::Scalar as NumericElement>::ONE)
-                / (maximum + minimum),
-            // w_1 = T_1(μ)/T_0(μ) = μ.
-            ratio: (maximum + minimum) / (maximum - minimum),
+            inverse_mu_squared: inverse_mu * inverse_mu,
+            omega: ((one + one) / (one + relative_minimum)) / maximum,
+            // v_1 = w_1/μ = 1, including the singleton limit μ → ∞.
+            ratio: one,
             tau: <B::Scalar as NumericElement>::ONE,
             iterations: 0,
             operator_applications: 1,
@@ -200,18 +217,6 @@ where
             .map_err(SolveError::Backend)?;
         state.iterations += 1;
 
-        // Advance the Chebyshev coefficients for the next step:
-        // `w_{k+1} = 2μ − 1/w_k`, then `τ_{k+1} = 2μ/w_{k+1}`.
-        let two_mu = state.mu + state.mu;
-        state.ratio = two_mu - one / state.ratio;
-        if !state.ratio.is_finite() || state.ratio <= <B::Scalar as NumericElement>::ZERO {
-            return Ok(Some(state.report(Termination::NonFinite)));
-        }
-        state.tau = two_mu / state.ratio;
-        if !state.tau.is_finite() {
-            return Ok(Some(state.report(Termination::NonFinite)));
-        }
-
         // Recompute the residual: the convergence decision always sees the
         // true value, never a recurrence estimate.
         self.operator
@@ -248,6 +253,22 @@ where
         }
         if state.last_residual <= state.threshold {
             return Ok(Some(state.report(Termination::Converged)));
+        }
+        if state.iterations == self.policy.max_iterations() {
+            return Ok(Some(state.report(Termination::MaxIterations)));
+        }
+
+        // Only advance after checking the updated iterate. With η=0 the
+        // coefficients remain τ=1, ω=1/λ, the exact singleton-spectrum
+        // Richardson method. No infinity or inf/inf is formed.
+        let two = one + one;
+        state.ratio = two - state.inverse_mu_squared / state.ratio;
+        if !state.ratio.is_finite() || state.ratio <= <B::Scalar as NumericElement>::ZERO {
+            return Ok(Some(state.report(Termination::NonFinite)));
+        }
+        state.tau = two / state.ratio;
+        if !state.tau.is_finite() {
+            return Ok(Some(state.report(Termination::NonFinite)));
         }
         Ok(None)
     }

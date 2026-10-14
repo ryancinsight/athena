@@ -21,8 +21,8 @@
 //! would mask a defect in the code under test.
 
 use athena_core::{
-    BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, ConvergencePolicy, Gmres, GmresWorkspace,
-    Identity,
+    BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, ConvergencePolicy, DeflatedOperator,
+    DeflationSubspace, Gmres, GmresWorkspace, Identity, KrylovBackend, LinearOperator,
 };
 use athena_leto::{CsrOperator, LetoBackend};
 use leto::Array1;
@@ -352,5 +352,52 @@ fn warm_solve_heap_traffic_is_bounded_and_not_retained() {
         "warm solves retained heap memory in steady state: net bytes after 32 \
          solves {doubled_net} (16 solves {single_net}; 16 solves {single:?}, \
          32 solves {doubled:?})"
+    );
+}
+
+#[test]
+#[ignore = "strict zero-traffic contract; explicitly run by the hosted allocation-instrument job with MALLOC_ARENA_MAX=1"]
+fn repeated_deflated_operator_applications_allocate_nothing_after_construction() {
+    warm();
+    let backend = LetoBackend::<f64>::default();
+    let matrix = CsrMatrix::from_parts(
+        vec![2.0, 1.0, 1.0, 2.0],
+        vec![0, 1, 0, 1],
+        vec![0, 2, 4],
+        2,
+        2,
+    )
+    .expect("invariant: coupled SPD matrix");
+    let operator = CsrOperator::new(matrix).expect("invariant: square");
+    let vector = Array1::from_shape_vec([2], vec![1.0, 0.0]).expect("invariant: shape");
+    let subspace = DeflationSubspace::from_vectors(&backend, &operator, &[vector])
+        .expect("invariant: independent basis");
+    let deflated =
+        DeflatedOperator::new(&backend, &operator, &subspace).expect("invariant: allocation");
+    let input = Array1::from_shape_vec([2], vec![1.0, 1.0]).expect("invariant: shape");
+    let mut output = Array1::zeros([2]);
+    deflated
+        .apply(
+            &backend,
+            backend.view(&input),
+            backend.view_mut(&mut output),
+        )
+        .expect("invariant: warm-up application");
+    let ((), change) = measure(|| {
+        for _ in 0..16 {
+            deflated
+                .apply(
+                    &backend,
+                    backend.view(&input),
+                    backend.view_mut(&mut output),
+                )
+                .expect("invariant: measured application");
+        }
+    });
+    assert_steady_state(change);
+    // The genuine Schur action, not a cached output: Q(A-ACA)Q(1,1)=(0,1.5).
+    assert_eq!(
+        output.as_slice().expect("invariant: contiguous"),
+        &[0.0, 1.5]
     );
 }

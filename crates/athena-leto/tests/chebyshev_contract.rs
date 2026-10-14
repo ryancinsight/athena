@@ -178,3 +178,104 @@ fn spectral_bounds_reject_invalid_intervals() {
     // comparison is the roundtrip assertion itself.
     assert_eq!((bounds.minimum(), bounds.maximum()), (2.0, 5.0));
 }
+
+/// A singleton spectrum means A=lambda I: one Richardson update with
+/// omega=1/lambda annihilates the error. No infinite coefficient is needed.
+fn solves_singleton_spectrum<T>()
+where
+    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+{
+    let backend = LetoBackend::<T>::default();
+    for dimension in [1, 3] {
+        let matrix = CsrMatrix::from_parts(
+            vec![T::ONE; dimension],
+            (0..dimension).collect(),
+            (0..=dimension).collect(),
+            dimension,
+            dimension,
+        )
+        .expect("invariant: identity");
+        let operator = CsrOperator::new(matrix).expect("invariant: square");
+        let rhs = Array1::from_shape_vec([dimension], vec![T::ONE; dimension])
+            .expect("invariant: exact shape");
+        let mut solution = Array1::zeros([dimension]);
+        let mut workspace =
+            ChebyshevWorkspace::new(&backend, dimension).expect("invariant: allocation");
+        let bounds =
+            SpectralBounds::new(T::ONE, T::ONE).expect("invariant: singleton interval is accepted");
+        let policy =
+            ConvergencePolicy::new(T::EPSILON, T::ZERO, 1).expect("invariant: one exact step");
+        let report = Chebyshev::<LetoBackend<T>>::solve_into(
+            &backend,
+            &operator,
+            &rhs,
+            &mut solution,
+            &mut workspace,
+            policy,
+            bounds,
+        )
+        .expect("invariant: valid dimensions");
+        assert_eq!(
+            solution.as_slice().expect("invariant: contiguous"),
+            vec![T::ONE; dimension]
+        );
+        assert_eq!(report.termination, Termination::Converged, "{report:?}");
+        assert_eq!(report.iterations, 1);
+        assert_eq!(report.operator_applications, 2);
+        assert_eq!(report.final_residual_norm, T::ZERO);
+        assert!(report.initial_residual_norm >= T::ONE);
+    }
+}
+
+#[test]
+fn chebyshev_solves_equal_bounds_for_every_cpu_scalar() {
+    solves_singleton_spectrum::<f32>();
+    solves_singleton_spectrum::<f64>();
+}
+
+fn checks_narrow_intervals_and_warm_starts<T>()
+where
+    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+{
+    let backend = LetoBackend::<T>::default();
+    let matrix = CsrMatrix::from_parts(vec![T::ONE], vec![0], vec![0, 1], 1, 1)
+        .expect("invariant: identity");
+    let operator = CsrOperator::new(matrix).expect("invariant: square");
+    let rhs = Array1::from_shape_vec([1], vec![T::ONE]).expect("invariant: shape");
+    let mut workspace = ChebyshevWorkspace::new(&backend, 1).expect("invariant: allocation");
+    let policy = ConvergencePolicy::new(T::ZERO, T::EPSILON, 3).expect("invariant: valid");
+    for maximum in [T::ONE, T::ONE + T::EPSILON] {
+        for initial in [T::ZERO, T::from_f64(0.5), T::ONE] {
+            let mut solution =
+                Array1::from_shape_vec([1], vec![initial]).expect("invariant: shape");
+            let bounds = SpectralBounds::new(T::ONE, maximum).expect("invariant: ordered");
+            let report = Chebyshev::<LetoBackend<T>>::solve_into(
+                &backend,
+                &operator,
+                &rhs,
+                &mut solution,
+                &mut workspace,
+                policy,
+                bounds,
+            )
+            .expect("invariant: dimensions");
+            let actual = (T::ONE - solution.as_slice().expect("invariant: contiguous")[0]).abs();
+            assert!(report.converged(), "{report:?}");
+            assert_eq!(
+                report.threshold,
+                T::EPSILON,
+                "policy is relative to b, not r0"
+            );
+            assert_eq!(report.initial_residual_norm, T::ONE - initial);
+            assert_eq!(report.final_residual_norm, actual);
+            assert!(actual <= report.threshold);
+            assert_eq!(report.iterations, usize::from(initial != T::ONE));
+        }
+    }
+}
+
+#[test]
+fn chebyshev_handles_narrow_bounds_and_workspace_reuse_for_every_cpu_scalar() {
+    checks_narrow_intervals_and_warm_starts::<f32>();
+    checks_narrow_intervals_and_warm_starts::<f64>();
+}

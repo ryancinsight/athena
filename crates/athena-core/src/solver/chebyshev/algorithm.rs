@@ -23,9 +23,11 @@ use super::execution::{Execution, Stage};
 ///
 /// The step recurrence is `s_k = τ_k·ω·r_k + (τ_k − 1)·s_{k−1}` with
 /// `ω = 2/(λ_max + λ_min)`, `τ_1 = 1`, and `τ_{k+1}` tracked through the
-/// overflow-safe ratio recurrence `w_{k+1} = 2μ − 1/w_k`, `τ_{k+1} = 2μ/w_k`
-/// — never by forming `T_k(μ)`, whose exponential growth overflows `f32`
-/// within a hundred iterations.
+/// normalised ratio recurrence `v_{k+1} = 2 − η²/v_k`, `τ_{k+1} = 2/v_{k+1}`,
+/// where `η = 1/μ` and `v_1 = 1`. Its coefficients stay bounded without
+/// forming either `T_k(μ)` or `μ`. For equal bounds, `η = 0`, `τ_k = 1`,
+/// and `ω = 1/λ`: the singleton-spectrum Richardson limit solves `λ I`
+/// in one step in exact arithmetic.
 ///
 /// # Termination
 ///

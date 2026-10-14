@@ -32,6 +32,26 @@ Athena is independently versioned and consumed by the
 cross-repository ownership and migration boundary is recorded in
 [Atlas ADR 0022](https://github.com/ryancinsight/atlas/blob/main/docs/adr/0022-horae-athena-provider-extraction.md).
 
+## Deflation and spectral iteration
+
+`DeflatedCg` solves SPD systems over any supported deflation basis, including
+noninvariant bases. With `E = Uᵀ A U` and `C = U E⁻¹ Uᵀ`, it solves the Schur
+system `(A - A C A)y = (I - A C)(b - A x₀)` on the complement and recovers
+`x = x₀ + y + C(b - A x₀ - A y)`. The final report checks the true residual
+`b - A x` against the original RHS policy. The subspace must be built from
+the same operator used for the solve. Cached `A U` images require one extra
+basis-sized block and avoid a second base operator application per iteration.
+Coarse coordinate scratch is retained in `DeflatedOperator`, so repeated
+applications allocate no memory after construction.
+
+`Chebyshev` accepts positive ordered spectral bounds, including equal
+endpoints. A singleton spectrum implies `A = λ I`, so the normalised
+recurrence becomes a Richardson update with scale `1/λ`, exact in one step
+in exact arithmetic. The general coefficients use the bounded inverse centre
+`η = (1 - λ_min/λ_max)/(1 + λ_min/λ_max)` instead of forming an infinite
+centre for zero-width or narrow intervals. Reports always check the updated
+iterate before preparing another step.
+
 ## Ownership boundary
 
 Athena owns:

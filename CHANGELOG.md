@@ -4,6 +4,19 @@ All notable changes to Athena are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Deflated CG now eliminates coarse/complement coupling through the Schur
+  operator `A - A U (Uᵀ A U)⁻¹ Uᵀ A`, supports noninvariant bases, preserves
+  the incoming initial guess and original RHS threshold, and reports the
+  recovered iterate's true residual. Cached `A U` images retain one base
+  operator application per deflated application.
+- Chebyshev semi-iteration supports equal spectral bounds through its
+  singleton-spectrum Richardson limit. Normalised coefficients remain finite
+  for narrow intervals; every updated iterate is checked before advancing
+  coefficients. Relative tolerance uses the original RHS norm.
+
+
 ### Changed
 
 - Refresh the locked Atlas provider graph to Leto `2beb4f17`, Hermes

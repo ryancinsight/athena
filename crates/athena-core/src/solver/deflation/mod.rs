@@ -2,6 +2,7 @@
 
 mod algorithm;
 mod basis;
+mod execution;
 mod lu;
 
 pub use algorithm::{DeflatedCg, DeflatedOperator};
