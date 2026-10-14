@@ -122,6 +122,17 @@ impl<T: RealField> ConvergencePolicy<T> {
         }
     }
 
+    /// Use an already validated absolute threshold for a transformed
+    /// system, preserving the caller's iteration budget and check cadence.
+    /// The caller verifies this threshold is finite and nonnegative.
+    pub(crate) const fn with_absolute_threshold(self, threshold: T) -> Self {
+        Self {
+            absolute_tolerance: threshold,
+            relative_tolerance: <T as NumericElement>::ZERO,
+            ..self
+        }
+    }
+
     /// Return whether iteration `iteration` is a configured check point.
     #[must_use]
     pub const fn should_check(&self, iteration: usize) -> bool {

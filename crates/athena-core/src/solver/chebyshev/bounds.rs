@@ -7,8 +7,10 @@ use eunomia::{NumericElement, RealField};
 ///
 /// Construction validates the interval: finite, strictly positive, and
 /// ordered. The strict positivity carries the SPD contract — a
-/// semidefinite or indefinite operator has no damping guarantee, and a
-/// zero-width interval makes the recurrence's coefficients undefined.
+/// semidefinite or indefinite operator has no damping guarantee. Equal
+/// bounds are supported: for an SPD operator the singleton spectrum means
+/// `A = λ I`, and one Richardson step with scale `1/λ` solves the system
+/// in exact arithmetic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SpectralBounds<T> {
     minimum: T,
