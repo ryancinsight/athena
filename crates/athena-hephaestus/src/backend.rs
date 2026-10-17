@@ -3,9 +3,7 @@ use core::marker::PhantomData;
 use athena_core::KrylovBackend;
 use bytemuck::Pod;
 use eunomia::RealField;
-use hephaestus_core::{
-    ComputeDevice, DenseVectorOps, DeviceBuffer, HephaestusError, Result, RetainedReductions,
-};
+use hephaestus_core::{ComputeDevice, DenseVectorOps, DeviceBuffer, HephaestusError, Result};
 
 /// Athena Krylov backend over any Hephaestus device.
 ///
@@ -16,16 +14,31 @@ use hephaestus_core::{
 ///
 /// Full vectors stay device-resident across iterations. Only the convergence
 /// reductions cross to the host, one scalar at a time.
+///
+/// Reductions execute through the seam's one-shot `dot`/`norm_l2`: Hephaestus
+/// 0.22 keeps the borrowing prepared form for backends whose buffers are
+/// shared handles and offers no owned retained form for backends whose
+/// buffers are owned allocations, so there is no owned handle to name.
+/// Kernel compilation still happens once in the operations bundle; only the
+/// per-dispatch operand binding repeats.
 pub struct HephaestusBackend<D, V, T> {
     device: D,
     operations: V,
     scalar: PhantomData<fn() -> T>,
 }
 
+/// Zero-sized prepared dot-product policy for Hephaestus views.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct HephaestusPreparedDot;
+
+/// Zero-sized prepared Euclidean-norm policy for Hephaestus views.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct HephaestusPreparedNorm;
+
 impl<D, V, T> HephaestusBackend<D, V, T>
 where
     D: ComputeDevice + 'static,
-    V: DenseVectorOps<D, T> + RetainedReductions<D, T> + 'static,
+    V: DenseVectorOps<D, T> + 'static,
     T: RealField + Pod + eunomia::Pod,
 {
     /// Pair a device with vector operations prepared against it.
@@ -55,7 +68,7 @@ where
 impl<D, V, T> KrylovBackend for HephaestusBackend<D, V, T>
 where
     D: ComputeDevice + 'static,
-    V: DenseVectorOps<D, T> + RetainedReductions<D, T> + 'static,
+    V: DenseVectorOps<D, T> + 'static,
     T: RealField + Pod + eunomia::Pod,
 {
     type Scalar = T;
@@ -66,11 +79,12 @@ where
     // would have to be re-split into per-vector bindings at every use — the
     // host backend's contiguity is a host-memory win with no device analogue.
     type VectorBlock = Vec<D::Buffer<T>>;
-    // Athena workspaces retain their reductions beside the vectors those
-    // reductions measure, which is what keeps a solve allocation-free, so
-    // this backend binds the retained rather than the borrowing form.
-    type PreparedDot = V::RetainedDot;
-    type PreparedNorm = V::RetainedNorm;
+    // Athena workspaces retain these policies beside the vectors the
+    // reductions measure. The policies carry no resources: each execution
+    // dispatches the seam's one-shot reduction, whose kernels are already
+    // compiled in the operations bundle.
+    type PreparedDot = HephaestusPreparedDot;
+    type PreparedNorm = HephaestusPreparedNorm;
     type View<'a>
         = &'a D::Buffer<T>
     where
@@ -137,30 +151,35 @@ where
         left: Self::View<'_>,
         right: Self::View<'_>,
     ) -> Result<Self::PreparedDot> {
-        self.operations.retain_dot(&self.device, left, right)
+        let (left_len, right_len) = (left.len(), right.len());
+        if left_len != right_len {
+            return Err(HephaestusError::LengthMismatch {
+                host_len: left_len,
+                device_len: right_len,
+            });
+        }
+        Ok(HephaestusPreparedDot)
     }
 
     fn dot_prepared(
         &self,
-        prepared: &Self::PreparedDot,
+        _prepared: &Self::PreparedDot,
         left: Self::View<'_>,
         right: Self::View<'_>,
     ) -> Result<Self::Scalar> {
-        self.operations
-            .dot_retained(&self.device, prepared, left, right)
+        self.operations.dot(&self.device, left, right)
     }
 
-    fn prepare_norm_l2(&self, vector: Self::View<'_>) -> Result<Self::PreparedNorm> {
-        self.operations.retain_norm_l2(&self.device, vector)
+    fn prepare_norm_l2(&self, _vector: Self::View<'_>) -> Result<Self::PreparedNorm> {
+        Ok(HephaestusPreparedNorm)
     }
 
     fn norm_l2_prepared(
         &self,
-        prepared: &Self::PreparedNorm,
+        _prepared: &Self::PreparedNorm,
         vector: Self::View<'_>,
     ) -> Result<Self::Scalar> {
-        self.operations
-            .norm_l2_retained(&self.device, prepared, vector)
+        self.operations.norm_l2(&self.device, vector)
     }
 
     fn residual(
