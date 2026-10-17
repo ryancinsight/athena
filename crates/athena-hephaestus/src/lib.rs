@@ -14,6 +14,6 @@ mod backend;
 mod operator;
 pub mod preconditioner;
 
-pub use backend::HephaestusBackend;
+pub use backend::{HephaestusBackend, HephaestusPreparedDot, HephaestusPreparedNorm};
 pub use operator::CsrOperator;
 pub use preconditioner::{Jacobi, inverse_diagonal_from_csr};

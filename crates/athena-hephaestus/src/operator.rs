@@ -1,9 +1,7 @@
 use athena_core::{KrylovBackend, LinearOperator};
 use bytemuck::Pod;
 use eunomia::RealField;
-use hephaestus_core::{
-    ComputeDevice, DenseVectorOps, HephaestusError, Result, RetainedReductions, SparseOperatorOps,
-};
+use hephaestus_core::{ComputeDevice, DenseVectorOps, HephaestusError, Result, SparseOperatorOps};
 
 use crate::HephaestusBackend;
 
@@ -69,7 +67,7 @@ impl<S, M> CsrOperator<S, M> {
 impl<D, V, S, T, M> LinearOperator<HephaestusBackend<D, V, T>> for CsrOperator<S, M>
 where
     D: ComputeDevice + 'static,
-    V: DenseVectorOps<D, T> + RetainedReductions<D, T> + 'static,
+    V: DenseVectorOps<D, T> + 'static,
     S: SparseOperatorOps<D, T, Matrix = M>,
     T: RealField + Pod + eunomia::Pod,
 {

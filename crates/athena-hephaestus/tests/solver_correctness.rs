@@ -9,7 +9,7 @@ use athena_hephaestus::{CsrOperator, HephaestusBackend};
 use hephaestus_core::ComputeDevice;
 use hephaestus_wgpu::{GpuCsrMatrix, WgpuDevice, WgpuSparseOps, WgpuVectorOps};
 
-type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps, f32>;
+type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps<f32>, f32>;
 type Operator = CsrOperator<WgpuSparseOps, GpuCsrMatrix<f32>>;
 
 fn backend() -> Backend {

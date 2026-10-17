@@ -1,9 +1,7 @@
 use athena_core::{KrylovBackend, Preconditioner};
 use bytemuck::Pod;
 use eunomia::{NumericElement, RealField};
-use hephaestus_core::{
-    ComputeDevice, DenseVectorOps, DeviceBuffer, HephaestusError, Result, RetainedReductions,
-};
+use hephaestus_core::{ComputeDevice, DenseVectorOps, DeviceBuffer, HephaestusError, Result};
 
 use crate::HephaestusBackend;
 
@@ -64,7 +62,7 @@ impl<D: ComputeDevice, T: RealField + Pod + eunomia::Pod> Jacobi<D, T> {
 impl<D, V, T> Preconditioner<HephaestusBackend<D, V, T>> for Jacobi<D, T>
 where
     D: ComputeDevice + 'static,
-    V: DenseVectorOps<D, T> + RetainedReductions<D, T> + 'static,
+    V: DenseVectorOps<D, T> + 'static,
     T: RealField + Pod + eunomia::Pod,
 {
     /// `output = diagonal⁻¹ ⊙ residual`, one seam dispatch, entirely on device.

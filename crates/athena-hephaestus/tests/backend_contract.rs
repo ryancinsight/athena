@@ -13,7 +13,7 @@ use athena_hephaestus::{CsrOperator, HephaestusBackend};
 use hephaestus_core::{ComputeDevice, HephaestusError};
 use hephaestus_wgpu::{GpuCsrMatrix, WgpuDevice, WgpuSparseOps, WgpuVectorOps};
 
-type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps, f32>;
+type Backend = HephaestusBackend<WgpuDevice, WgpuVectorOps<f32>, f32>;
 type Operator = CsrOperator<WgpuSparseOps, GpuCsrMatrix<f32>>;
 
 fn backend_or_skip() -> Option<Backend> {
@@ -163,9 +163,9 @@ fn bicgstab_solves_a_nonsymmetric_system_on_device() {
 
 #[test]
 fn repeated_solves_reuse_the_retained_reductions() {
-    // The retained handles live in the workspace across solves. A second solve
-    // must reach the same answer through the same handles, which is the
-    // property the borrowing form could not provide.
+    // The prepared policies live in the workspace across solves. A second solve
+    // must reach the same answer through the same workspace, which is what
+    // keeps a solve allocation-free on the host side.
     let Some(backend) = backend_or_skip() else {
         return;
     };
