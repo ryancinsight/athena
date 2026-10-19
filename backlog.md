@@ -34,12 +34,42 @@
   green; fmt/clippy `--all-targets --all-features` clean; hosted CI green.
 
 <a id="athena-cg-simd-slices-20261019"></a>
-## ATHENA-CG-SIMD-SLICES-20261019 — Route CG vector updates through SIMD slice kernels [perf] — todo
+## ATHENA-CG-SIMD-SLICES-20261019 — Route vector updates through SIMD slice kernels [perf] — blocked
 
 - Priority: tightening;scope:`crates/athena-leto/src/backend/krylov.rs` only.
-- Outcome: `scale`/`axpy`/`residual` call `T::{scale_slice,axpy_slice,sub_slice}`
-  (SIMD-backed in leto-ops) instead of scalar loops; `fused_cg_update` and
-  `combine_direction` stay hand-rolled (no fused leto equivalent).
-- Needs: ATHENA-CG-BASELINE-20261019 merged (baseline medians to beat).
-- Acceptance: same convergence/iterations on both grids; median strictly below
-  baseline with non-overlapping CI; 136-test suite + strict gates green.
+- Blocked by ATHENA-GMRES-BREAKDOWN-TOLERANCE-20261019: SIMD `axpy` rounding
+  (FMA single-rounding vs scalar mul-then-add) leaves a ~1ulp residue where the
+  scalar loop cancels exactly, flipping the FGMRES oracle from `Breakdown` to
+  `MaxIterations` (proven: base passes, SIMD fails, 2026-10-19).
+- Corrected scope: CG's steady state calls `dot`/`norm` (already SIMD) plus
+  `fused_cg_update`/`combine_direction`/`copy`, never `axpy`/`scale`; this item
+  helps GMRES-family solvers only. CG work proceeds under
+  ATHENA-CG-PROFILE-20261019.
+- Needs: breakdown-tolerance fix merged; then same convergence/iterations on
+  both grids, GMRES-oracle green, 136-test suite + strict gates green.
+
+<a id="athena-gmres-breakdown-tolerance-20261019"></a>
+## ATHENA-GMRES-BREAKDOWN-TOLERANCE-20261019 — Tolerance-based Arnoldi breakdown detection [correctness] — todo
+
+- Priority: correctness;scope:`crates/athena-core/src/solver/gmres/` (`execution.rs` happy-breakdown check, `rotation.rs` zero-diagonal check).
+- Finding: breakdown is detected by exact `== ZERO` comparison, which holds for
+  one rounding order and fails for another equally valid one (scalar vs SIMD
+  `axpy`; any GPU backend faces the same fragility). Rank loss is a rounding-
+  level event and must be detected with an analytically derived tolerance
+  scaled to the orthogonalization (e.g. restart-relative machine-epsilon bound
+  against the pre-orthogonalization norm), never exact equality.
+- Acceptance: FGMRES oracle green under both scalar and SIMD evaluation;
+  full suite + strict gates green; tolerance derivation recorded in the
+  deciding commit/ADR.
+
+<a id="athena-cg-profile-20261019"></a>
+## ATHENA-CG-PROFILE-20261019 — Per-kernel CG cost breakdown before optimizing [perf] — todo
+
+- Priority: tightening;scope:measurement only, no production change.
+- Outcome: attribute the grid/128 13.475 ms median across matvec, dots/norms,
+  `fused_cg_update`, and `combine_direction` (targeted micro-benches or
+  instrumentation). Analytic estimate says ~56 us/iter at ~27 GB/s traffic, i.e.
+  plausibly memory-bound, which would make fusion (fewer traversals) the lever
+  and per-kernel SIMD a non-lever; verify before cutting any optimization.
+- Acceptance: recorded per-kernel shares + the derived next optimization with
+  its stop condition; no production-byte change in this item.
