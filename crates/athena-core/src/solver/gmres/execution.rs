@@ -270,6 +270,19 @@ where
     }
 
     fn orthogonalize(&mut self, column: usize) -> ExecutionResult<B, ArnoldiOutcome> {
+        // The breakdown scale: the norm of the vector entering
+        // orthogonalization, against which the post-projection residue is
+        // judged. Reuses the work allocation's prepared reduction.
+        let initial_norm = self
+            .backend
+            .norm_l2_prepared(
+                &self.workspace.work_norm,
+                self.backend.view(&self.workspace.work),
+            )
+            .map_err(SolveError::Backend)?;
+        if !initial_norm.is_finite() {
+            return Ok(ArnoldiOutcome::Failed(ScalarFailure::NonFinite));
+        }
         for row in 0..=column {
             let coefficient = self
                 .backend
@@ -305,7 +318,13 @@ where
         if !next_norm.is_finite() {
             return Ok(ArnoldiOutcome::Failed(ScalarFailure::NonFinite));
         }
-        if next_norm == B::Scalar::ZERO {
+        if next_norm
+            <= super::breakdown::arnoldi_breakdown_floor(
+                column + 1,
+                self.workspace.len(),
+                initial_norm,
+            )
+        {
             return Ok(ArnoldiOutcome::Ready {
                 happy_breakdown: true,
             });
