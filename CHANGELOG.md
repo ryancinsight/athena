@@ -19,6 +19,15 @@ All notable changes to Athena are documented in this file.
 
 ### Changed
 
+- Advance the locked Atlas provider graph to Eunomia 0.10.0, Mnemosyne 0.10.0
+  (arena 0.7.0), Leto/Leto-ops 0.46.0, and Hephaestus 0.22.1, following the
+  same pins Apollo's workspace resolves. The Hephaestus 0.22 seam genericized
+  `WgpuVectorOps<T>` and retired the `RetainedReductions` implementation, so
+  the Athena backend binds the one-shot `dot`/`norm_l2` reductions through
+  zero-sized prepared policies (the Leto backend's established form) instead
+  of owned retained handles; kernels still compile once in the operations
+  bundle. All-feature check, strict Clippy, 136/136 Nextest, doctests,
+  Rustdoc, and the ignored allocation suite pass.
 - Refresh the locked Atlas provider graph to Leto `2beb4f17`, Hermes
   `eb1a2f87`, Hephaestus `dc7b72c6`, Eunomia `88c685f2`, and their current
   Mnemosyne, Moirai, and Themis dependencies. The update is dependency-ordered
