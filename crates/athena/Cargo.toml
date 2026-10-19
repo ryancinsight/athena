@@ -49,6 +49,11 @@ name = "gmres_poisson"
 harness = false
 required-features = ["cpu"]
 
+[[bench]]
+name = "kernels"
+harness = false
+required-features = ["cpu"]
+
 [[example]]
 name = "poisson_cpu"
 required-features = ["cpu"]

@@ -73,3 +73,13 @@
   and per-kernel SIMD a non-lever; verify before cutting any optimization.
 - Acceptance: recorded per-kernel shares + the derived next optimization with
   its stop condition; no production-byte change in this item.
+- Measured 2026-10-19 (`kernels` bench, n=16384 medians): matvec_csr 39.8us,
+  fused_cg_update 8.5us, combine_direction 4.4us, residual 4.2us, axpy 3.7us,
+  scale 3.7us, copy 3.4us, dot 1.7us, norm_l2 1.4us. Per-iteration model
+  (1 matvec + 2 dots + 1 norm + 1 fused + 1 combine) = 57.6us, matching the
+  recorded 56.4us/iter baseline within 2%. Shares: matvec 69%, fused 15%,
+  combine 8%, dots+norm 8%. Next optimization: CSR SpMV (scalar row loop);
+  stop when it no longer dominates or a faster format is proven unnecessary.
+- Method note: absolute us drift ~20% across sessions on this host; ratios
+  within one run are the signal; A/B claims require back-to-back measurement
+  (as done for the -8-11% SIMD routing win).
