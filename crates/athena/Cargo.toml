@@ -32,11 +32,17 @@ athena-leto = { workspace = true, optional = true }
 athena-hephaestus = { workspace = true, optional = true }
 
 [dev-dependencies]
+criterion.workspace = true
 eunomia.workspace = true
 hephaestus-core.workspace = true
 hephaestus-wgpu.workspace = true
 leto.workspace = true
 leto-ops.workspace = true
+
+[[bench]]
+name = "cg_poisson"
+harness = false
+required-features = ["cpu"]
 
 [[example]]
 name = "poisson_cpu"

@@ -32,6 +32,7 @@ leto-ops = { version = ">=0.46.0, <0.48.0", git = "https://github.com/ryancinsig
 hephaestus-core = { version = "0.22.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false }
 hephaestus-wgpu = { version = "0.22.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false, features = ["sparse"] }
 bytemuck = { version = "1.25", features = ["derive"] }
+criterion = "0.8"
 
 [workspace.lints.rust]
 missing_docs = "deny"
