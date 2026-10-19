@@ -95,9 +95,7 @@ impl<T: RealScalar + RealField> KrylovBackend for LetoBackend<T> {
         mut target: Self::ViewMut<'_>,
         factor: Self::Scalar,
     ) -> Result<(), Self::Error> {
-        for value in contiguous_mut(&mut target)? {
-            *value *= factor;
-        }
+        T::scale_slice(contiguous_mut(&mut target)?, factor);
         Ok(())
     }
 
@@ -110,9 +108,7 @@ impl<T: RealScalar + RealField> KrylovBackend for LetoBackend<T> {
         let target = contiguous_mut(&mut target)?;
         let source = contiguous(&source)?;
         validate_lengths(target.len(), source.len())?;
-        for (target_value, &source_value) in target.iter_mut().zip(source.iter()) {
-            *target_value += factor * source_value;
-        }
+        T::axpy_slice(factor, source, target);
         Ok(())
     }
 
@@ -160,13 +156,7 @@ impl<T: RealScalar + RealField> KrylovBackend for LetoBackend<T> {
         let image = contiguous(&image)?;
         let residual = contiguous_mut(&mut residual)?;
         validate_three_lengths(right_hand_side.len(), image.len(), residual.len())?;
-        for ((out, &right), &mapped) in residual
-            .iter_mut()
-            .zip(right_hand_side.iter())
-            .zip(image.iter())
-        {
-            *out = right - mapped;
-        }
+        T::sub_slice(right_hand_side, image, residual);
         Ok(())
     }
 
