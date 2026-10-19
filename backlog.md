@@ -32,3 +32,14 @@
   4.7x work/iter, coherent with O(N) CG on 2D Poisson.
 - Acceptance: `cargo bench -p athena-krylov --bench cg_poisson --features cpu`
   green; fmt/clippy `--all-targets --all-features` clean; hosted CI green.
+
+<a id="athena-cg-simd-slices-20261019"></a>
+## ATHENA-CG-SIMD-SLICES-20261019 — Route CG vector updates through SIMD slice kernels [perf] — todo
+
+- Priority: tightening;scope:`crates/athena-leto/src/backend/krylov.rs` only.
+- Outcome: `scale`/`axpy`/`residual` call `T::{scale_slice,axpy_slice,sub_slice}`
+  (SIMD-backed in leto-ops) instead of scalar loops; `fused_cg_update` and
+  `combine_direction` stay hand-rolled (no fused leto equivalent).
+- Needs: ATHENA-CG-BASELINE-20261019 merged (baseline medians to beat).
+- Acceptance: same convergence/iterations on both grids; median strictly below
+  baseline with non-overlapping CI; 136-test suite + strict gates green.
