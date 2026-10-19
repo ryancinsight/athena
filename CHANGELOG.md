@@ -2,6 +2,15 @@
 
 All notable changes to Athena are documented in this file.
 
+## [0.3.1] - Unreleased
+
+### Changed
+
+- [patch] Admit Eunomia>=0.10,<0.12 and Leto/LetoOps>=0.46,<0.48,preserving current-provider support and all Rust
+  implementation/test/feature bytes. Current canonical lock and real typed
+  current/future consumer probes verify the bridge; final provider ordering,
+  exact-head review and hosted/publication gates remain required.
+
 ## [Unreleased]
 
 ### Fixed
