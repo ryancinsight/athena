@@ -58,26 +58,28 @@ restart widths. Final command logs and regression receipts are retained in
 the isolated review packet; hosted gates and independent review remain
 required before merge.
 
-Version0.3.2 is synchronized across four packages and internal minima.
-The local renewal requires Leto/LetoOps >=0.46.3,<0.48, excluding the published
-0.46.2 finite-range failure. Cargo generates a normal canonical Git lock at
-unmerged Leto #376; no path patch, manifest revision pin or downgrade is used.
-This is provisional compatibility evidence, not accepted/released dependency
-proof. Independent numerical/performance review, upstream publication and
-final default/published graph renewal remain prerequisites. Normal packaging
-must report an unavailable required version rather than use an older provider.
+Version 0.3.2 is synchronized across four packages and internal minima.
+The canonical requirements are Leto/LetoOps >=0.46.3,<0.48, excluding the
+published 0.46.2 finite-range failure. The normal Git lock selects merged
+Leto #376 `5051cd9577650a5712aa6a7effcd8955c9d8bcc7`; no product path patch,
+manifest revision pin or downgrade is used. Native 0.46.3 source/package/tag
+verification and a fresh registry-only consumer pass before this renewal.
+The provider's exact numerical/matched-performance acceptance is scoped to
+its native change. Historical cross-window absolute application performance,
+the unexplained slow run, and the private PyO3 advisory failures remain explicit.
 
-Hephaestus admission expands to >=0.22.2,<0.25 for its newly advanced public
-0.24 default. Other provider defaults remain current. The renewal preserves
-all Athena Rust implementation, test, benchmark and policy bytes relative to
-the reviewed numerical repair. Its material dependency delta needs renewed
-independent assessment; the earlier source review does not accept this graph.
-#125's CG profiling and benchmark ownership remain unchanged. Main publishes
-four pending packages and deploys book updates: assess that exact scope before
-merge; the isolated local preparation updates no owner branch and publishes
-nothing. Harmonia and all other release/service holds remain in force.
+Hephaestus admission is >=0.22.2,<0.25 and the canonical lock selects its
+current 0.24 default `746553d0091e4265111b5c674e724d4dea0323cc`. Athena uses
+DenseVectorOps/SparseOperatorOps rather than #505's removed fusion traits.
+Other provider defaults remain current. All 132 Athena Rust implementation,
+test and benchmark files match reviewed numerical source C9 byte for byte;
+no timeout, policy, feature, assertion or benchmark input changes. This
+material dependency delta needs affected independent review. Earlier matched
+Leto application timings use Hephaestus 0.23 and do not accept the 0.24 cohort.
 
-Hephaestus #505 advances the current default to 0.24 with consolidated fusion
-traits. Athena uses DenseVectorOps/SparseOperatorOps, not the removed fusion
-traits. This local admission and lock renewal require current-cohort tests and
-material delta review; earlier matched Leto performance data stays on 0.23.
+Normal final-head native/mandatory-accelerator, allocation, API, package,
+MSRV, supply-chain and source gates must pass; publication is not inferred
+from local Git builds. #125's CG profiling/benchmark ownership is preserved.
+Athena main automatically publishes four pending packages and may deploy
+book updates; assess that exact scope and affected review before its lifecycle.
+No Athena merge/publication or other owner's release/service hold is cleared.

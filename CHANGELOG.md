@@ -19,8 +19,9 @@ All notable changes to Athena are documented in this file.
 ### Changed
 
 - Require Leto/LetoOps >=0.46.3,<0.48 to exclude the 0.46.2 finite-range
-  regression. This local renewal selects the unpublished Leto #376 candidate;
-  independent acceptance, publication and final graph renewal remain gates.
+  regression. The canonical lock selects merged/published Leto #376 at
+  5051cd9; native 0.46.3 registry source and fresh consumers are verified.
+  Athena dependency-delta review and lifecycle gates remain required.
 - Admit Hephaestus >=0.22.2,<0.25 and test its current 0.24 public default.
   Preserve Mnemosyne memory0.10.1/arena0.7.1 and synchronized internal0.3.2
   minima. No Rust implementation/test/policy bytes change in this renewal.

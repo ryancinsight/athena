@@ -30,3 +30,8 @@ the true residual is recomputed. Full-rank arithmetic remains unchanged.
 `docs/verification/gmres-rank-recovery.md` records the analytical oracle and
 scope. Exact-head review, final hosted gates and publication-scope assessment
 remain merge requirements; the separate Harmonia performance hold persists.
+
+The canonical dependency renewal selects published Leto/LetoOps 0.46.3 and
+current Hephaestus 0.24 without changing the reviewed Rust source. Native
+provider acceptance does not clear Athena's affected graph, whole-cohort or
+absolute application-performance review. Lifecycle remains held.
