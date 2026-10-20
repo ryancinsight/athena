@@ -173,15 +173,10 @@ impl<T: RealScalar + RealField> KrylovBackend for LetoBackend<T> {
         let residual = contiguous_mut(&mut residual)?;
         let image = contiguous(&image)?;
         validate_four_lengths(solution.len(), direction.len(), residual.len(), image.len())?;
-        for (((solution_value, &direction_value), residual_value), &image_value) in solution
-            .iter_mut()
-            .zip(direction.iter())
-            .zip(residual.iter_mut())
-            .zip(image.iter())
-        {
-            *solution_value += alpha * direction_value;
-            *residual_value -= alpha * image_value;
-        }
+        // One SIMD-width traversal for both updates (Hermes `axpy_pair`
+        // via leto `Scalar::axpy_pair_slice`); each element is one `fmadd`,
+        // the same rounding the backend's dot/axpy kernels already use.
+        T::axpy_pair_slice(alpha, direction, solution, -alpha, image, residual);
         Ok(())
     }
 

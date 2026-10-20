@@ -4,6 +4,15 @@ All notable changes to Athena are documented in this file.
 
 ## [0.3.2] - Unreleased
 
+### Performance
+
+- [patch] Route the Leto backend's fused CG update through leto
+  0.46.4 `Scalar::axpy_pair_slice` (Hermes `axpy_pair` SIMD kernel):
+  one traversal, one `fmadd` per element, 29% faster on the
+  `kernels` bench at grid/128 with identical CG iteration counts.
+  Requires leto/leto-ops >=0.46.4. Diagnosis:
+  `docs/verification/fused-update.md`.
+
 ### Fixed
 
 - [patch] Recover rank-deficient GMRES reduced least squares with column

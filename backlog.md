@@ -2,21 +2,21 @@
 
 Active patch target: **0.3.2**.
 
-<a id="athena-fused-update-20261020"></a>
-## ATHENA-FUSED-UPDATE-20261020 — Next CG lever: fused vector update [perf] — todo
+<a id="athena-combine-direction-20261020"></a>
+## ATHENA-COMBINE-DIRECTION-20261020 — Next CG lever: direction combine [perf] — todo
 
-- Priority: tightening;scope:measurement + optimization of the update path.
-- Evidence: the stencil cut (#130) moved grid/128 per-iteration cost from
-  54.9us to ~27.1us; new shares are matvec 40%, fused_cg_update 31%
-  (8.3us), combine_direction 15%, dots+norm 14%. The matvec no longer
-  dominates alone — the fused update is the co-leader.
-- Outcome: profile the fused update (memory traffic vs L3 ceiling,
-  SIMD coverage), then cut the derived optimization back-to-back
-  against the `kernels` bench.
-- Acceptance: recorded diagnosis + measured win with the same
-  convergence/iterations; tests + strict gates + hosted CI green.
-- Stop: land once the update no longer co-leads or a faster form is
-  proven unnecessary; file the next profiled leader in turn.
+- priority: tightening; scope: `crates/athena-leto/src/backend/krylov.rs`
+  `combine_direction`, upstream hermes/leto slice surface.
+- Evidence: after ATHENA-FUSED-UPDATE-20261020 landed the SIMD
+  `axpy_pair_slice` route (`docs/verification/fused-update.md`),
+  `combine_direction` (`p = z + βp`, 15% recorded share) remains the
+  only scalar-loop update in the Leto backend; dots+norm sits at 14%.
+- Outcome: an `axpby`-form generic slice kernel (hermes → leto
+  `Scalar`) consumed by `combine_direction`, one SIMD traversal,
+  bit-identical per-element `fmadd` order recorded against the
+  current two-rounding scalar form.
+- Acceptance: recorded diagnosis + measured win on the `kernels`
+  bench back-to-back, same CG iterations, strict gates + hosted CI.
 
 <a id="athena-gmres-rank-recovery-20261020"></a>
 ## ATHENA-GMRES-RANK-RECOVERY-20261020 — Reduced LS and checked telemetry [patch] — blocked
