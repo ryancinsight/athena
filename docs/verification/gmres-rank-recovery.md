@@ -67,8 +67,8 @@ proof. Independent numerical/performance review, upstream publication and
 final default/published graph renewal remain prerequisites. Normal packaging
 must report an unavailable required version rather than use an older provider.
 
-Hephaestus admission expands to >=0.22.2,<0.24 for its newly advanced public
-0.23 default. Other provider defaults remain current. The renewal preserves
+Hephaestus admission expands to >=0.22.2,<0.25 for its newly advanced public
+0.24 default. Other provider defaults remain current. The renewal preserves
 all Athena Rust implementation, test, benchmark and policy bytes relative to
 the reviewed numerical repair. Its material dependency delta needs renewed
 independent assessment; the earlier source review does not accept this graph.
@@ -76,3 +76,8 @@ independent assessment; the earlier source review does not accept this graph.
 four pending packages and deploys book updates: assess that exact scope before
 merge; the isolated local preparation updates no owner branch and publishes
 nothing. Harmonia and all other release/service holds remain in force.
+
+Hephaestus #505 advances the current default to 0.24 with consolidated fusion
+traits. Athena uses DenseVectorOps/SparseOperatorOps, not the removed fusion
+traits. This local admission and lock renewal require current-cohort tests and
+material delta review; earlier matched Leto performance data stays on 0.23.
