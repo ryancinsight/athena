@@ -62,3 +62,8 @@ this<0.12 ceiling. Rebase the law0.4/binding0.2 candidate after bridge140 and
 regenerate/review its coherent final lock. No old-version pin or permanent
 workaround replaces that rollout. This PR carries no merge/publication action.
 Harmonia's separate numerical performance acceptance hold remains explicit.
+
+The local lock is renewed to the fixed-group provider candidate `b3d744a91f331061d0e3eb40b5126cc1fa7782c2`.
+This head preserves the accepted arithmetic but requires renewed independent
+review. The provider remains unpublished and unmerged; this preparation does
+not clear either lifecycle hold or authorize an owner-branch update.
