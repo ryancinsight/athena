@@ -42,20 +42,22 @@ Active patch target: **0.3.2**.
 - [ ] Coordinate final canonical provider ordering;retain actual publication/auth holds.
 - Basis:`docs/verification/provider-range-bridge.md`;no older source pin or policy exception.
 
-<a id="athena-cg-spmv-followup-20261020"></a>
-## ATHENA-CG-SPMV-FOLLOWUP-20261020 — Next CG lever after the SpMV unroll [perf] — todo
+<a id="athena-matrixfree-eval-20261020"></a>
+## ATHENA-MATRIXFREE-EVAL-20261020 — Matrix-free stencil matvec evaluation [perf] — todo
 
-- Priority: tightening;scope:measurement + routing decision only.
-- Evidence: leto #375 unrolled the CSR gather-dot (4 accumulators,
-  back-to-back -8-12% on banded-7); re-measured 2026-10-20 (`kernels`
-  bench, n=16384 medians): matvec_csr 37.5us, fused 8.3us, combine 4.2us,
-  residual 4.3us, axpy 3.7us, scale 3.4us, copy 3.4us, dot 1.7us,
-  norm_l2 1.4us. Per-iteration model = 54.9us; matvec share 68%, still
-  dominant. `cg_poisson` re-measured green: grid/64 1.297ms, grid/128
-  11.224ms (both beat the recorded baseline).
-- Outcome: route the next lever — leto LETO-CSR-INDEX-WIDTH-2026-09-27
-  (u32 indices halve SpMV index traffic) is the standing candidate;
-  confirm the memory-bound diagnosis first (traffic vs measured
-  bandwidth), else derive the alternative.
-- Acceptance: a measured bound diagnosis + the next optimization item
-  with its stop condition; no production-byte change in this item.
+- Priority: tightening;scope:measurement spike + design note only.
+- Evidence (bound diagnosis, leto `spmv/banded7` 2026-10-20):
+  n=4096 10.0us (55 GB/s, cache), n=65536 168us (53 GB/s, L3),
+  n=1M 6.20ms (20.6 GB/s effective on 128 MB traffic, DRAM). At DRAM
+  sizes SpMV rides a large fraction of attainable single-thread
+  bandwidth, so leto LETO-CSR-INDEX-WIDTH (u32 halves the 50% index
+  share) is the correct DRAM-regime vehicle — no athena item needed.
+  At grid/128 (1.7 MB « LLC) the matvec runs ~10 cycles/row against an
+  L3 ceiling several times higher: latency-bound, and u32 indices are
+  not its lever.
+- Outcome: spike a matrix-free 5-point stencil matvec against the CSR
+  path back-to-back (traffic drops ~5x: no values/indices/gather),
+  with the backend-seam design (operator trait vs assembled matrix)
+  recorded before any production cut.
+- Acceptance: back-to-back numbers + the seam design decision with its
+  stop condition; no production-byte change in this item.
