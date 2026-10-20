@@ -17,6 +17,9 @@ Active patch target: **0.3.2**.
   package/dependency and performance checks; record results in the draft PR.
 - [ ] Obtain exact-head independent review and all applicable hosted gates
   before merge. Main's automatic four-package publication needs scope review.
+- [ ] Renew the repaired Leto >=0.46.3 floor and current Hephaestus admission;
+  local unpublished-candidate compatibility is provisional. Revalidate the
+  accepted/default/published graph and renew affected independent review.
 - Basis: `docs/verification/gmres-rank-recovery.md`.
 - Harmonia performance and all other release/service holds remain separate.
 

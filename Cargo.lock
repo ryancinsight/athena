@@ -605,8 +605,8 @@ dependencies = [
 
 [[package]]
 name = "hephaestus-core"
-version = "0.22.2"
-source = "git+https://github.com/ryancinsight/hephaestus.git#0ba92ddc12b80fc355491ddbcbb7a8a326e1a40b"
+version = "0.23.0"
+source = "git+https://github.com/ryancinsight/hephaestus.git#5d33c9c3b582ed23dc02c560ef7d46558f68c25c"
 dependencies = [
  "aequitas",
  "eunomia",
@@ -617,8 +617,8 @@ dependencies = [
 
 [[package]]
 name = "hephaestus-wgpu"
-version = "0.22.2"
-source = "git+https://github.com/ryancinsight/hephaestus.git#0ba92ddc12b80fc355491ddbcbb7a8a326e1a40b"
+version = "0.23.0"
+source = "git+https://github.com/ryancinsight/hephaestus.git#5d33c9c3b582ed23dc02c560ef7d46558f68c25c"
 dependencies = [
  "eunomia",
  "futures",
@@ -730,8 +730,8 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "leto"
-version = "0.46.1"
-source = "git+https://github.com/ryancinsight/leto.git#7fd6256fd6445802b2df4af86943c518fa799178"
+version = "0.46.3"
+source = "git+https://github.com/ryancinsight/leto.git#3ebe92c1574d67c210f6943f8ae1327df27375b3"
 dependencies = [
  "aequitas",
  "eunomia",
@@ -742,8 +742,8 @@ dependencies = [
 
 [[package]]
 name = "leto-ops"
-version = "0.46.1"
-source = "git+https://github.com/ryancinsight/leto.git#7fd6256fd6445802b2df4af86943c518fa799178"
+version = "0.46.3"
+source = "git+https://github.com/ryancinsight/leto.git#3ebe92c1574d67c210f6943f8ae1327df27375b3"
 dependencies = [
  "eunomia",
  "hermes-simd",

@@ -59,9 +59,20 @@ the isolated review packet; hosted gates and independent review remain
 required before merge.
 
 Version0.3.2 is synchronized across four packages and internal minima.
-Provider patch floors admit the currently published coherent versions;
-no dependency downgrade or branch/revision pin is introduced. #125's CG
-profiling records and production ownership are preserved. Main automatically
-publishes pending crate versions and deploys book updates: assess the exact
-four-package release scope before merge; this draft itself publishes none.
-Harmonia's performance acceptance and all other release/service holds remain.
+The local renewal requires Leto/LetoOps >=0.46.3,<0.48, excluding the published
+0.46.2 finite-range failure. Cargo generates a normal canonical Git lock at
+unmerged Leto #376; no path patch, manifest revision pin or downgrade is used.
+This is provisional compatibility evidence, not accepted/released dependency
+proof. Independent numerical/performance review, upstream publication and
+final default/published graph renewal remain prerequisites. Normal packaging
+must report an unavailable required version rather than use an older provider.
+
+Hephaestus admission expands to >=0.22.2,<0.24 for its newly advanced public
+0.23 default. Other provider defaults remain current. The renewal preserves
+all Athena Rust implementation, test, benchmark and policy bytes relative to
+the reviewed numerical repair. Its material dependency delta needs renewed
+independent assessment; the earlier source review does not accept this graph.
+#125's CG profiling and benchmark ownership remain unchanged. Main publishes
+four pending packages and deploys book updates: assess that exact scope before
+merge; the isolated local preparation updates no owner branch and publishes
+nothing. Harmonia and all other release/service holds remain in force.
