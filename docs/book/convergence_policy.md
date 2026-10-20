@@ -56,8 +56,10 @@ stop. See [Example: Convergence Policy](examples/convergence_policy.md).
 ## Estimated and true residuals
 
 Some methods carry a residual estimate that falls out of the recurrence for
-free. GMRES is the clearest case: its Givens rotations leave the norm of the
-minimised residual sitting in a scalar, at no extra cost. Trusting it is
+free. GMRES is the clearest case: for a full-column-rank reduced factor,
+its Givens rotations leave the norm of the minimised residual in a scalar.
+A deficient factor can have inconsistent zero rows, so its final transformed
+component alone is insufficient. Trusting it is
 tempting and wrong. The estimate is the residual of the *recurrence*, which
 drifts from the residual of the *system* as rounding accumulates, and the drift
 is in the optimistic direction — the estimate keeps falling after the true
@@ -69,6 +71,10 @@ recomputing costs an extra operator application and, on a GPU, a
 device-to-host synchronisation to read the scalar back, so it is done at
 restart boundaries and at prospective convergence rather than every iteration.
 The `check_interval` on the policy exposes that trade to the caller.
+
+GMRES observers receive recurrence estimates inside a cycle and the explicitly
+checked original residual at terminal cycle checks. A breakdown does not emit
+an impossible zero estimate before the checked nonzero residual.
 
 ## When the residual stops falling
 

@@ -20,6 +20,9 @@
 //! undefined behavior inside `mnemosyne-local` itself (MN-LOCAL-MIRI-UB), which
 //! would mask a defect in the code under test.
 
+#[path = "allocation/gmres_rank.rs"]
+mod gmres_rank;
+
 use athena_core::{
     BiCgStab, BiCgStabWorkspace, Cg, CgWorkspace, ConvergencePolicy, DeflatedOperator,
     DeflationSubspace, Gmres, GmresWorkspace, Identity, KrylovBackend, LinearOperator,

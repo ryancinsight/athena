@@ -8,7 +8,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 rust-version = "1.95"
 authors = ["Ryan Clanton <ryanclanton@outlook.com>"]
@@ -19,18 +19,19 @@ repository = "https://github.com/ryancinsight/athena"
 publish = true
 
 [workspace.dependencies]
-athena-core = { path = "crates/athena-core", version = "0.3.1" }
-athena-hephaestus = { path = "crates/athena-hephaestus", version = "0.3.1" }
-athena-leto = { path = "crates/athena-leto", version = "0.3.1" }
-mnemosyne = { package = "mnemosyne-memory", version = "0.10.0", git = "https://github.com/ryancinsight/Mnemosyne.git", features = ["eunomia"] }
-mnemosyne-arena = { version = "0.7.0", git = "https://github.com/ryancinsight/Mnemosyne.git", features = ["eunomia"] }
+athena-core = { path = "crates/athena-core", version = "0.3.2" }
+athena-hephaestus = { path = "crates/athena-hephaestus", version = "0.3.2" }
+athena-leto = { path = "crates/athena-leto", version = "0.3.2" }
+mnemosyne = { package = "mnemosyne-memory", version = "0.10.1", git = "https://github.com/ryancinsight/Mnemosyne.git", features = ["eunomia"] }
+mnemosyne-arena = { version = "0.7.1", git = "https://github.com/ryancinsight/Mnemosyne.git", features = ["eunomia"] }
 
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std"] }
 eunomia = { version = ">=0.10.0, <0.12.0", git = "https://github.com/ryancinsight/eunomia", default-features = false }
-leto = { version = ">=0.46.0, <0.48.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
-leto-ops = { version = ">=0.46.0, <0.48.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
-hephaestus-core = { version = "0.22.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false }
-hephaestus-wgpu = { version = "0.22.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false, features = ["sparse"] }
+leto = { version = ">=0.46.3, <0.48.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
+leto-ops = { version = ">=0.46.3, <0.48.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
+hephaestus-core = { version = ">=0.22.2, <0.26.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false }
+hephaestus-wgpu = { version = ">=0.22.2, <0.26.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false, features = ["sparse"] }
 bytemuck = { version = "1.25", features = ["derive"] }
 criterion = "0.8"
 

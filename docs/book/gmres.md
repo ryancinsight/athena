@@ -53,7 +53,8 @@ becomes a small least-squares problem in \\(y\\):
 Its size is \\((k+1) \times k\\), independent of \\(n\\), and Athena solves it by
 applying a Givens rotation per column to reduce \\(\bar H_k\\) to triangular
 form. The rotations are applied as each column arrives, so the factorisation is
-maintained incrementally, and the last transformed right-hand side entry is
+maintained incrementally. When the reduced factor has full column rank,
+the last transformed right-hand side entry is
 \\(\\|r_k\\|\\) for free — which is the residual estimate the
 [Convergence Policy](convergence_policy.md) chapter warns against trusting on
 its own.
@@ -66,11 +67,38 @@ rate proportional to \\(\kappa^2\\), modified at a rate proportional to
 overflow that evaluating \\(\sqrt{a^2 + b^2}\\) directly would produce for large
 \\(a\\) or \\(b\\).
 
-There is one clean exit. If \\(h_{j+1,j}\\) is exactly zero, \\(w\\) lay entirely
-in the space already built: the Krylov space is invariant, no further basis
-vector exists, and the current iterate is the exact solution within it. This is
-a *happy* breakdown, and Athena reports it as `Termination::Breakdown` with a
-converged residual.
+### Rank loss and the returned correction
+
+An exact zero Arnoldi subdiagonal means the generated space is invariant.
+For a nonsingular operator this can finish the solve; for a singular or
+inconsistent problem, invariance does not imply a zero residual. Athena uses
+rounding-level *statistical estimates* to classify near-breakdown, not exact
+rank certificates or deterministic worst-case bounds. Correlated rounding can
+exceed square-root accumulation, and the factor-two heuristic margin does not
+turn that model into a guarantee.
+
+The ordinary full-rank factor is solved by the unchanged triangular path.
+If a pivot is classified as small, column-pivoted QR of the reduced factor
+retains off-diagonal range information and returns a **basic least-squares
+correction** for the numerically rank-truncated factor: the free *permuted*
+coordinates are zero. This is not a minimum-coefficient-norm promise. A
+minimum-norm coefficient vector would require additional right orthogonal
+transformations or an SVD; with a flexible, nonorthonormal preconditioned basis,
+it would not by itself imply a minimum-norm physical solution either.
+
+A small unpivoted diagonal alone is insufficient. For example,
+`A=[[δ,0,1],[δ,0,1],[0,1,0]]`, `b=e1`, and nonzero `δ` generate the three
+coordinate basis vectors before exact rank loss. The nonzero singular values
+remain order one even when `δ` is tiny. Independently discarding the first
+and last coefficients loses a reachable residual reduction; column pivoting
+retains the last column carrying that range.
+
+The final transformed component alone is not a residual norm for a deficient
+factor: an inconsistent zero row contributes too. Terminal-cycle observer
+samples are therefore deferred until the correction and explicit `b-Ax`
+residual are available. Athena reports `Converged` only if that checked norm
+meets the policy; otherwise a broken-down cycle reports `Breakdown` with its
+finite, possibly nonzero residual.
 
 ## Restarting
 
@@ -166,7 +194,7 @@ Gmres<B, RESTART>              zero-sized marker; RESTART is the cycle width
 GmresWorkspace<B, RESTART>     two vector blocks, residual and work vectors,
                                a packed (RESTART+1) × RESTART Hessenberg
                                matrix, Givens rotations, transformed residual
-                               coordinates, backsolve coefficients, and one
+                               coordinates, backsolve coefficients, permutation scratch, and one
                                prepared dot plan per basis vector
 ```
 

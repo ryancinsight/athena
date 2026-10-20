@@ -1,6 +1,6 @@
 # Current/future provider compatibility bridge [patch]
 
-Target:0.3.1. Widen only Eunomia>=0.10,<0.12 and Leto/LetoOps>=0.46,<0.48; retain current lower bounds,
+Initial 0.3.1 bridge: widen only Eunomia>=0.10,<0.12 and Leto/LetoOps>=0.46,<0.48; retain current lower bounds,
 canonical Git sources,feature selections and every Rust implementation/test.
 No adapter,compatibility alias,path patch,branch/rev pin,CI change or gate/limit
 reduction is proposed. Athena's regenerated lock also replaces inherited
@@ -62,3 +62,15 @@ this<0.12 ceiling. Rebase the law0.4/binding0.2 candidate after bridge140 and
 regenerate/review its coherent final lock. No old-version pin or permanent
 workaround replaces that rollout. This PR carries no merge/publication action.
 Harmonia's separate numerical performance acceptance hold remains explicit.
+
+## Current 0.3.2 canonical repair graph
+
+Leto/LetoOps now require >=0.46.3,<0.48 and select merged/public 0.46.3 from
+`5051cd9577650a5712aa6a7effcd8955c9d8bcc7`. Registry source, native tags and
+fresh external consumers are verified. Hephaestus admits >=0.22.2,<0.26 and
+selects current 0.25 default. All provider sources remain canonical; no product
+path patch, revision pin, downgrade or Rust/feature/policy edit occurs. This
+supersedes the initial bridge's admission of defective 0.46.2. The affected
+Athena graph still needs independent review and lifecycle checks; it does not
+inherit whole-cohort/absolute performance acceptance from native Leto review.
+The future Eunomia/Aequitas/FFI cohort and all existing holds remain separate.

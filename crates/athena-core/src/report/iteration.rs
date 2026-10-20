@@ -4,14 +4,15 @@
 pub struct IterationState<T> {
     /// One-based iteration number.
     pub iteration: usize,
-    /// Current Euclidean residual norm.
+    /// Current residual norm. GMRES uses its recurrence estimate inside a
+    /// cycle and the explicitly recomputed norm at terminal cycle checks.
     pub residual_norm: T,
     /// Effective convergence threshold.
     pub threshold: T,
 }
 
 impl<T> IterationState<T> {
-    /// Construct one checked residual sample.
+    /// Construct one solver residual sample.
     ///
     /// # Examples
     ///
