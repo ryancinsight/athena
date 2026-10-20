@@ -21,8 +21,8 @@
 //! [`CgWorkspace`]: `athena::CgWorkspace`
 
 use athena::{
-    Cg, CgWorkspace, ConvergencePolicy, Identity, Termination,
-    cpu::{CsrOperator, LetoBackend},
+    Cg, CgWorkspace, ConvergencePolicy, Identity, LinearOperator, Termination,
+    cpu::{CsrOperator, LetoBackend, PoissonStencilOperator},
 };
 use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use leto::Array1;
@@ -70,23 +70,18 @@ fn poisson_2d(grid: usize) -> CsrMatrix<f64> {
 }
 
 /// Everything a sample needs except its fresh solution vector.
-struct Case {
+struct Case<O> {
     backend: LetoBackend<f64>,
-    operator: CsrOperator<f64>,
+    operator: O,
     right_hand_side: Array1<f64>,
     workspace: CgWorkspace<LetoBackend<f64>>,
     policy: ConvergencePolicy<f64>,
     unknowns: usize,
 }
 
-fn build_case(grid: usize) -> Case {
+fn build_case<O>(grid: usize, operator: O) -> Case<O> {
     let unknowns = grid * grid;
     let backend = LetoBackend::<f64>::default();
-    let matrix = poisson_2d(grid);
-    let operator = match CsrOperator::new(matrix) {
-        Ok(operator) => operator,
-        Err(error) => panic!("pinned Poisson operator rejected: {error:?}"),
-    };
     let right_hand_side = match Array1::from_shape_vec([unknowns], vec![1.0; unknowns]) {
         Ok(rhs) => rhs,
         Err(error) => panic!("pinned right-hand side rejected: {error:?}"),
@@ -109,36 +104,56 @@ fn build_case(grid: usize) -> Case {
     }
 }
 
+fn bench_grid<O: LinearOperator<LetoBackend<f64>>>(
+    group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
+    name: &str,
+    grid: usize,
+    mut case: Case<O>,
+) {
+    let elements = match u64::try_from(case.unknowns) {
+        Ok(elements) => elements,
+        Err(error) => panic!("grid {grid} exceeds the throughput counter: {error:?}"),
+    };
+    group.throughput(Throughput::Elements(elements));
+    group.bench_with_input(BenchmarkId::new(name, grid), &grid, |bencher, _| {
+        bencher.iter_batched(
+            || Array1::zeros([case.unknowns]),
+            |mut solution| {
+                let report = match Cg::<LetoBackend<f64>>::solve_into(
+                    &case.backend,
+                    &case.operator,
+                    &Identity,
+                    &case.right_hand_side,
+                    &mut solution,
+                    &mut case.workspace,
+                    case.policy,
+                ) {
+                    Ok(report) => report,
+                    Err(error) => panic!("benchmarked solve failed: {error:?}"),
+                };
+                assert_eq!(report.termination, Termination::Converged);
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+
 fn cg_poisson(criterion: &mut Criterion) {
     let mut group = criterion.benchmark_group("cg_poisson_cpu");
     for grid in GRIDS {
-        let mut case = build_case(grid);
-        let elements = match u64::try_from(case.unknowns) {
-            Ok(elements) => elements,
-            Err(error) => panic!("grid {grid} exceeds the throughput counter: {error:?}"),
+        // CSR keeps the historical `grid` ids so the recorded baseline
+        // series continues uninterrupted.
+        let matrix = poisson_2d(grid);
+        let csr = match CsrOperator::new(matrix) {
+            Ok(operator) => operator,
+            Err(error) => panic!("pinned Poisson operator rejected: {error:?}"),
         };
-        group.throughput(Throughput::Elements(elements));
-        group.bench_with_input(BenchmarkId::new("grid", grid), &grid, |bencher, _| {
-            bencher.iter_batched(
-                || Array1::zeros([case.unknowns]),
-                |mut solution| {
-                    let report = match Cg::<LetoBackend<f64>>::solve_into(
-                        &case.backend,
-                        &case.operator,
-                        &Identity,
-                        &case.right_hand_side,
-                        &mut solution,
-                        &mut case.workspace,
-                        case.policy,
-                    ) {
-                        Ok(report) => report,
-                        Err(error) => panic!("benchmarked solve failed: {error:?}"),
-                    };
-                    assert_eq!(report.termination, Termination::Converged);
-                },
-                BatchSize::SmallInput,
-            );
-        });
+        bench_grid(&mut group, "grid", grid, build_case(grid, csr));
+        let stencil = match PoissonStencilOperator::<f64>::new(grid) {
+            Ok(operator) => operator,
+            Err(error) => panic!("pinned Poisson stencil rejected: {error:?}"),
+        };
+        bench_grid(&mut group, "stencil-grid", grid, build_case(grid, stencil));
     }
     group.finish();
 }

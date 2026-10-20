@@ -44,6 +44,11 @@ pub enum LetoBackendError {
         /// Requested length of each vector.
         len: usize,
     },
+    /// A stencil grid's `grid × grid` unknowns exceed the addressable range.
+    GridExtentOverflow {
+        /// Requested lattice width.
+        grid: usize,
+    },
 }
 
 impl From<leto::LetoError> for LetoBackendError {
@@ -77,6 +82,10 @@ impl fmt::Display for LetoBackendError {
             Self::BlockExtentOverflow { count, len } => write!(
                 formatter,
                 "vector block of {count} x {len} elements exceeds the addressable range"
+            ),
+            Self::GridExtentOverflow { grid } => write!(
+                formatter,
+                "stencil grid of {grid} x {grid} unknowns exceeds the addressable range"
             ),
         }
     }

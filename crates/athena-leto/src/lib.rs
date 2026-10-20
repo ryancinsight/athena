@@ -25,7 +25,8 @@ pub use backend::{LetoBackend, LetoVectorBlock};
 pub use error::LetoBackendError;
 pub use krylov::KrylovWorkspace;
 pub use operator::{
-    BorrowedCsrOperator, BorrowedDenseOperator, CsrOperator, RectangularCsrOperator,
+    BorrowedCsrOperator, BorrowedDenseOperator, CsrOperator, PoissonStencilOperator,
+    RectangularCsrOperator,
 };
 pub use preconditioner::{
     AMGConfig, AMGHierarchy, AMGStatistics, AlgebraicDistances, AlgebraicMultigrid,
