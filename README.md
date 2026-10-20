@@ -52,6 +52,18 @@ in exact arithmetic. The general coefficients use the bounded inverse centre
 centre for zero-width or narrow intervals. Reports always check the updated
 iterate before preparing another step.
 
+## Rank-deficient GMRES
+
+The full-rank reduced factor uses ordinary triangular back-substitution.
+Numerical rank loss switches to in-place column-pivoted QR with permutation
+scratch prepared in the workspace, preserving warm-solve allocation freedom.
+It returns a basic least-squares correction for the rank-truncated factor,
+without promising minimum coefficient or physical solution norm. The rank
+cutoff is a statistical numerical policy, not a worst-case rank certificate.
+Terminal-cycle telemetry and termination use the recomputed original residual;
+inner-cycle telemetry can use the recurrence estimate. See the [GMRES
+chapter](docs/book/gmres.md) for the attainable rank-deficient example.
+
 ## Ownership boundary
 
 Athena owns:

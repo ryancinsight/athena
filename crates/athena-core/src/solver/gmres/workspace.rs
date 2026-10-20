@@ -30,6 +30,7 @@ pub struct GmresWorkspace<B: KrylovBackend, const RESTART: usize> {
     pub(super) sine: Vec<B::Scalar>,
     pub(super) transformed_residual: Vec<B::Scalar>,
     pub(super) coefficients: Vec<B::Scalar>,
+    pub(super) permutation: Vec<usize>,
     len: usize,
 }
 
@@ -83,6 +84,7 @@ impl<B: KrylovBackend, const RESTART: usize> GmresWorkspace<B, RESTART> {
             sine: vec![B::Scalar::ZERO; RESTART],
             transformed_residual: vec![B::Scalar::ZERO; basis_len],
             coefficients: vec![B::Scalar::ZERO; RESTART],
+            permutation: vec![0; RESTART],
             len,
         })
     }

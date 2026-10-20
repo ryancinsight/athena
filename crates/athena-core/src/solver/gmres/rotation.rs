@@ -1,12 +1,17 @@
 use eunomia::RealField;
 
-use super::super::rotation::ScalarFailure;
+use super::super::rotation::{ScalarFailure, givens};
+
+mod rank_deficient;
+#[cfg(test)]
+mod tests;
 use super::breakdown::singular_pivot_floor;
 
 pub(super) fn back_substitute<T: RealField, const RESTART: usize>(
-    hessenberg: &[T],
-    transformed_residual: &[T],
+    hessenberg: &mut [T],
+    transformed_residual: &mut [T],
     coefficients: &mut [T],
+    permutation: &mut [usize],
     count: usize,
 ) -> Result<(), ScalarFailure> {
     // The factor's own pivot scale, against which singularity is judged. A
@@ -33,15 +38,21 @@ pub(super) fn back_substitute<T: RealField, const RESTART: usize>(
         if !value.is_finite() || !diagonal.is_finite() {
             return Err(ScalarFailure::NonFinite);
         }
-        // Truncated triangular solve: a pivot at the rounding level of the
-        // factor carries no invertible information, so its direction is
-        // dropped — the minimum-norm least-squares solution of the
-        // rank-deficient factor — instead of dividing by rounding noise.
-        coefficients[row] = if diagonal.abs() <= pivot_floor {
-            T::ZERO
-        } else {
-            value / diagonal
-        };
+        // A small unpivoted diagonal is not a rank certificate: an
+        // off-diagonal column may still span a well-conditioned direction.
+        // Preserve the ordinary arithmetic when every pivot is usable;
+        // recover a basic reduced LS correction through column pivoting only
+        // when this fast path encounters numerical rank loss.
+        if diagonal.abs() <= pivot_floor {
+            return rank_deficient::solve::<T, RESTART>(
+                hessenberg,
+                transformed_residual,
+                coefficients,
+                permutation,
+                count,
+            );
+        }
+        coefficients[row] = value / diagonal;
         if !coefficients[row].is_finite() {
             return Err(ScalarFailure::NonFinite);
         }

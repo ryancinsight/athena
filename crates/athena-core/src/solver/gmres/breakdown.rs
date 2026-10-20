@@ -1,46 +1,21 @@
 use eunomia::RealField;
 
-/// Rounding-level floor for modified Gram–Schmidt breakdown detection.
+/// Model-based floor for modified Gram–Schmidt breakdown detection.
 ///
-/// Returns the magnitude below which an orthogonalized Arnoldi vector carries
-/// no direction, because it is smaller than the rounding its own
-/// orthogonalization commits. The happy-breakdown test compares the
-/// post-orthogonalization norm against this quantity instead of exact zero:
-/// exact equality holds for one rounding order and fails for another equally
-/// valid one (scalar mul-then-add cancels where FMA-based SIMD leaves a
-/// ~1ulp residue), so it reports `Breakdown` on one backend and
-/// `MaxIterations` on another for the same mathematics.
+/// `sqrt(steps * len) * EPSILON * initial_norm` uses independent-rounding
+/// accumulation as a statistical scale (Higham, *Accuracy and Stability of
+/// Numerical Algorithms*, 2nd ed., §3.1). With unit roundoff `u = EPSILON/2`,
+/// the factor two is a heuristic margin, not a probability guarantee.
 ///
-/// # Derivation
+/// This is **not** a deterministic worst-case bound or a certificate that a
+/// nonzero direction contains no information. Aligned/correlated rounding
+/// errors can exceed square-root accumulation; pairwise/FMA evaluation does
+/// not by itself prove this particular floor conservative for all data.
+/// There is no universal positive lower bound on a healthy post/pre norm
+/// ratio. A small ratio is therefore a numerical-breakdown policy decision.
 ///
-/// One Arnoldi step orthogonalizes `work` against `steps` orthonormal basis
-/// vectors. Each projection forms a length-`len` dot product and one axpy
-/// update. The dot error is bounded by `len · u` worst case (Higham,
-/// *Accuracy and Stability of Numerical Algorithms*, 2nd ed., Lemma 3.1),
-/// attained only when every rounding error carries the same sign; treating
-/// them as independent gives the `√len · u` rule of thumb of ibid. §3.1, and
-/// the axpy contributes a further `u` per element. Over `steps` sequential
-/// projections the statistical accumulation is `√(steps · len) · u` relative
-/// to the pre-orthogonalization norm `initial_norm`.
-///
-/// With `u = EPSILON / 2` the returned
-/// `√(steps · len) · EPSILON · initial_norm` keeps a factor of two of margin
-/// over that estimate. A healthy Arnoldi step keeps a post/pre ratio of order
-/// `0.1`–`1`, far above the floor at any realistic restart width and vector
-/// length, so the margin separates invariance from slow convergence rather
-/// than conflating them.
-///
-/// # Limits of this estimate
-///
-/// This is a statistical estimate of the orthogonalization error, not a
-/// worst-case bound: an adversarial rounding pattern can exceed it by up to
-/// `√(steps · len)`. It also assumes the backend's dot and norm accumulate in
-/// the scalar's own precision and in an order no worse than sequential. A
-/// backend that accumulates pairwise, or an axpy that fuses multiply-add into
-/// one rounding, is bounded more tightly than this, so the floor stays
-/// conservative for it. Callers must still reject a non-finite
-/// `initial_norm` before comparing: the floor of a non-finite scale is
-/// meaningless and must report `NonFinite`, never breakdown.
+/// Callers reject non-finite input norms before classification and still
+/// recompute the original residual after the candidate correction.
 #[must_use]
 pub(super) fn arnoldi_breakdown_floor<T: RealField>(
     steps: usize,
@@ -51,37 +26,20 @@ pub(super) fn arnoldi_breakdown_floor<T: RealField>(
     samples.sqrt() * T::EPSILON * initial_norm
 }
 
-/// Rounding-level floor for triangular-pivot singularity detection.
+/// Statistical numerical-rank cutoff relative to a factor scale.
 ///
-/// Returns the magnitude below which a back-substitution pivot carries no
-/// invertible information, because it is smaller than the rounding its own
-/// Givens reduction commits. The truncated triangular solve drops pivots at
-/// or below this quantity scaled to the factor — never against exact zero,
-/// which holds for one rounding order and fails for another equally valid
-/// one — yielding the minimum-norm least-squares solution of a rank-deficient
-/// factor instead of dividing by rounding noise.
+/// `sqrt(count) * EPSILON * pivot_scale` models independent Givens/solve
+/// rounding with a factor-two margin over `sqrt(count) * u`; it is not a
+/// deterministic worst-case bound or an exact rank certificate.
 ///
-/// # Derivation
-///
-/// Each factor entry passes through roughly `count` Givens rotations, and
-/// back-substitution accumulates over `count` rows. The per-entry error is
-/// bounded by `count · u` worst case (Higham, *Accuracy and Stability of
-/// Numerical Algorithms*, 2nd ed., §19.7 for the rotations, §8.1 for the
-/// substitution); treating the roundings as independent gives the `√count · u`
-/// rule of thumb of ibid. §3.1, relative to the factor's own pivot scale.
-/// With `u = EPSILON / 2` the returned `√count · EPSILON · pivot_scale` keeps
-/// a factor of two of margin over that estimate. A healthy factor keeps all
-/// pivots within a modest factor of the largest, far above the floor, so the
-/// margin separates singularity from ill-conditioning rather than conflating
-/// them.
-///
-/// # Limits of this estimate
-///
-/// Like [`arnoldi_breakdown_floor`], this is a statistical estimate, not a
-/// worst-case bound, and it assumes evaluation in the scalar's own precision
-/// in an order no worse than sequential. A genuinely ill-conditioned factor
-/// whose smallest pivot sits a few orders above the floor still divides by
-/// it; the floor detects singularity, not ill-conditioning.
+/// The ordinary triangular path uses its largest diagonal as the scale.
+/// Encountering a small diagonal triggers column-pivoted QR, which uses the
+/// largest complete column norm instead. Small **unpivoted** diagonals can
+/// coexist with well-separated nonzero singular values, so independently
+/// zeroing their coefficients is not a least-squares algorithm. The recovery
+/// returns a basic solution of the numerically rank-truncated factor, not a
+/// minimum-coefficient-norm solution. Genuine ill-conditioning still needs
+/// the caller's explicit original-residual check.
 #[must_use]
 pub(super) fn singular_pivot_floor<T: RealField>(count: usize, pivot_scale: T) -> T {
     let samples = T::from_count(count);

@@ -2,6 +2,27 @@
 
 All notable changes to Athena are documented in this file.
 
+## [0.3.2] - Unreleased
+
+### Fixed
+
+- [patch] Recover rank-deficient GMRES reduced least squares with column
+  pivoting instead of discarding coefficients in an unpivoted factor.
+  Return a basic correction; minimum coefficient/physical solution norm is
+  not promised. Preserve the full-rank triangular path and preallocate all
+  rank-recovery scratch with the workspace.
+- [patch] Report the recomputed residual at terminal GMRES cycle checks;
+  rank-deficient factors cannot use the final transformed component alone.
+  Keep rounding floors explicit as statistical numerical-rank estimates,
+  not deterministic worst-case bounds or certificates of exact rank.
+
+### Changed
+
+- Refresh the compatible canonical graph and require the tested published
+  Leto/LetoOps0.46.1, Hephaestus0.22.2, Mnemosyne memory0.10.1/arena0.7.1
+  patch minima. Retain future provider admission ceilings and synchronize
+  internal0.3.2 minima; source/publication acceptance remain gated.
+
 ## [0.3.1] - Unreleased
 
 ### Changed

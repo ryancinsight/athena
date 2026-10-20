@@ -19,6 +19,13 @@ use super::execution::Execution;
 /// case; the flexible property is pinned by the
 /// `fgmres_contract` oracle at `f32` and `f64`.
 ///
+/// A numerically deficient reduced factor is solved by column-pivoted QR,
+/// returning a **basic** least-squares correction for its rank-truncated
+/// factor. Neither minimum coefficient norm nor minimum physical solution
+/// norm is promised: the flexible preconditioned basis need not be
+/// orthonormal. Convergence and breakdown still check the explicitly
+/// recomputed original-system residual.
+///
 /// # Reference
 ///
 /// Saad, Y. (1993). *A flexible inner-outer preconditioned GMRES algorithm.*

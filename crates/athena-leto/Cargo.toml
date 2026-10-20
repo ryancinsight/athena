@@ -17,6 +17,7 @@ leto-ops.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
+tracing-subscriber.workspace = true
 mnemosyne = { workspace = true }
 mnemosyne-arena = { workspace = true }
 

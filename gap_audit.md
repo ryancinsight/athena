@@ -13,3 +13,20 @@ limit without an empirical tolerance or separate approximate algorithm.
 Both original analytic oracles remain intact. Hosted gate results, exact head,
 and merge evidence are recorded in the PR; an unavailable accelerator is a
 failure in the new device regressions, not skipped coverage.
+
+
+## Rank-deficient GMRES recovery (2026-10-20)
+
+At `03ed0ab0fe5d7ca87d56f304dad8e20199b18548`, an attainable three-step
+Arnoldi factor loses an O(1) range direction when the original leading
+coefficient is independently discarded. The same cycle emits an impossible
+zero residual estimate although the checked original-system residual is
+sqrt(1/2). Both failures reproduce in native single/double precision before
+production changes. The independent minimum-norm claim is also false.
+
+The repair uses column-pivoted QR only on numerical rank loss, defines a
+basic reduced LS correction, and defers cycle-ending observer samples until
+the true residual is recomputed. Full-rank arithmetic remains unchanged.
+`docs/verification/gmres-rank-recovery.md` records the analytical oracle and
+scope. Exact-head review, final hosted gates and publication-scope assessment
+remain merge requirements; the separate Harmonia performance hold persists.

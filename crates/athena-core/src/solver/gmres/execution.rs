@@ -126,8 +126,9 @@ where
             }
             state.last_residual = self.recompute_residual()?;
             state.operator_applications += 1;
-            if !self.policy.should_check(state.iterations)
-                && (state.last_residual <= state.threshold || cycle.happy_breakdown)
+            if self.policy.should_check(state.iterations)
+                || state.last_residual <= state.threshold
+                || cycle.happy_breakdown
             {
                 self.observer.observe(IterationState::new(
                     state.iterations,
@@ -218,17 +219,21 @@ where
             if !estimate.is_finite() {
                 return Ok(CycleProgress::Terminated(Termination::NonFinite));
             }
-            if self.policy.should_check(state.iterations) {
+            let cycle_complete = estimate <= state.threshold
+                || happy_breakdown
+                || state.iterations == self.policy.max_iterations()
+                || column + 1 == cycle_limit;
+            // |g[k]| is an inner-cycle estimate, not the residual of a
+            // deficient reduced solve. Defer terminal samples until the
+            // correction and explicit original-system residual are available.
+            if self.policy.should_check(state.iterations) && !cycle_complete {
                 self.observer.observe(IterationState::new(
                     state.iterations,
                     estimate,
                     state.threshold,
                 ));
             }
-            if estimate <= state.threshold
-                || happy_breakdown
-                || state.iterations == self.policy.max_iterations()
-            {
+            if cycle_complete {
                 break;
             }
         }
@@ -382,9 +387,10 @@ where
 
     fn update_solution(&mut self, count: usize) -> ExecutionResult<B, Option<ScalarFailure>> {
         if let Err(failure) = back_substitute::<B::Scalar, RESTART>(
-            &self.workspace.hessenberg,
-            &self.workspace.transformed_residual,
+            &mut self.workspace.hessenberg,
+            &mut self.workspace.transformed_residual,
             &mut self.workspace.coefficients,
+            &mut self.workspace.permutation,
             count,
         ) {
             return Ok(Some(failure));
