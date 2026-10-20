@@ -68,14 +68,14 @@ The provider's exact numerical/matched-performance acceptance is scoped to
 its native change. Historical cross-window absolute application performance,
 the unexplained slow run, and the private PyO3 advisory failures remain explicit.
 
-Hephaestus admission is >=0.22.2,<0.25 and the canonical lock selects its
-current 0.24 default `746553d0091e4265111b5c674e724d4dea0323cc`. Athena uses
+Hephaestus admission is >=0.22.2,<0.26 and the canonical lock selects its
+current 0.25 default `36965bf2d775f09f4e5a76daae57d2a64b145e1c`. Athena uses
 DenseVectorOps/SparseOperatorOps rather than #505's removed fusion traits.
 Other provider defaults remain current. All 132 Athena Rust implementation,
 test and benchmark files match reviewed numerical source C9 byte for byte;
 no timeout, policy, feature, assertion or benchmark input changes. This
 material dependency delta needs affected independent review. Earlier matched
-Leto application timings use Hephaestus 0.23 and do not accept the 0.24 cohort.
+Leto application timings use Hephaestus 0.23 and do not accept later cohorts.
 
 Normal final-head native/mandatory-accelerator, allocation, API, package,
 MSRV, supply-chain and source gates must pass; publication is not inferred
@@ -83,3 +83,17 @@ from local Git builds. #125's CG profiling/benchmark ownership is preserved.
 Athena main automatically publishes four pending packages and may deploy
 book updates; assess that exact scope and affected review before its lifecycle.
 No Athena merge/publication or other owner's release/service hold is cleared.
+
+Hephaestus #506 adds CUDA/ROCm/Metal embedding ports. Every file of the two
+consumed core/WGPU crates (556 files, including all Rust and own manifests)
+is byte-identical across 0.24 and 0.25; only inherited versions advance.
+Actual 0.25 registry archive checksums/source identities verify before the
+minimal admission changes. The old bound rejects a fresh normal update;
+the renewed normal lock advances only these two nodes, without downgrades.
+Athena's ComputeDevice/DeviceBuffer, DenseVectorOps and SparseOperatorOps
+interfaces remain unchanged and require native/actual Metal, API and package
+verification. No qualification of the new backend embedding ports is inferred.
+The frozen 0.24 graph has independent source/numerical/API/package review and
+matched benchmark evidence with small point differences and greater baseline
+drift. No causal cost, zero-overhead claim or absolute threshold follows. The
+new final graph still needs affected independent review before lifecycle.

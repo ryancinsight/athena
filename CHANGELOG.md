@@ -22,7 +22,9 @@ All notable changes to Athena are documented in this file.
   regression. The canonical lock selects merged/published Leto #376 at
   5051cd9; native 0.46.3 registry source and fresh consumers are verified.
   Athena dependency-delta review and lifecycle gates remain required.
-- Admit Hephaestus >=0.22.2,<0.25 and test its current 0.24 public default.
+- Admit Hephaestus >=0.22.2,<0.26 and test its current 0.25 public default.
+  The consumed core/WGPU crate files are byte-identical across 0.24/0.25;
+  #506 adds embedding ports outside Athena's dependency surface.
   Preserve Mnemosyne memory0.10.1/arena0.7.1 and synchronized internal0.3.2
   minima. No Rust implementation/test/policy bytes change in this renewal.
 

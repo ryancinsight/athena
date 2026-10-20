@@ -67,8 +67,8 @@ Harmonia's separate numerical performance acceptance hold remains explicit.
 
 Leto/LetoOps now require >=0.46.3,<0.48 and select merged/public 0.46.3 from
 `5051cd9577650a5712aa6a7effcd8955c9d8bcc7`. Registry source, native tags and
-fresh external consumers are verified. Hephaestus admits >=0.22.2,<0.25 and
-selects current 0.24 default. All provider sources remain canonical; no product
+fresh external consumers are verified. Hephaestus admits >=0.22.2,<0.26 and
+selects current 0.25 default. All provider sources remain canonical; no product
 path patch, revision pin, downgrade or Rust/feature/policy edit occurs. This
 supersedes the initial bridge's admission of defective 0.46.2. The affected
 Athena graph still needs independent review and lifecycle checks; it does not
