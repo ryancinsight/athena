@@ -8,18 +8,21 @@
 //! no index arrays, no gather — against the identical CSR operator on the
 //! identical fixture, in one Criterion run so session drift cancels.
 //!
-//! The stencil operator lives in this bench file: the spike records
-//! numbers plus the seam-design decision, and production code is
-//! untouched. Summation order differs from CSR's unrolled gather-dot,
-//! so equivalence is asserted within rounding-level tolerance, not
+//! The stencil side exercises the production [`PoissonStencilOperator`]
+//! (unit-covered in `athena-leto`, including CSR equivalence), so this
+//! bench guards its performance as well as its presence. Summation
+//! order differs from CSR's unrolled gather-dot, so the pre-timing
+//! equivalence gate asserts within rounding-level tolerance, not
 //! bitwise.
+//!
+//! [`PoissonStencilOperator`]: `athena::cpu::PoissonStencilOperator`
 //!
 //! Run with `cargo bench -p athena-krylov --bench stencil_vs_csr
 //! --features cpu` on a quiet host.
 
 use athena::{
     KrylovBackend, LinearOperator,
-    cpu::{CsrOperator, LetoBackend, LetoBackendError},
+    cpu::{CsrOperator, LetoBackend, PoissonStencilOperator},
 };
 use std::hint::black_box;
 
@@ -85,55 +88,6 @@ fn poisson_2d(grid: usize) -> CsrMatrix<f64> {
     }
 }
 
-/// Matrix-free five-point Dirichlet Laplacian on a `grid x grid` lattice.
-///
-/// Row-major unknown order, matching [`poisson_2d`]: `y[i] = 4x[i]`
-/// minus each in-bounds orthogonal neighbor.
-struct StencilOperator {
-    grid: usize,
-}
-
-impl LinearOperator<LetoBackend<f64>> for StencilOperator {
-    fn dimension(&self) -> usize {
-        self.grid * self.grid
-    }
-
-    fn apply(
-        &self,
-        _backend: &LetoBackend<f64>,
-        input: <LetoBackend<f64> as KrylovBackend>::View<'_>,
-        mut output: <LetoBackend<f64> as KrylovBackend>::ViewMut<'_>,
-    ) -> Result<(), LetoBackendError> {
-        let x = input
-            .as_slice()
-            .ok_or(LetoBackendError::NonContiguousVector)?;
-        let y = output
-            .as_mut_slice()
-            .ok_or(LetoBackendError::NonContiguousVector)?;
-        let grid = self.grid;
-        for row in 0..grid {
-            for column in 0..grid {
-                let index = row * grid + column;
-                let mut acc = 4.0 * x[index];
-                if row > 0 {
-                    acc -= x[index - grid];
-                }
-                if column > 0 {
-                    acc -= x[index - 1];
-                }
-                if column + 1 < grid {
-                    acc -= x[index + 1];
-                }
-                if row + 1 < grid {
-                    acc -= x[index + grid];
-                }
-                y[index] = acc;
-            }
-        }
-        Ok(())
-    }
-}
-
 /// Unwrap a kernel result with its name attached; a failing kernel must
 /// fail the benchmark, never record a number.
 fn kernel<T, E: core::fmt::Debug>(name: &str, result: Result<T, E>) -> T {
@@ -148,7 +102,7 @@ fn stencil_vs_csr(criterion: &mut Criterion) {
     let input = dense();
     let matrix = poisson_2d(GRID);
     let csr = kernel("csr_build", CsrOperator::new(matrix));
-    let stencil = StencilOperator { grid: GRID };
+    let stencil = kernel("stencil_build", PoissonStencilOperator::<f64>::new(GRID));
     assert_eq!(csr.dimension(), stencil.dimension());
 
     // Equivalence gate: both operators must agree within rounding
