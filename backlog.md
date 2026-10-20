@@ -42,22 +42,22 @@ Active patch target: **0.3.2**.
 - [ ] Coordinate final canonical provider ordering;retain actual publication/auth holds.
 - Basis:`docs/verification/provider-range-bridge.md`;no older source pin or policy exception.
 
-<a id="athena-matrixfree-eval-20261020"></a>
-## ATHENA-MATRIXFREE-EVAL-20261020 — Matrix-free stencil matvec evaluation [perf] — todo
+<a id="athena-stencil-operator-20261020"></a>
+## ATHENA-STENCIL-OPERATOR-20261020 — Production matrix-free stencil operator [perf] — todo
 
-- Priority: tightening;scope:measurement spike + design note only.
-- Evidence (bound diagnosis, leto `spmv/banded7` 2026-10-20):
-  n=4096 10.0us (55 GB/s, cache), n=65536 168us (53 GB/s, L3),
-  n=1M 6.20ms (20.6 GB/s effective on 128 MB traffic, DRAM). At DRAM
-  sizes SpMV rides a large fraction of attainable single-thread
-  bandwidth, so leto LETO-CSR-INDEX-WIDTH (u32 halves the 50% index
-  share) is the correct DRAM-regime vehicle — no athena item needed.
-  At grid/128 (1.7 MB « LLC) the matvec runs ~10 cycles/row against an
-  L3 ceiling several times higher: latency-bound, and u32 indices are
-  not its lever.
-- Outcome: spike a matrix-free 5-point stencil matvec against the CSR
-  path back-to-back (traffic drops ~5x: no values/indices/gather),
-  with the backend-seam design (operator trait vs assembled matrix)
-  recorded before any production cut.
-- Acceptance: back-to-back numbers + the seam design decision with its
-  stop condition; no production-byte change in this item.
+- Priority: tightening;scope:`crates/athena-leto/src/operator/stencil.rs`
+  (new) + exports + tests; bench harness stays.
+- Evidence (spike, `stencil_vs_csr` back-to-back 2026-10-20, grid/128):
+  matvec_csr 31.4us vs matvec_stencil 12.1us (2.6x), equivalence within
+  1e-12 on the deterministic fixture. Design: `LinearOperator<B>` needs
+  no change — the stencil is a new implementor beside `CsrOperator`,
+  generic over the backend scalar with the grid as constructor input.
+- Outcome: land the operator with value-semantic tests (boundary rows,
+  equivalence vs CSR within rounding), wire the `cg_poisson` bench to
+  cover it, and re-measure the per-iteration model (expect ~-40%).
+- Acceptance: tests + strict gates + hosted CI green; back-to-back
+  re-measurement confirms the spike ratio; item carries the measured
+  per-iteration win at close.
+- Stop: land once the operator is covered and measured; further stencil
+  micro-optimization (interior/boundary split, SIMD) only on a new
+  profile showing it still dominates.

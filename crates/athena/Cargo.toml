@@ -54,6 +54,11 @@ name = "kernels"
 harness = false
 required-features = ["cpu"]
 
+[[bench]]
+name = "stencil_vs_csr"
+harness = false
+required-features = ["cpu"]
+
 [[example]]
 name = "poisson_cpu"
 required-features = ["cpu"]
