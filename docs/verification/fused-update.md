@@ -69,5 +69,6 @@ not claimed.
 
 With the fused update at SIMD width, the recorded per-iteration
 shares point next at `combine_direction` (15%, still a scalar loop;
-an `axpby`-form kernel is the corresponding upstream shape) and the
-dots/norm pass (14%). Filed as follow-up items on the board.
+an `axpby`-form kernel is the corresponding upstream shape), filed
+as ATHENA-COMBINE-DIRECTION-20261020; the dots/norm pass (14%) is
+recorded here as the leader after it.

@@ -2,7 +2,7 @@
 //!
 //! The vector-block cases pin the contiguity claim itself. Every other suite
 //! would still pass if `allocate_block` returned independently allocated
-//! vectors, because the recurrence only ever asks for indexed views â€” so
+//! vectors, because the recurrence only ever asks for indexed views — so
 //! without these, the layout the block exists to provide is unverified.
 
 use athena_core::KrylovBackend;
@@ -192,7 +192,8 @@ fn fused_cg_update_rejects_a_short_image_before_mutating() {
     let backend = LetoBackend::<f64>::default();
     let solution = ramp(1.0, 0.5, 6);
     let mut solution_vector = filled_vector(backend, &solution);
-    let mut residual_vector = filled_vector(backend, &ramp(0.5, 1.5, 6));
+    let residual = ramp(0.5, 1.5, 6);
+    let mut residual_vector = filled_vector(backend, &residual);
     let direction_vector = filled_vector(backend, &ramp(-3.0, 0.5, 6));
     let image_vector = filled_vector(backend, &ramp(2.0, -0.25, 5));
 
@@ -215,6 +216,11 @@ fn fused_cg_update_rejects_a_short_image_before_mutating() {
         backend.view(&solution_vector).as_slice(),
         Some(solution.as_slice()),
         "rejection must leave the solution untouched"
+    );
+    assert_eq!(
+        backend.view(&residual_vector).as_slice(),
+        Some(residual.as_slice()),
+        "rejection must leave the residual untouched"
     );
 }
 
