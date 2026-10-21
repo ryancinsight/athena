@@ -26,7 +26,7 @@
 //! Patankar, S. V. (1980): *Numerical Heat Transfer and Fluid Flow*.
 
 use athena_core::{KrylovBackend, Preconditioner};
-use eunomia::{FloatElement, NumericElement, RealField};
+use eunomia::{NumericElement, RealField};
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
 
@@ -35,7 +35,7 @@ use super::matrix::{diagonal_epsilon, extract_block, get_diagonal};
 use crate::{LetoBackend, LetoBackendError};
 
 /// SIMPLE preconditioner with momentum-pressure coupling.
-pub struct SimplePreconditioner<T: RealField + FloatElement> {
+pub struct SimplePreconditioner<T: RealField> {
     /// Momentum block preconditioner (diag(A)⁻¹)
     momentum_inv: DiagonalPreconditioner<T>,
     /// Inverse diagonal of the Schur complement approximation
@@ -51,7 +51,7 @@ pub struct SimplePreconditioner<T: RealField + FloatElement> {
     n_pressure: usize,
 }
 
-impl<T: RealField + FloatElement + Copy + RealScalar> SimplePreconditioner<T> {
+impl<T: RealField + Copy + RealScalar> SimplePreconditioner<T> {
     /// Create a SIMPLE preconditioner.
     ///
     /// Extracts the `A`, `D`, and `G` sub-blocks from the full saddle-point
@@ -160,7 +160,7 @@ impl<T: RealField + FloatElement + Copy + RealScalar> SimplePreconditioner<T> {
 
 impl<T> Preconditioner<LetoBackend<T>> for SimplePreconditioner<T>
 where
-    T: RealField + FloatElement + Copy + RealScalar,
+    T: RealField + Copy + RealScalar,
 {
     /// Apply SIMPLE directly to Athena's borrowed vectors.
     ///

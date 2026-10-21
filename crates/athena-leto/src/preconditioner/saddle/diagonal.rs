@@ -9,7 +9,7 @@
 //! module consumes it as a standalone preconditioner.
 
 use athena_core::{KrylovBackend, Preconditioner};
-use eunomia::{FloatElement, NumericElement, RealField};
+use eunomia::{NumericElement, RealField};
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
 
@@ -22,7 +22,7 @@ pub(crate) struct DiagonalPreconditioner<T: RealField> {
     diag_inv: Array1<T>,
 }
 
-impl<T: RealField + FloatElement + RealScalar> DiagonalPreconditioner<T> {
+impl<T: RealField + RealScalar> DiagonalPreconditioner<T> {
     /// Create a diagonal preconditioner from the matrix diagonal.
     #[cfg(test)]
     ///
@@ -116,7 +116,7 @@ pub(super) fn lumped_pressure_preconditioner<T: RealField + Copy + RealScalar>(
 ///
 /// **Reference**: Murphy, Golub & Wathen (2000), Theorem 2.1; Elman,
 /// Silvester & Wathen (2005), §6.2.
-pub struct BlockDiagonalPreconditioner<T: RealField + FloatElement> {
+pub struct BlockDiagonalPreconditioner<T: RealField> {
     /// Momentum matrix approximation (diagonal of A)
     momentum_preconditioner: DiagonalPreconditioner<T>,
     /// Pressure Schur complement approximation (pressure mass matrix)
@@ -127,7 +127,7 @@ pub struct BlockDiagonalPreconditioner<T: RealField + FloatElement> {
     n_pressure: usize,
 }
 
-impl<T: RealField + FloatElement + Copy + RealScalar> BlockDiagonalPreconditioner<T> {
+impl<T: RealField + Copy + RealScalar> BlockDiagonalPreconditioner<T> {
     /// Create a block diagonal preconditioner.
     ///
     /// # Algorithm
@@ -245,7 +245,7 @@ impl<T: RealField + FloatElement + Copy + RealScalar> BlockDiagonalPreconditione
 
 impl<T> Preconditioner<LetoBackend<T>> for BlockDiagonalPreconditioner<T>
 where
-    T: RealField + FloatElement + Copy + RealScalar,
+    T: RealField + Copy + RealScalar,
 {
     /// Block-diagonal apply straight over the borrowed views.
     ///

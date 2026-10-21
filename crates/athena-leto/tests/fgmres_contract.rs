@@ -116,7 +116,7 @@ where
 
 fn assert_closed_form<T>(solution: &Array1<T>, bound: T)
 where
-    T: RealField + FloatElement + core::fmt::Debug,
+    T: RealField + core::fmt::Debug,
 {
     let values = solution
         .as_slice()
@@ -136,7 +136,7 @@ where
 
 fn varying_preconditioner_converges<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     let operator = CsrOperator::new(diagonal_matrix()).expect("invariant: matrix is square");

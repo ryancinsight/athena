@@ -1,6 +1,6 @@
 use super::{ScalarFailure, back_substitute};
 use core::fmt::Debug;
-use eunomia::{FloatElement, RealField};
+use eunomia::RealField;
 use tracing_subscriber::fmt::format::FmtSpan;
 
 fn with_trace(run: impl FnOnce()) {
@@ -10,7 +10,7 @@ fn with_trace(run: impl FnOnce()) {
         .finish();
     tracing::subscriber::with_default(subscriber, run);
 }
-fn full_rank<T: RealField + FloatElement + Debug>() {
+fn full_rank<T: RealField + Debug>() {
     let arrange = tracing::info_span!("arrange", scalar = core::any::type_name::<T>()).entered();
     let zero = T::from_f64(0.0);
     let mut factor = [
@@ -48,7 +48,7 @@ fn full_rank<T: RealField + FloatElement + Debug>() {
         "full-rank path never uses recovery scratch"
     );
 }
-fn basic<T: RealField + FloatElement + Debug>() {
+fn basic<T: RealField + Debug>() {
     let arrange = tracing::info_span!("arrange", scalar = core::any::type_name::<T>()).entered();
     let zero = T::from_f64(0.0);
     let one = T::from_f64(1.0);
@@ -90,7 +90,7 @@ fn basic<T: RealField + FloatElement + Debug>() {
         "another LS solution has smaller coefficient norm; minimum norm is not promised"
     );
 }
-fn off_diagonal<T: RealField + FloatElement + Debug>() {
+fn off_diagonal<T: RealField + Debug>() {
     let zero = T::from_f64(0.0);
     let one = T::from_f64(1.0);
     let mut factor = [zero, zero, zero, one, one, zero];
@@ -119,7 +119,7 @@ fn off_diagonal<T: RealField + FloatElement + Debug>() {
     let lower = -coefficients[1];
     assert!((upper * upper + lower * lower - half).abs() <= bound);
 }
-fn invalid<T: RealField + FloatElement + Debug>() {
+fn invalid<T: RealField + Debug>() {
     let zero = T::from_f64(0.0);
     let one = T::from_f64(1.0);
     for (bad_entry, bad_rhs) in [

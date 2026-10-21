@@ -5,13 +5,13 @@ use athena_core::{
     Termination,
 };
 use athena_leto::{LetoBackend, RectangularCsrOperator};
-use eunomia::{FloatElement, RealField};
+use eunomia::RealField;
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
 
 fn dense_operator<T>(rows: &[&[f64]]) -> RectangularCsrOperator<T>
 where
-    T: RealScalar + RealField + FloatElement,
+    T: RealScalar + RealField,
 {
     let mut values = Vec::new();
     let mut columns = Vec::new();
@@ -30,7 +30,7 @@ where
     RectangularCsrOperator::new(matrix)
 }
 
-fn vector<T: RealField + FloatElement>(values: &[f64]) -> Array1<T> {
+fn vector<T: RealField>(values: &[f64]) -> Array1<T> {
     Array1::from_shape_vec(
         [values.len()],
         values.iter().map(|&v| T::from_f64(v)).collect(),
@@ -38,7 +38,7 @@ fn vector<T: RealField + FloatElement>(values: &[f64]) -> Array1<T> {
     .expect("invariant: vector shape is exact")
 }
 
-fn policy<T: RealField + FloatElement>(max_iterations: usize) -> ConvergencePolicy<T> {
+fn policy<T: RealField>(max_iterations: usize) -> ConvergencePolicy<T> {
     ConvergencePolicy::new(
         T::from_f64(1024.0) * <T as RealField>::EPSILON,
         T::from_f64(1024.0) * <T as RealField>::EPSILON,
@@ -59,7 +59,7 @@ fn normal_equation_residual<T>(
     solution: &Array1<T>,
 ) -> f64
 where
-    T: RealScalar + RealField + FloatElement,
+    T: RealScalar + RealField,
 {
     let mut image = Array1::zeros([operator.rows()]);
     operator
@@ -95,7 +95,7 @@ fn solve<T>(
     max_iterations: usize,
 ) -> (Array1<T>, athena_core::SolveReport<T>)
 where
-    T: RealScalar + RealField + FloatElement,
+    T: RealScalar + RealField,
 {
     let backend = LetoBackend::<T>::default();
     let mut solution = Array1::zeros([operator.columns()]);
@@ -115,7 +115,7 @@ where
 
 fn recovers_a_consistent_overdetermined_system<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     // Four equations, two unknowns, consistent by construction: b is exactly
     // A·[2, -1], so the least-squares solution is the exact one and the

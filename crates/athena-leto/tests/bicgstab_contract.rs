@@ -65,7 +65,7 @@ fn ascending(n: usize) -> Vec<f64> {
         .collect()
 }
 
-fn vector<T: RealField + FloatElement>(values: &[f64]) -> Array1<T> {
+fn vector<T: RealField>(values: &[f64]) -> Array1<T> {
     Array1::from_shape_vec(
         [values.len()],
         values.iter().map(|&v| T::from_f64(v)).collect(),
@@ -73,7 +73,7 @@ fn vector<T: RealField + FloatElement>(values: &[f64]) -> Array1<T> {
     .expect("invariant: vector shape is exact")
 }
 
-fn policy<T: RealField + FloatElement>(max_iterations: usize) -> ConvergencePolicy<T> {
+fn policy<T: RealField>(max_iterations: usize) -> ConvergencePolicy<T> {
     ConvergencePolicy::new(
         T::from_f64(256.0) * <T as RealField>::EPSILON,
         T::from_f64(256.0) * <T as RealField>::EPSILON,
@@ -85,7 +85,7 @@ fn policy<T: RealField + FloatElement>(max_iterations: usize) -> ConvergencePoli
 /// Manufacture `b = A·x*` through the operator, solve, and require `x*` back.
 fn recovers_manufactured_solution<T>(n: usize, max_iterations: usize)
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     let operator = CsrOperator::new(tridiagonal_matrix::<T>(n)).expect("invariant: square matrix");

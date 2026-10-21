@@ -4,6 +4,13 @@ All notable changes to Athena are documented in this file.
 
 ## [0.3.2] - Unreleased
 
+### Changed
+
+- [patch] Redundant `RealField + FloatElement` bounds collapse to
+  `RealField` across `athena-core` and `athena-leto` (source and tests);
+  `RealField: FloatElement` already, so every signature accepts and
+  promises exactly what it did. Orphaned `FloatElement` imports removed.
+
 ### Fixed
 
 - [patch] Recover rank-deficient GMRES reduced least squares with column

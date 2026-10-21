@@ -25,13 +25,13 @@
 
 use athena_core::{ConvergencePolicy, Lsqr, LsqrWorkspace, RectangularOperator};
 use athena_leto::{LetoBackend, RectangularCsrOperator};
-use eunomia::{FloatElement, RealField};
+use eunomia::RealField;
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
 
 fn dense_operator<T>(rows: &[&[f64]]) -> RectangularCsrOperator<T>
 where
-    T: RealScalar + RealField + FloatElement,
+    T: RealScalar + RealField,
 {
     let mut values = Vec::new();
     let mut columns = Vec::new();
@@ -50,7 +50,7 @@ where
     RectangularCsrOperator::new(matrix)
 }
 
-fn vector<T: RealField + FloatElement>(values: &[f64]) -> Array1<T> {
+fn vector<T: RealField>(values: &[f64]) -> Array1<T> {
     Array1::from_shape_vec(
         [values.len()],
         values.iter().map(|&v| T::from_f64(v)).collect(),
@@ -58,7 +58,7 @@ fn vector<T: RealField + FloatElement>(values: &[f64]) -> Array1<T> {
     .expect("invariant: vector shape is exact")
 }
 
-fn policy<T: RealField + FloatElement>(max_iterations: usize) -> ConvergencePolicy<T> {
+fn policy<T: RealField>(max_iterations: usize) -> ConvergencePolicy<T> {
     ConvergencePolicy::new(
         T::from_f64(1024.0) * <T as RealField>::EPSILON,
         T::from_f64(1024.0) * <T as RealField>::EPSILON,
@@ -74,7 +74,7 @@ fn solve_with_damping<T>(
     damping: f64,
 ) -> (Array1<T>, athena_core::SolveReport<T>)
 where
-    T: RealScalar + RealField + FloatElement,
+    T: RealScalar + RealField,
 {
     let backend = LetoBackend::<T>::default();
     let mut solution = Array1::zeros([operator.columns()]);
@@ -94,7 +94,7 @@ where
 }
 
 /// `‖v‖₂` in f64 for cross-typed assertions.
-fn l2<T: RealField + FloatElement>(vector: &Array1<T>) -> f64 {
+fn l2<T: RealField>(vector: &Array1<T>) -> f64 {
     let mut sum = 0.0;
     for index in 0..vector.shape()[0] {
         let value = eunomia::NumericElement::to_f64(vector[index]);

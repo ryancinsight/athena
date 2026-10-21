@@ -4,7 +4,7 @@ use athena_core::{
     SolveReport, Termination,
 };
 use athena_leto::{CsrOperator, LetoBackend};
-use eunomia::{FloatElement, RealField};
+use eunomia::RealField;
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
 use tracing::info_span;
@@ -36,7 +36,7 @@ fn with_trace(run: impl FnOnce()) {
 /// values stay O(1), even when the unpivoted leading diagonal is tiny.
 fn solve<T>(delta: T, interval: usize) -> Outcome<T>
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let (backend, operator, rhs, mut solution, mut workspace, policy) = {
         let _arrange = info_span!(
@@ -95,7 +95,7 @@ where
 }
 fn assert_minimum<T>(outcome: &Outcome<T>)
 where
-    T: RealField + FloatElement + core::fmt::Debug,
+    T: RealField + core::fmt::Debug,
 {
     let _assert = info_span!("assert", ?outcome).entered();
     assert_eq!(
@@ -126,7 +126,7 @@ where
 }
 fn rank_recovery<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let eps = <T as RealField>::EPSILON;
     for delta in [T::from_f64(1.0), eps * eps, -eps * eps] {
@@ -135,7 +135,7 @@ where
 }
 fn telemetry<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let delta = <T as RealField>::EPSILON * <T as RealField>::EPSILON;
     for interval in [1, 2, 4] {
