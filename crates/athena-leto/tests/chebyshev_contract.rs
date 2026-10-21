@@ -48,7 +48,7 @@ where
 
 fn solves_the_manufactured_system<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     let operator = CsrOperator::new(spd_matrix()).expect("invariant: matrix is square");
@@ -183,7 +183,7 @@ fn spectral_bounds_reject_invalid_intervals() {
 /// omega=1/lambda annihilates the error. No infinite coefficient is needed.
 fn solves_singleton_spectrum<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     for dimension in [1, 3] {
@@ -235,7 +235,7 @@ fn chebyshev_solves_equal_bounds_for_every_cpu_scalar() {
 
 fn checks_narrow_intervals_and_warm_starts<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     let matrix = CsrMatrix::from_parts(vec![T::ONE], vec![0], vec![0, 1], 1, 1)

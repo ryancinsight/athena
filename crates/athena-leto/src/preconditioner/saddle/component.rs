@@ -14,7 +14,7 @@
 //! general saddle-point tiers.
 
 use athena_core::{KrylovBackend, Preconditioner};
-use eunomia::{FloatElement, NumericElement, RealField};
+use eunomia::{NumericElement, RealField};
 use leto::{Array1, LetoError};
 use leto_ops::{
     CscMatrix, CsrMatrix, OwnedNumericLu, RealScalar, SparseLuSolver, SymbolicLu, factor_symbolic,
@@ -30,7 +30,7 @@ pub(crate) const VELOCITY_COMPONENTS: usize = 3;
 
 /// Component-block sparse-LU preconditioner for a three-dimensional saddle
 /// system.
-pub struct ComponentBlockPreconditioner<T: RealField + FloatElement + RealScalar> {
+pub struct ComponentBlockPreconditioner<T: RealField + RealScalar> {
     momentum_blocks: Vec<OwnedNumericLu<T>>,
     pressure_block: PressureBlock<T>,
     simple: SimplePreconditioner<T>,
@@ -39,7 +39,7 @@ pub struct ComponentBlockPreconditioner<T: RealField + FloatElement + RealScalar
     n_pressure: usize,
 }
 
-enum PressureBlock<T: RealField + FloatElement + RealScalar> {
+enum PressureBlock<T: RealField + RealScalar> {
     LumpedDiagonal(DiagonalPreconditioner<T>),
 }
 
@@ -73,7 +73,7 @@ impl ComponentBlockPattern {
 
 impl<T> ComponentBlockPreconditioner<T>
 where
-    T: RealField + FloatElement + Copy + RealScalar,
+    T: RealField + Copy + RealScalar,
 {
     /// Factor the independent velocity component blocks of `matrix`.
     ///
@@ -240,7 +240,7 @@ where
 
 impl<T> Preconditioner<LetoBackend<T>> for ComponentBlockPreconditioner<T>
 where
-    T: RealField + FloatElement + Copy + RealScalar,
+    T: RealField + Copy + RealScalar,
 {
     /// Apply component sparse-LU solves directly to Athena's borrowed vectors.
     fn apply(

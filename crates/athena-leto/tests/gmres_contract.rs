@@ -34,7 +34,7 @@ where
 
 fn assert_manufactured_solution<T>(solution: &Array1<T>, bound: T)
 where
-    T: RealField + FloatElement + core::fmt::Debug,
+    T: RealField + core::fmt::Debug,
 {
     let values = solution
         .as_slice()
@@ -57,7 +57,7 @@ where
 
 fn verifies_nonsymmetric_solution<T>()
 where
-    T: RealScalar + RealField + FloatElement + ScratchElement + core::fmt::Debug,
+    T: RealScalar + RealField + ScratchElement + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     let matrix = nonsymmetric_matrix();

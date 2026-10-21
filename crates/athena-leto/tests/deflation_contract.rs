@@ -40,7 +40,7 @@ where
 
 fn solves_by_finite_termination<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     let matrix = ill_conditioned_matrix();
@@ -181,7 +181,7 @@ fn deflation_rejects_degenerate_and_invalid_inputs() {
 /// has true residual norm 1/2.
 fn solves_coupled_subspace<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     let matrix = CsrMatrix::from_parts(
@@ -240,7 +240,7 @@ fn deflated_cg_solves_noninvariant_subspace_for_every_cpu_scalar() {
 
 fn checks_coupled_levels<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     // SPD leading minors 4, 11, 17. With x=(1,2,3), b=(9,10,9).

@@ -35,7 +35,7 @@ where
 /// residual path.
 fn assert_closed_form<T>(solution: &Array1<T>, bound: T)
 where
-    T: RealField + FloatElement + core::fmt::Debug,
+    T: RealField + core::fmt::Debug,
 {
     let values = solution
         .as_slice()
@@ -69,7 +69,7 @@ where
 
 fn solves_the_indefinite_oracle<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     let matrix = indefinite_matrix();
@@ -157,7 +157,7 @@ where
 
 fn solves_the_tridiagonal_system<T>()
 where
-    T: RealScalar + RealField + FloatElement + core::fmt::Debug,
+    T: RealScalar + RealField + core::fmt::Debug,
 {
     let backend = LetoBackend::<T>::default();
     let matrix = indefinite_tridiagonal();
