@@ -28,6 +28,20 @@ Active patch target: **0.3.2**.
   moved +0.7% (p=0.80). The dispatched pair kernel does NOT beat
   the auto-vectorized single-traversal loop at bench size on this
   host; kernel choice is not the binding constraint. Not shipped.
+- Re-measure (2026-10-22, after the atlas pin sync merged in
+  atlas#563): full 100-sample `kernels` run, `--locked`,
+  standalone tree at `e4afa0ffc04391efc5d5448957c83c9d21708548`
+  (leto `6778a0ccfd15da410e8db8052c0d28ede15858b5`), baseline
+  saved as `sync-merged-20261022`. Medians: matvec_csr 30.0us,
+  fused_cg_update 17.2us, combine_direction 7.8us, residual
+  5.5us, axpy 3.9us, dot 1.79us, norm_l2 1.46us. Matvec still
+  leads. The host is still not quiescent by criterion's own
+  evidence (copy 22% outliers, combine CI +15/-12%), so these
+  numbers rank kernels but cannot resolve a <20% optimization.
+  The leto SpMV behind matvec_csr is already a slice-run
+  four-accumulator gather-dot (`leto-ops` sparse spmv); the
+  remaining per-nonzero cost is the data-dependent `xs[col]`
+  bounds check the kernel documents as unprovable.
 - Next step: re-measure on a quiescent host with full criterion
   samples (this host runs concurrent peer builds; `--quick`
   cannot resolve <20% here), then attack matvec (40%) and
