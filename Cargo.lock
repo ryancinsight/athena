@@ -88,7 +88,7 @@ dependencies = [
 
 [[package]]
 name = "athena-core"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "eunomia",
  "tracing",
@@ -97,7 +97,7 @@ dependencies = [
 
 [[package]]
 name = "athena-hephaestus"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "athena-core",
  "bytemuck",
@@ -109,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "athena-krylov"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "athena-core",
  "athena-hephaestus",
@@ -124,7 +124,7 @@ dependencies = [
 
 [[package]]
 name = "athena-leto"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "athena-core",
  "eunomia",
@@ -605,8 +605,8 @@ dependencies = [
 
 [[package]]
 name = "hephaestus-core"
-version = "0.25.0"
-source = "git+https://github.com/ryancinsight/hephaestus.git#36965bf2d775f09f4e5a76daae57d2a64b145e1c"
+version = "0.27.0"
+source = "git+https://github.com/ryancinsight/hephaestus.git#6f4dd9b942d083a8183fc56c3502c8d8322277d1"
 dependencies = [
  "aequitas",
  "eunomia",
@@ -617,8 +617,8 @@ dependencies = [
 
 [[package]]
 name = "hephaestus-wgpu"
-version = "0.25.0"
-source = "git+https://github.com/ryancinsight/hephaestus.git#36965bf2d775f09f4e5a76daae57d2a64b145e1c"
+version = "0.27.0"
+source = "git+https://github.com/ryancinsight/hephaestus.git#6f4dd9b942d083a8183fc56c3502c8d8322277d1"
 dependencies = [
  "eunomia",
  "futures",
