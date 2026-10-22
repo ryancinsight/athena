@@ -15,6 +15,23 @@ Active patch target: **0.3.2**.
   against the `kernels` bench.
 - Acceptance: recorded diagnosis + measured win with the same
   convergence/iterations; tests + strict gates + hosted CI green.
+- Diagnosis (2026-10-22): the `athena-leto`
+  `fused_cg_update` scalar zip loop was A/B-tested back-to-back
+  (criterion `--baseline`, `--locked`, pins advanced to leto
+  `6778a0ccfd15da410e8db8052c0d28ede15858b5`/hermes
+  `d06892bcac4661a60a005f31928964fcf71add7d`/eunomia
+  `f263446f9c9601fc5aaca1e9ff79737f30900265`, standalone tree
+  outside the stack overlay) against routing through Leto
+  `Scalar::axpy_pair_slice` (Hermes dual-FMA). Result: scalar
+  34.1us vs axpy-pair 41.1us (+17.9% midpoint, 90% CI
+  +13.9..+22.2%, p=0.10 `--quick`); the unchanged `axpy` control
+  moved +0.7% (p=0.80). The dispatched pair kernel does NOT beat
+  the auto-vectorized single-traversal loop at bench size on this
+  host; kernel choice is not the binding constraint. Not shipped.
+- Next step: re-measure on a quiescent host with full criterion
+  samples (this host runs concurrent peer builds; `--quick`
+  cannot resolve <20% here), then attack matvec (40%) and
+  `combine_direction` + dots (29%) per the recorded shares.
 - Stop: land once the update no longer co-leads or a faster form is
   proven unnecessary; file the next profiled leader in turn.
 

@@ -6,6 +6,13 @@ All notable changes to Athena are documented in this file.
 
 ### Changed
 
+- [patch] Advance the Leto/Hermes/Eunomia pins to the merged
+  trait-hierarchy tips. No API or numerical change; the advanced
+  Leto is the baseline for the recorded
+  `ATHENA-FUSED-UPDATE-20261020` diagnosis.
+
+### Changed
+
 - [patch] Redundant `RealField + FloatElement` bounds collapse to
   `RealField` across `athena-core` and `athena-leto` (source and tests);
   `RealField: FloatElement` already, so every signature accepts and
