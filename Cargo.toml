@@ -30,8 +30,8 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["f
 eunomia = { version = ">=0.10.0, <0.12.0", git = "https://github.com/ryancinsight/eunomia", default-features = false }
 leto = { version = ">=0.46.3, <0.48.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
 leto-ops = { version = ">=0.46.3, <0.48.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
-hephaestus-core = { version = "0.27.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false }
-hephaestus-wgpu = { version = "0.27.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false, features = ["sparse"] }
+hephaestus-core = { version = "0.28.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false }
+hephaestus-wgpu = { version = "0.28.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false, features = ["sparse"] }
 bytemuck = { version = "1.25", features = ["derive"] }
 criterion = "0.8"
 
