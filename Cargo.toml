@@ -27,7 +27,7 @@ mnemosyne-arena = { version = "0.7.1", git = "https://github.com/ryancinsight/Mn
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std"] }
-eunomia = { version = ">=0.10.0, <0.12.0", git = "https://github.com/ryancinsight/eunomia", default-features = false }
+eunomia = { version = ">=0.10.0, <0.13.0", git = "https://github.com/ryancinsight/eunomia", default-features = false }
 leto = { version = ">=0.46.3, <0.48.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
 leto-ops = { version = ">=0.46.3, <0.48.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
 hephaestus-core = { version = "0.28.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false }
