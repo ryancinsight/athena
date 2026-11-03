@@ -1,6 +1,37 @@
 # Correctness backlog
 
-Active patch target: **0.3.2**.
+Active patch target: **0.3.4**.
+
+<a id="athena-cg-terminal-residual-20261103"></a>
+## ATHENA-CG-TERMINAL-RESIDUAL-20261103 — Checked CG termination [patch] — todo
+
+- Priority: correctness; scope: generic CG termination and its CPU/device regressions.
+- [x] Reproduce exact identity-system success misreported as breakdown and a
+  zero-tolerance false success with nonzero original residual on published main.
+- [x] Recompute original residuals before accepting convergence and at terminal
+  exits, preserving iteration budgets, continuing cadence and vector allocations.
+- [x] Preserve a real finite SPD control where zero product is a genuine breakdown.
+- [x] Reuse four vector buffers with prepared resources for original-system checks.
+- [ ] Complete final native/accelerator, allocation, docs, API, package and performance gates.
+- [ ] Obtain exact-head independent review and required hosted checks.
+- [ ] Verify source, release prerequisites and allowed documentation deployment.
+- Provider #137, hook #139 and Atlas #583 ownership remain separate; no external
+  provider requirements or locked revisions change in this repair.
+
+<a id="athena-leto-norm-range-20261103"></a>
+## ATHENA-LETO-NORM-RANGE-20261103 — Native norm range [patch] — todo
+
+- Priority: correctness; scope: shared CPU backend norm and its provider reduction.
+- Independent source review identifies `sqrt(dot(r,r))` underflow: a one-entry
+  norm of `2^-100` in binary32 or `2^-600` in binary64 is representable, but its
+  squared value rounds to zero. The current source can report InitialResidual
+  for a nonzero RHS at zero tolerance. The exact-arithmetic witness is reviewed;
+  this item still needs native reproduction and existing-provider ownership review.
+- Acceptance: preserve finite, zero/nonfinite and overflow semantics through a
+  sound native-precision reduction, with CPU/backend regression and performance
+  coverage. Avoid a duplicated solver-local reduction or provider back-pin.
+- This existing backend issue remains outside the CG terminal-residual change;
+  passing the terminal regressions does not qualify all native residual ranges.
 
 <a id="athena-fused-update-20261020"></a>
 ## ATHENA-FUSED-UPDATE-20261020 — Next CG lever: fused vector update [perf] — todo

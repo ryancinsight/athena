@@ -2,6 +2,16 @@
 
 All notable changes to Athena are documented in this file.
 
+## [0.3.4] - Unreleased
+
+### Fixed
+
+- [patch] Classify exact CG convergence between scheduled residual checks and
+  report current original-system residuals on curvature and budget termination.
+  Recompute `b - A x` before accepting convergence so recurrence drift cannot
+  produce a false success. Reuse existing vector scratch and prepared resources;
+  include each verification operator application in the report.
+
 ## [0.3.2] - Unreleased
 
 ### Changed
