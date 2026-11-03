@@ -32,6 +32,12 @@ Athena is independently versioned and consumed by the
 cross-repository ownership and migration boundary is recorded in
 [Atlas ADR 0022](https://github.com/ryancinsight/atlas/blob/main/docs/adr/0022-horae-athena-provider-extraction.md).
 
+CG recomputes the original-system residual before accepting convergence or
+returning a curvature/budget termination. Exact convergence between scheduled
+checks therefore succeeds, while a zero preconditioned product with a nonzero
+residual remains a breakdown. The check reuses workspace scratch and retains
+the caller's interval on continuing iterations.
+
 ## Deflation and spectral iteration
 
 `DeflatedCg` solves SPD systems over any supported deflation basis, including

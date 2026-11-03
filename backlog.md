@@ -1,6 +1,20 @@
 # Correctness backlog
 
-Active patch target: **0.3.2**.
+Active patch target: **0.3.4**.
+
+<a id="athena-cg-terminal-residual-20261103"></a>
+## ATHENA-CG-TERMINAL-RESIDUAL-20261103 — Checked CG termination [patch] — todo
+
+- Priority: correctness; scope: generic CG termination and its CPU/device regressions.
+- [x] Reproduce exact identity-system success misreported as breakdown and a
+  zero-tolerance false success with nonzero original residual on published main.
+- [x] Recompute original residuals before accepting convergence and at terminal
+  exits, preserving iteration budgets, continuing cadence and vector allocations.
+- [ ] Complete final native/accelerator, allocation, docs, API, package and performance gates.
+- [ ] Obtain exact-head independent review and required hosted checks.
+- [ ] Verify source, release prerequisites and allowed documentation deployment.
+- Provider #137, hook #139 and Atlas #583 ownership remain separate; no external
+  provider requirements or locked revisions change in this repair.
 
 <a id="athena-fused-update-20261020"></a>
 ## ATHENA-FUSED-UPDATE-20261020 — Next CG lever: fused vector update [perf] — todo

@@ -68,6 +68,24 @@ the preconditioner, not a rounding artefact. A preconditioner must be SPD too:
 Jacobi is SPD only when the diagonal is positive, and an incomplete
 factorisation of an indefinite matrix is not SPD at all.
 
+## Terminal residual checks
+
+The scheduled norm is the recurrence residual. Before reporting convergence,
+curvature failure or an exhausted budget, CG also computes `b - A x` with the
+original operator. This adds an operator application counted in `SolveReport`;
+the existing image and preconditioned-residual buffers hold the scratch values.
+No vector is allocated during the solve and the recurrence vectors are retained.
+
+For `A = I`, CG reaches the solution after one step even when the check interval
+is two. The next preconditioned product is zero because the residual is zero;
+that is convergence, not breakdown. Conversely, a product can underflow while
+the residual remains nonzero. CG measures the original residual to distinguish
+these cases, without changing the requested tolerance or iteration budget.
+
+Observers receive the terminal original-system norm. A scheduled recurrence
+sample can precede a terminal original-system sample at the same completed
+iteration if the following curvature check prevents another step.
+
 ## How fast
 
 The polynomial picture from the introduction gives the classical bound. Writing

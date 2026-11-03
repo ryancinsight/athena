@@ -8,7 +8,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.3.3"
+version = "0.3.4"
 edition = "2024"
 rust-version = "1.95"
 authors = ["Ryan Clanton <ryanclanton@outlook.com>"]
@@ -19,9 +19,9 @@ repository = "https://github.com/ryancinsight/athena"
 publish = true
 
 [workspace.dependencies]
-athena-core = { path = "crates/athena-core", version = "0.3.2" }
-athena-hephaestus = { path = "crates/athena-hephaestus", version = "0.3.3" }
-athena-leto = { path = "crates/athena-leto", version = "0.3.2" }
+athena-core = { path = "crates/athena-core", version = "0.3.4" }
+athena-hephaestus = { path = "crates/athena-hephaestus", version = "0.3.4" }
+athena-leto = { path = "crates/athena-leto", version = "0.3.4" }
 mnemosyne = { package = "mnemosyne-memory", version = "0.10.1", git = "https://github.com/ryancinsight/Mnemosyne.git", features = ["eunomia"] }
 mnemosyne-arena = { version = "0.7.1", git = "https://github.com/ryancinsight/Mnemosyne.git", features = ["eunomia"] }
 
