@@ -42,10 +42,15 @@ Active patch target: **0.3.2**.
   four-accumulator gather-dot (`leto-ops` sparse spmv); the
   remaining per-nonzero cost is the data-dependent `xs[col]`
   bounds check the kernel documents as unprovable.
-- Next step: re-measure on a quiescent host with full criterion
-  samples (this host runs concurrent peer builds; `--quick`
-  cannot resolve <20% here), then attack matvec (40%) and
-  `combine_direction` + dots (29%) per the recorded shares.
+- Next step: run `kernels` on a quiescent host, or on isolated
+  cores / with instruction counters (`--quick` cannot resolve <20%
+  on a loaded host), and read `matvec_stencil` (the matvec CG
+  applies; the 30.0us above is CSR), `fused_cg_update` and
+  `stream_ceiling` (same six streams, one add per element) from
+  one run. Fused at the ceiling: memory-bound, apply the stop
+  clause. Fused well above it: inspect codegen and cut. Then
+  recompute the shares with the stencil matvec and attack the
+  leader.
 - Stop: land once the update no longer co-leads or a faster form is
   proven unnecessary; file the next profiled leader in turn.
 
