@@ -2,10 +2,18 @@
 //!
 //! Times each [`KrylovBackend`] operation CG invokes per iteration at the
 //! grid/128 scale (16,384 unknowns) with deterministic dense inputs, plus the
-//! Poisson CSR matvec. Summing medians by the per-iteration call census
-//! attributes the `cg_poisson` solve time without a sampling profiler; the
-//! dominant term names the next optimization (item
-//! ATHENA-CG-PROFILE-20261019).
+//! Poisson matvec through both the CSR operator and the production
+//! matrix-free [`PoissonStencilOperator`] that the CG path applies. Summing
+//! medians by the per-iteration call census attributes the `cg_poisson`
+//! solve time without a sampling profiler; the dominant term names the next
+//! optimization (item ATHENA-CG-PROFILE-20261019).
+//!
+//! `stream_ceiling` traverses the same six streams as `fused_cg_update`
+//! (four reads, two writes of 16,384 `f64`, 786,432 bytes) with one addition
+//! per element and no scalar factor. Same traffic and fewer arithmetic
+//! operations make its median the reference floor for the fused kernel on
+//! the same host in the same run, so fused-update and stencil-matvec medians
+//! are read against it rather than against an assumed bandwidth.
 //!
 //! Inputs are fixed across samples; mutating kernels receive a pristine
 //! target per sample via untimed setup, with views built inside the timed
@@ -16,10 +24,11 @@
 //! Run with `cargo bench -p athena-krylov --bench kernels --features cpu`
 //! on a quiet host and report median + CI from Criterion's standard output.
 //! [`KrylovBackend`]: `athena::KrylovBackend`
+//! [`PoissonStencilOperator`]: `athena::cpu::PoissonStencilOperator`
 
 use athena::{
     KrylovBackend, LinearOperator,
-    cpu::{CsrOperator, LetoBackend},
+    cpu::{CsrOperator, LetoBackend, PoissonStencilOperator},
 };
 use std::hint::black_box;
 
@@ -29,7 +38,8 @@ use leto::Array1;
 use leto_ops::CsrMatrix;
 
 /// Benchmark scale: the grid/128 Poisson system (16,384 unknowns).
-const UNKNOWNS: usize = 16384;
+const GRID: usize = 128;
+const UNKNOWNS: usize = GRID * GRID;
 /// Representative scalar factors, matching mid-solve CG magnitudes.
 const ALPHA: f64 = 0.25;
 const BETA: f64 = 0.75;
@@ -88,6 +98,15 @@ fn kernel<T, E: core::fmt::Debug>(name: &str, result: Result<T, E>) -> T {
     }
 }
 
+/// Unwrap a contiguous slice with its operand name attached; the streaming
+/// ceiling must traverse the same dense memory the production kernels do.
+fn contiguous<S>(name: &str, slice: Option<S>) -> S {
+    match slice {
+        Some(slice) => slice,
+        None => panic!("operand {name} is not contiguous"),
+    }
+}
+
 /// Shared fixture: backend, deterministic inputs, and the Poisson operator.
 /// Views are built per benchmark from these arrays.
 struct Fixture {
@@ -95,6 +114,7 @@ struct Fixture {
     lhs: Array1<f64>,
     rhs: Array1<f64>,
     operator: CsrOperator<f64>,
+    stencil: PoissonStencilOperator<f64>,
 }
 
 type WallGroup<'a> = criterion::BenchmarkGroup<'a, criterion::measurement::WallTime>;
@@ -226,6 +246,33 @@ fn bench_fused(group: &mut WallGroup<'_>, fixture: &Fixture) {
         );
     });
 
+    group.bench_function("stream_ceiling", |bencher| {
+        bencher.iter_batched(
+            || (fixture.lhs.clone(), fixture.rhs.clone()),
+            |(mut solution, mut residual)| {
+                let mut solution_view = backend.view_mut(black_box(&mut solution));
+                let mut residual_view = backend.view_mut(black_box(&mut residual));
+                let solution_slice = contiguous("stream_solution", solution_view.as_mut_slice());
+                let residual_slice = contiguous("stream_residual", residual_view.as_mut_slice());
+                let lhs_view = black_box(view_lhs);
+                let rhs_view = black_box(view_rhs);
+                let lhs_slice = contiguous("stream_lhs", lhs_view.as_slice());
+                let rhs_slice = contiguous("stream_rhs", rhs_view.as_slice());
+                for (((solution_value, &lhs_value), residual_value), &rhs_value) in solution_slice
+                    .iter_mut()
+                    .zip(lhs_slice)
+                    .zip(residual_slice.iter_mut())
+                    .zip(rhs_slice)
+                {
+                    *solution_value += lhs_value;
+                    *residual_value += rhs_value;
+                }
+                black_box((solution, residual));
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
     group.bench_function("combine_direction", |bencher| {
         bencher.iter_batched(
             || fixture.lhs.clone(),
@@ -266,6 +313,24 @@ fn bench_matvec(group: &mut WallGroup<'_>, fixture: &Fixture) {
             BatchSize::SmallInput,
         );
     });
+
+    group.bench_function("matvec_stencil", |bencher| {
+        bencher.iter_batched(
+            || fixture.lhs.clone(),
+            |mut output| {
+                kernel(
+                    "matvec_stencil",
+                    fixture.stencil.apply(
+                        backend,
+                        black_box(view_lhs),
+                        backend.view_mut(black_box(&mut output)),
+                    ),
+                );
+                black_box(output);
+            },
+            BatchSize::SmallInput,
+        );
+    });
 }
 
 fn kernels(criterion: &mut Criterion) {
@@ -274,12 +339,13 @@ fn kernels(criterion: &mut Criterion) {
         Ok(elements) => elements,
         Err(error) => panic!("benchmark scale exceeds the throughput counter: {error:?}"),
     };
-    let matrix = poisson_2d(128);
+    let matrix = poisson_2d(GRID);
     let fixture = Fixture {
         backend,
         lhs: dense(),
         rhs: dense(),
         operator: kernel("csr_build", CsrOperator::new(matrix)),
+        stencil: kernel("stencil_build", PoissonStencilOperator::new(GRID)),
     };
     let mut group = criterion.benchmark_group("kernels_cpu");
     group.throughput(Throughput::Elements(elements));

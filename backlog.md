@@ -5,49 +5,18 @@ Active patch target: **0.3.2**.
 <a id="athena-fused-update-20261020"></a>
 ## ATHENA-FUSED-UPDATE-20261020 — Next CG lever: fused vector update [perf] — todo
 
-- Priority: tightening;scope:measurement + optimization of the update path.
-- Evidence: the stencil cut (#130) moved grid/128 per-iteration cost from
-  54.9us to ~27.1us; new shares are matvec 40%, fused_cg_update 31%
-  (8.3us), combine_direction 15%, dots+norm 14%. The matvec no longer
-  dominates alone — the fused update is the co-leader.
-- Outcome: profile the fused update (memory traffic vs L3 ceiling,
-  SIMD coverage), then cut the derived optimization back-to-back
-  against the `kernels` bench.
-- Acceptance: recorded diagnosis + measured win with the same
-  convergence/iterations; tests + strict gates + hosted CI green.
-- Diagnosis (2026-10-22): the `athena-leto`
-  `fused_cg_update` scalar zip loop was A/B-tested back-to-back
-  (criterion `--baseline`, `--locked`, pins advanced to leto
-  `6778a0ccfd15da410e8db8052c0d28ede15858b5`/hermes
-  `d06892bcac4661a60a005f31928964fcf71add7d`/eunomia
-  `f263446f9c9601fc5aaca1e9ff79737f30900265`, standalone tree
-  outside the stack overlay) against routing through Leto
-  `Scalar::axpy_pair_slice` (Hermes dual-FMA). Result: scalar
-  34.1us vs axpy-pair 41.1us (+17.9% midpoint, 90% CI
-  +13.9..+22.2%, p=0.10 `--quick`); the unchanged `axpy` control
-  moved +0.7% (p=0.80). The dispatched pair kernel does NOT beat
-  the auto-vectorized single-traversal loop at bench size on this
-  host; kernel choice is not the binding constraint. Not shipped.
-- Re-measure (2026-10-22, after the atlas pin sync merged in
-  atlas#563): full 100-sample `kernels` run, `--locked`,
-  standalone tree at `e4afa0ffc04391efc5d5448957c83c9d21708548`
-  (leto `6778a0ccfd15da410e8db8052c0d28ede15858b5`), baseline
-  saved as `sync-merged-20261022`. Medians: matvec_csr 30.0us,
-  fused_cg_update 17.2us, combine_direction 7.8us, residual
-  5.5us, axpy 3.9us, dot 1.79us, norm_l2 1.46us. Matvec still
-  leads. The host is still not quiescent by criterion's own
-  evidence (copy 22% outliers, combine CI +15/-12%), so these
-  numbers rank kernels but cannot resolve a <20% optimization.
-  The leto SpMV behind matvec_csr is already a slice-run
-  four-accumulator gather-dot (`leto-ops` sparse spmv); the
-  remaining per-nonzero cost is the data-dependent `xs[col]`
-  bounds check the kernel documents as unprovable.
-- Next step: re-measure on a quiescent host with full criterion
-  samples (this host runs concurrent peer builds; `--quick`
-  cannot resolve <20% here), then attack matvec (40%) and
-  `combine_direction` + dots (29%) per the recorded shares.
-- Stop: land once the update no longer co-leads or a faster form is
-  proven unnecessary; file the next profiled leader in turn.
+- priority: tightening; needs: none
+- basis: 80402fbd0b825bc4eed7b346c0b265ef6d477979
+- scope: `crates/athena/benches/kernels.rs`, `crates/athena-leto/src/backend/krylov.rs`
+- outcome: profile the fused update (memory traffic against the cache-level ceiling, SIMD coverage), then cut it
+  back-to-back against the `kernels` bench; land once it no longer co-leads or a faster form is proven unnecessary.
+- acceptance: recorded diagnosis plus a measured win with the same convergence and iterations; tests, strict gates
+  and hosted CI green.
+- evidence: the 2026-10-22 diagnosis and re-measure are in `git show 80402fb:backlog.md`; stencil cut 16f33eb (#130);
+  shares bc16603.
+- next step: run `kernels` on a quiescent host, on isolated cores or with instruction counters, and read
+  `matvec_stencil`, `fused_cg_update` and `stream_ceiling` from one run. Fused at the ceiling: memory-bound, apply the
+  stop clause; well above it: inspect codegen and cut. Then recompute the shares with the stencil matvec and file the next leader.
 
 <a id="athena-gmres-rank-recovery-20261020"></a>
 ## ATHENA-GMRES-RANK-RECOVERY-20261020 — Reduced LS and checked telemetry [patch] — blocked
