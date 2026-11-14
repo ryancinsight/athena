@@ -1,6 +1,6 @@
 # ADR 0005: Athena release scope
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-13
 - Class: [arch] [patch]
 
