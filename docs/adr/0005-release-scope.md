@@ -33,13 +33,12 @@ contract; such an item gates no exit.
 | Crate | Delivered | In scope for 1.0 | Non-goal for 1.0 |
 |---|---|---|---|
 | athena-core | `KrylovBackend` seam with GAT views and `VectorBlock`; `LinearOperator`, `RectangularOperator`, `Preconditioner`, `Identity`; `ConvergencePolicy`, `residual_noise_floor`, `Termination` with `Stagnated` and `Diverged` (ADR 0004); allocation-free reports and observers; `Cg`, `Gmres` (restarted, right-preconditioned, flexible-preconditioner property, rank-deficient recovery), `BiCgStab`, `Lsqr` (plain and damped), `Minres`, `Chebyshev`, `DeflatedCg` | Original-residual verification of CG termination (`ATHENA-CG-TERMINAL-RESIDUAL-20261103`); README and book that describe every shipped solver (`ATHENA-DOC-DRIFT-20261113`) | Nonlinear solver policy; QMR, TFQMR, IDR, LSMR and Krylov recycling; Arnoldi and Lanczos eigenvalue machinery; complex scalars |
-| athena-leto | `LetoBackend` and `LetoVectorBlock`; runtime-restart `KrylovWorkspace`; `CsrOperator`, `BorrowedCsrOperator`, `BorrowedDenseOperator`, `PoissonStencilOperator`, `RectangularCsrOperator`; `Jacobi`, `IncompleteLu` and `SuccessiveOverRelaxation` preconditioners; `BlockDiagonalPreconditioner`, `ComponentBlockPreconditioner` and `SimplePreconditioner` (7 unit tests); `AlgebraicMultigrid` (2 unit tests) and its component API: five smoothers, six coarsening functions with `analyze_coarsening_quality`, interpolation and restriction builders with their validators, `restrict_matrix` and `restrict_vector` (28 unit tests) | Solve-level contracts for `AlgebraicMultigrid` and the three saddle-point preconditioners (`ATHENA-PRECONDITIONER-CONTRACT-20261113`) and for `LinearSolverChain`, which has no test (`ATHENA-SOLVER-CHAIN-CONTRACT-20261113`); a book chapter for the preconditioners, multigrid and chain | Coarsening over unstructured meshes beyond the shipped `*_coarsening` strategies |
+| athena-leto | `LetoBackend` and `LetoVectorBlock`; runtime-restart `KrylovWorkspace`; `CsrOperator`, `BorrowedCsrOperator`, `BorrowedDenseOperator`, `PoissonStencilOperator`, `RectangularCsrOperator`; `Jacobi`, `IncompleteLu` and `SuccessiveOverRelaxation` preconditioners; `BlockDiagonalPreconditioner`, `ComponentBlockPreconditioner` and `SimplePreconditioner` (7 unit tests); `AlgebraicMultigrid` (2 unit tests) and its component API: five smoothers, five coarsening functions with `analyze_coarsening_quality`, the classical and direct interpolation builders, the restriction builders and both validators, `restrict_matrix` and `restrict_vector` (28 unit tests) | Solve-level contracts for `AlgebraicMultigrid`, the three saddle-point preconditioners and the two functions no test names, `hmis_coarsening` and `create_standard_interpolation` (`ATHENA-PRECONDITIONER-CONTRACT-20261113`) and for `LinearSolverChain`, which has no test (`ATHENA-SOLVER-CHAIN-CONTRACT-20261113`); a book chapter for the preconditioners, multigrid and chain | Coarsening over unstructured meshes beyond the shipped `*_coarsening` strategies |
 | athena-hephaestus | `HephaestusBackend` over `DenseVectorOps`; prepared dot and norm; `CsrOperator` over `SparseOperatorOps`; device `Jacobi`; `Cg`, `Gmres`, `BiCgStab`, `DeflatedCg` and `Chebyshev` on device | `Lsqr` on device through a device `RectangularOperator` (the milestone exit); a device oracle for `Minres`, whose recurrence is backend-generic (`ATHENA-DEVICE-MINRES-20261113`) | Device incomplete-LU, multigrid and saddle-point preconditioners; a device stencil operator; device scalars other than `f32` |
-| athena-krylov | Re-export of `athena-core`; features `cpu` (default) and `accelerator`; examples `poisson_cpu`, `nonsymmetric_cpu`, `poisson_accelerator`, `nonsymmetric_accelerator`; benches `cg_poisson`, `gmres_poisson`, `kernels`, `stencil_vs_csr`; a four-solver book | One self-checking example for the milestone (`least_squares_accelerator`); README and book that describe every shipped solver | A crate per device (ADR 0034); runtime backend detection; a CPU fallback behind an accelerator example |
+| athena-krylov | Re-export of `athena-core`; features `cpu` (default) and `accelerator`; examples `poisson_cpu`, `nonsymmetric_cpu`, `poisson_accelerator`, `nonsymmetric_accelerator`; benches `cg_poisson`, `gmres_poisson`, `kernels`, `stencil_vs_csr`; a four-solver book | One self-checking example for the milestone (`least_squares_accelerator`), which solves with `Lsqr` through the device `RectangularOperator` and asserts the closed-form least-squares solution; README and book that describe every shipped solver | A crate per device (ADR 0034); runtime backend detection; a CPU fallback behind an accelerator example |
 
-`triangular` is a private kernel shared by `IncompleteLu` and
-`SuccessiveOverRelaxation`, not an exported preconditioner; README, the book
-and the `athena-hephaestus` module docs list it as one (`ATHENA-DOC-DRIFT-20261113`).
+`triangular` is a private kernel of `IncompleteLu` and `SuccessiveOverRelaxation`,
+not a preconditioner, though README, the book and module docs list it as one.
 
 Sources for the non-goals: README Roadmap 2 (nonlinear policy waits for a
 second residual and Jacobian consumer); Atlas ADR 0062 Non-goals (eigenvalue
@@ -54,29 +53,26 @@ consumer).
 
 ## Ladder
 
-One milestone, the final block:
-
-- `M-device-least-squares` (1.0.0): solve overdetermined least-squares systems
-  on a Hephaestus device.
+One milestone, the final block: `M-device-least-squares` (1.0.0), solve
+overdetermined least-squares systems on a Hephaestus device.
 
 Device `Lsqr` is the one capability this scope names that is absent at the
-basis: README:26-28 records that `RectangularOperator` is implemented for Leto
-only, `git grep RectangularOperator` finds no impl under
-`crates/athena-hephaestus/src` (the Leto impl in
-`crates/athena-leto/src/operator/rectangular_csr.rs` is the positive control),
-and `CsrOperator::from_parts` rejects `rows != columns` (`operator.rs:53`).
-Each exit therefore fails at the basis for lack of production code, not for
-lack of a test file. Correctness, verification and tightening items join the
-milestone and gate no exit; its standing conditions require no open
-`correctness` or `verification` item, so the solve-level contracts gate the
-release without being exits.
+basis: README:26-28 records `RectangularOperator` as Leto-only,
+`git grep RectangularOperator` finds no impl under `crates/athena-hephaestus/src`
+(control: `crates/athena-leto/src/operator/rectangular_csr.rs`), and
+`CsrOperator::from_parts` rejects `rows != columns` (`operator.rs:53`). Each
+exit fails at the basis for lack of production code, not of a test file: the
+example must solve with `Lsqr` through that operator, since host-formed normal
+equations under device `Cg` would pass at base. Correctness, verification and
+tightening items join the milestone and gate no exit; its standing conditions
+require no open `correctness` or `verification` item, so the solve-level
+contracts gate the release without being exits.
 
 ## Version basis
 
 The milestone is the final block, so it plans 1.0.0, a major above the 0.3.3
-manifest version and every crate tag. Crates version together
-(`[workspace.package]`) and release per crate tag (`crate-<package>-v<version>`).
-Release and publication need explicit authority.
+manifest version and every crate tag. Crates version together and release per
+crate tag (`crate-<package>-v<version>`); release needs explicit authority.
 
 ## Veto points
 
@@ -94,8 +90,10 @@ rejected alternative and the evidence that overturns the choice.
    does not own. Overturned by: a conversion that names a missing Athena
    capability (`ATLAS-CFDRS-ATHENA-MIGRATION-001` names `chain.rs` and
    multigrid as its next step), which then becomes an item or a block.
-3. `Lsqr` on device is in scope. Rejected: a non-goal with CPU-only `Lsqr`,
-   which leaves the ladder with no feature absent at the basis. Design open:
+3. `Lsqr` on device is in scope. Grounds: README:23-28 states the backend-neutral
+   contract and names this pair as the one that does not ship; no consumer
+   requirement was found in the README roadmap or the Atlas items read.
+   Rejected: a non-goal with CPU-only `Lsqr`. Design open:
    Hephaestus `SparseOperatorOps` has `upload_csr` and `apply` but no
    transposed apply, so `Aᵀ` is a second uploaded CSR (twice the device
    storage) or an upstream kernel; the item records the choice in its own ADR.
@@ -117,9 +115,12 @@ rejected alternative and the evidence that overturns the choice.
    exercise. Rejected: `f64` device claims without a suite. Overturned by:
    Hephaestus owning an `f64` device path and a consumer using it.
 8. Device preconditioners other than `Jacobi`, and a device stencil operator,
-   are non-goals. Rejected: porting incomplete-LU and SOR substitution, which
-   is sequential in the dimension (`athena-hephaestus` preconditioner module
-   docs). Overturned by: a parallel triangular formulation upstream.
+   are non-goals. Rejected: porting incomplete-LU and SOR, whose substitution
+   is sequential in the dimension (`athena-hephaestus` module docs), and a
+   device stencil, multigrid or saddle-point path, for which `SparseOperatorOps`
+   offers only `upload_csr` and `apply` (no stencil, coarsening, transfer or
+   block-extraction kernel to bind). Overturned by: a parallel triangular
+   formulation, or those kernels, upstream in Hephaestus, plus a consumer.
 
 ## Rejected alternatives
 
@@ -144,7 +145,6 @@ rejected alternative and the evidence that overturns the choice.
 Basis: `main` at `0e250fdfa9a8ecff85bc3810993952e9d1f78876`. Read: README,
 ADRs 0001-0004, the book, the four `lib.rs` export lists and manifests, the
 test and example lists, the release tags, and Atlas ADRs 0022, 0034 and 0062.
-The `solver_chain` module has zero `#[test]` items. Atlas
-`atlas-conformance.py` has six host-observed classes (named in the standing
-condition) and no detector for `include.path` or `core.hooksPath`; athena
-tracks no `.gitconfig`.
+The `solver_chain` module has zero `#[test]` items. No Atlas conformance
+detector reads `include.path` or `core.hooksPath` and athena tracks no
+`.gitconfig` (`ATHENA-GITCONFIG-20261113`).
