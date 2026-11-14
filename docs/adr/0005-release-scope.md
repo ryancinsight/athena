@@ -34,7 +34,7 @@ contract; such an item gates no exit.
 |---|---|---|---|
 | athena-core | `KrylovBackend` seam with GAT views and `VectorBlock`; `LinearOperator`, `RectangularOperator`, `Preconditioner`, `Identity`; `ConvergencePolicy`, `residual_noise_floor`, `Termination` with `Stagnated` and `Diverged` (ADR 0004); allocation-free reports and observers; `Cg`, `Gmres` (restarted, right-preconditioned, flexible-preconditioner property, rank-deficient recovery), `BiCgStab`, `Lsqr` (plain and damped), `Minres`, `Chebyshev`, `DeflatedCg` | Original-residual verification of CG termination (`ATHENA-CG-TERMINAL-RESIDUAL-20261103`); README and book that describe every shipped solver (`ATHENA-DOC-DRIFT-20261113`) | Nonlinear solver policy; QMR, TFQMR, IDR, LSMR and Krylov recycling; Arnoldi and Lanczos eigenvalue machinery; complex scalars |
 | athena-leto | `LetoBackend` and `LetoVectorBlock`; runtime-restart `KrylovWorkspace`; `CsrOperator`, `BorrowedCsrOperator`, `BorrowedDenseOperator`, `PoissonStencilOperator`, `RectangularCsrOperator`; `Jacobi`, `IncompleteLu` and `SuccessiveOverRelaxation` preconditioners; `BlockDiagonalPreconditioner`, `ComponentBlockPreconditioner` and `SimplePreconditioner` (7 unit tests); `AlgebraicMultigrid` (2 unit tests) and its component API: five smoothers, five coarsening functions with `analyze_coarsening_quality`, the classical and direct interpolation builders, the restriction builders and both validators, `restrict_matrix` and `restrict_vector` (28 unit tests) | Solve-level contracts for `AlgebraicMultigrid`, the three saddle-point preconditioners and the two functions no test names, `hmis_coarsening` and `create_standard_interpolation` (`ATHENA-PRECONDITIONER-CONTRACT-20261113`) and for `LinearSolverChain`, which has no test (`ATHENA-SOLVER-CHAIN-CONTRACT-20261113`); a book chapter for the preconditioners, multigrid and chain | Coarsening over unstructured meshes beyond the shipped `*_coarsening` strategies |
-| athena-hephaestus | `HephaestusBackend` over `DenseVectorOps`; prepared dot and norm; `CsrOperator` over `SparseOperatorOps`; device `Jacobi`; `Cg`, `Gmres`, `BiCgStab`, `DeflatedCg` and `Chebyshev` on device | `Lsqr` on device through a device `RectangularOperator` (the milestone exit); a device oracle for `Minres`, whose recurrence is backend-generic (`ATHENA-DEVICE-MINRES-20261113`) | Device incomplete-LU and SOR preconditioners; device scalars other than `f32` |
+| athena-hephaestus | `HephaestusBackend` over `DenseVectorOps`; prepared dot and norm; `CsrOperator` over `SparseOperatorOps`; device `Jacobi`; `Cg`, `Gmres`, `BiCgStab`, `DeflatedCg` and `Chebyshev` on device | `Lsqr` on device through a device `RectangularOperator` (the milestone exit); a device oracle for `Minres`, whose recurrence is backend-generic (`ATHENA-DEVICE-MINRES-20261113`) | Device incomplete-LU, SOR, multigrid and saddle-point preconditioners; a device stencil operator; device scalars other than `f32` |
 | athena-krylov | Re-export of `athena-core`; features `cpu` (default) and `accelerator`; examples `poisson_cpu`, `nonsymmetric_cpu`, `poisson_accelerator`, `nonsymmetric_accelerator`; benches `cg_poisson`, `gmres_poisson`, `kernels`, `stencil_vs_csr`; a four-solver book | One self-checking example for the milestone (`least_squares_accelerator`), which solves with `Lsqr` through the device `RectangularOperator` and asserts the closed-form least-squares solution; README and book that describe every shipped solver | A crate per device (ADR 0034); runtime backend detection; a CPU fallback behind an accelerator example |
 
 `triangular` is a private kernel of `IncompleteLu` and `SuccessiveOverRelaxation`,
@@ -114,10 +114,13 @@ rejected alternative and the evidence that overturns the choice.
 7. Device scalar coverage stays at `f32`, the only scalar the device suites
    exercise. Rejected: `f64` device claims without a suite. Overturned by:
    Hephaestus owning an `f64` device path and a consumer using it.
-8. Device incomplete-LU and SOR preconditioners are non-goals. Rejected:
-   porting them, whose substitution is sequential in the dimension
-   (`athena-hephaestus` module docs). Overturned by: a parallel triangular
-   formulation upstream in Hephaestus.
+8. Device preconditioners beyond `Jacobi` and a device stencil operator are
+   non-goals. Rejected: incomplete-LU and SOR (sequential substitution,
+   `athena-hephaestus` module docs); multigrid and saddle-point (the pinned
+   Hephaestus `SparseOperatorOps` has no sparse-sparse product or block
+   extraction); `StencilOps` under `PoissonStencilOperator` (its Dirichlet wall
+   rows drop the inward neighbour the operator subtracts). Overturned by: a
+   parallel triangular formulation, those sparse kernels or a matching stencil.
 
 ## Rejected alternatives
 
@@ -143,5 +146,5 @@ Basis: `main` at `0e250fdfa9a8ecff85bc3810993952e9d1f78876`. Read: README,
 ADRs 0001-0004, the book, the four `lib.rs` export lists and manifests, the
 test and example lists, the release tags, and Atlas ADRs 0022, 0034 and 0062.
 The `solver_chain` module has zero `#[test]` items. No Atlas conformance
-detector reads `include.path` or `core.hooksPath`, and athena tracks no
-`.gitconfig`.
+detector reads `include.path` or `core.hooksPath` and athena tracks no
+`.gitconfig` (`ATHENA-GITCONFIG-20261113`).
