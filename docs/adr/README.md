@@ -13,3 +13,4 @@
 | [0002](0002-restarted-gmres-contract.md) | Add restarted right-preconditioned GMRES | Accepted |
 | [0003](0003-krylov-vector-block-seam.md) | Move Krylov vector-set residency onto the backend seam | Accepted |
 | [0004](0004-derived-progress-termination.md) | Terminate on derived stagnation and divergence criteria | Accepted |
+| [0005](0005-release-scope.md) | Athena release scope | Proposed |
