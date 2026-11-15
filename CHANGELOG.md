@@ -29,6 +29,12 @@ All notable changes to Athena are documented in this file.
 
 ### Fixed
 
+- [patch] Classify exact CG convergence between scheduled residual checks as
+  convergence and report current original-system residuals on curvature and
+  budget termination. Recompute `b - A x` before accepting convergence so
+  recurrence drift cannot produce a false success. Reuse existing vector
+  scratch and prepared resources; each verification operator application is
+  counted in the report.
 - [patch] Recover rank-deficient GMRES reduced least squares with column
   pivoting instead of discarding coefficients in an unpivoted factor.
   Return a basic correction; minimum coefficient/physical solution norm is

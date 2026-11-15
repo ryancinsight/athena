@@ -106,6 +106,7 @@ impl<T: RealField> ConvergencePolicy<T> {
     }
 
     /// Iteration interval between explicit convergence checks.
+    /// Solvers also check terminal conditions when their recurrence cannot continue.
     #[must_use]
     pub const fn check_interval(&self) -> usize {
         self.check_interval
