@@ -6,6 +6,15 @@ All notable changes to Athena are documented in this file.
 
 ### Changed
 
+- [patch] Advance every first-party lock row onto its repository's current
+  default head. The lock is regenerated outside the Atlas dependency overlay,
+  so the `source = "git+..."` rows survive and the registry rows are
+  unchanged. The Leto rows move to the 0.48 line at `39d65120`, the Themis
+  row to 0.11.5 at `99980f09`, and the Moirai rows to 0.12.0 at `48bacb85`.
+  Moirai 0.12.0 removes the required `StateWord::get_mut` method, which
+  Athena neither implements nor calls, and Athena re-exports no Moirai or
+  Eunomia type, so the public Athena surface is unchanged.
+
 - [patch] Advance the Leto/Hermes/Eunomia pins to the merged
   trait-hierarchy tips. No API or numerical change; the advanced
   Leto is the baseline for the recorded
