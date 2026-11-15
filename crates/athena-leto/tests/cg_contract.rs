@@ -195,17 +195,31 @@ fn zero_right_hand_side_converges_without_iteration() {
     );
 }
 
-#[test]
-fn iteration_budget_is_a_value_semantic_termination() {
-    let backend = LetoBackend::<f64>::default();
+/// `||b - A x||` for `A = [[4, 1], [1, 3]]`, by direct substitution.
+///
+/// For two entries the backend norm is one rounding of `fl(a0*a0) + fl(a1*a1)`
+/// in every dot dispatch arm, so it equals this value bitwise.
+fn original_residual_norm<T: RealField>(x: &[T], rhs: [T; 2]) -> T {
+    let first = rhs[0] - (T::from_f64(4.0) * x[0] + x[1]);
+    let second = rhs[1] - (x[0] + T::from_f64(3.0) * x[1]);
+    (first * first + second * second).sqrt()
+}
+
+fn budget_exit_reports_the_original_residual<T>()
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let backend = LetoBackend::<T>::default();
     let operator = CsrOperator::new(spd_matrix()).expect("invariant: matrix is square");
+    let rhs = [T::from_f64(6.0), T::from_f64(7.0)];
     let right_hand_side =
-        Array1::from_shape_vec([2], vec![6.0, 7.0]).expect("invariant: exact shape");
+        Array1::from_shape_vec([2], rhs.to_vec()).expect("invariant: exact shape");
     let mut solution = Array1::zeros([2]);
     let mut workspace = CgWorkspace::new(&backend, 2).expect("invariant: host allocation succeeds");
-    let policy = ConvergencePolicy::new(0.0, 0.0, 1).expect("invariant: valid policy");
+    let zero = <T as NumericElement>::ZERO;
+    let policy = ConvergencePolicy::new(zero, zero, 1).expect("invariant: valid policy");
 
-    let report = Cg::<LetoBackend<f64>>::solve_into(
+    let report = Cg::<LetoBackend<T>>::solve_into(
         &backend,
         &operator,
         &Identity,
@@ -218,6 +232,19 @@ fn iteration_budget_is_a_value_semantic_termination() {
 
     assert_eq!(report.termination, Termination::MaxIterations);
     assert_eq!(report.iterations, 1);
+    // The initial residual, the CG step and the budget-exit verification
+    // each apply A once; the recurrence norm alone would give two.
+    assert_eq!(report.operator_applications, 3);
+    let x = solution
+        .as_slice()
+        .expect("invariant: Array1 is contiguous");
+    assert_eq!(report.final_residual_norm, original_residual_norm(x, rhs));
+}
+
+#[test]
+fn iteration_budget_is_a_value_semantic_termination() {
+    budget_exit_reports_the_original_residual::<f32>();
+    budget_exit_reports_the_original_residual::<f64>();
 }
 
 #[test]
