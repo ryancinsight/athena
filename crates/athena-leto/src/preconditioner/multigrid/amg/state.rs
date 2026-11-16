@@ -4,7 +4,6 @@
 use super::super::{AMGConfig, AMGHierarchy, AMGStatistics, MultigridLevel};
 use crate::LetoBackendError;
 use eunomia::RealField;
-use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar, spgemm, spmv_into as leto_spmv_into};
 use std::sync::{Arc, Mutex};
 
@@ -23,16 +22,13 @@ pub(super) fn sparse_product<T: RealField + Copy + RealScalar>(
 
 pub(super) fn sparse_apply_into<T: RealField + Copy + RealScalar>(
     matrix: &CsrMatrix<T>,
-    vector: &Array1<T>,
-    output: &mut Array1<T>,
+    vector: &[T],
+    output: &mut [T],
 ) -> Result<(), LetoBackendError> {
-    let output_slice = output
-        .as_slice_mut()
-        .ok_or(LetoBackendError::NonContiguousVector)?;
-    leto_spmv_into(matrix, &vector.view(), output_slice).map_err(LetoBackendError::from)
+    let layout = leto::Layout::c_contiguous([vector.len()])?;
+    leto_spmv_into(matrix, &leto::ArrayView1::new(layout, vector), output)
+        .map_err(LetoBackendError::from)
 }
-
-type AthenaBoundaryBuffers<T> = Arc<Mutex<Option<(Array1<T>, Array1<T>)>>>;
 
 /// Algebraic Multigrid preconditioner.
 ///
@@ -54,14 +50,6 @@ pub struct AlgebraicMultigrid<T: RealField + Copy + RealScalar> {
     pub(super) hierarchy: Option<AMGHierarchy<T>>,
     /// Reusable V-cycle vectors, serialized per preconditioner application.
     pub(super) workspace: Arc<Mutex<Option<Vec<AMGLevelWorkspace<T>>>>>,
-    /// Owned buffers backing the Athena preconditioner boundary.
-    ///
-    /// The V-cycle recurses over owned `Array1` vectors while Athena hands
-    /// the preconditioner borrowed views, so the boundary copies in and out.
-    /// The two `O(n)` passes are small beside the cycle's `O(nnz)` sweeps,
-    /// and caching the buffers keeps a preconditioner application
-    /// allocation-free.
-    pub(super) athena_boundary: AthenaBoundaryBuffers<T>,
 }
 
 impl<T: RealField + Copy + eunomia::FloatElement + RealScalar> AlgebraicMultigrid<T> {
@@ -79,7 +67,6 @@ impl<T: RealField + Copy + eunomia::FloatElement + RealScalar> AlgebraicMultigri
             is_setup: false,
             hierarchy: None,
             workspace: Arc::new(Mutex::new(None)),
-            athena_boundary: Arc::new(Mutex::new(None)),
         };
 
         amg.setup(matrix)?;
@@ -112,7 +99,6 @@ impl<T: RealField + Copy + eunomia::FloatElement + RealScalar> AlgebraicMultigri
             is_setup: false,
             hierarchy: Some(hierarchy),
             workspace: Arc::new(Mutex::new(None)),
-            athena_boundary: Arc::new(Mutex::new(None)),
         };
 
         amg.setup(matrix)?;

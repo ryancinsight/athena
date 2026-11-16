@@ -37,13 +37,7 @@ where
     /// Apply the carried smoother to the system `Ax = b` for `iterations`
     /// sweeps. The match is exhaustive over the closed smoother set: adding a
     /// variant is a compile error until this dispatch names it.
-    pub fn apply(
-        &self,
-        matrix: &CsrMatrix<T>,
-        x: &mut leto::Array1<T>,
-        b: &leto::Array1<T>,
-        iterations: usize,
-    ) {
+    pub fn apply(&self, matrix: &CsrMatrix<T>, x: &mut [T], b: &[T], iterations: usize) {
         match self {
             Self::GaussSeidel(smoother) => smoother.apply(matrix, x, b, iterations),
             Self::SymmetricGaussSeidel(smoother) => smoother.apply(matrix, x, b, iterations),

@@ -8,18 +8,19 @@
 
 use super::scalars::diagonal_epsilon;
 use eunomia::{FloatElement, NumericElement, RealField};
-use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar, spmv as leto_spmv};
 
-fn residual<T>(matrix: &CsrMatrix<T>, b: &Array1<T>, x: &Array1<T>) -> Array1<T>
+fn residual<T>(matrix: &CsrMatrix<T>, b: &[T], x: &[T]) -> Vec<T>
 where
     T: RealField + Copy + RealScalar,
 {
-    let applied =
-        leto_spmv(matrix, &x.view()).expect("invariant: smoother SpMV dimensions are valid");
-    let mut out = Array1::zeros([b.shape()[0]]);
-    for i in 0..b.shape()[0] {
-        out[i] = b[i] - applied[i];
+    let layout = leto::Layout::c_contiguous([x.len()])
+        .expect("invariant: rank-one layout over an allocated vector is valid");
+    let applied = leto_spmv(matrix, &leto::ArrayView1::new(layout, x))
+        .expect("invariant: smoother SpMV dimensions are valid");
+    let mut out = vec![<T as NumericElement>::ZERO; b.len()];
+    for (out_entry, (rhs, applied_entry)) in out.iter_mut().zip(b.iter().zip(applied.iter())) {
+        *out_entry = *rhs - *applied_entry;
     }
     out
 }
@@ -39,13 +40,7 @@ impl<T: RealField + Copy> GaussSeidelSmoother<T> {
 
 impl<T: RealField + Copy + FloatElement + RealScalar> GaussSeidelSmoother<T> {
     /// Apply the smoother to the system `Ax = b` for `iterations` sweeps.
-    pub fn apply(
-        &self,
-        matrix: &CsrMatrix<T>,
-        x: &mut Array1<T>,
-        b: &Array1<T>,
-        iterations: usize,
-    ) {
+    pub fn apply(&self, matrix: &CsrMatrix<T>, x: &mut [T], b: &[T], iterations: usize) {
         let offsets = matrix.row_ptr();
         let indices = matrix.col_indices();
         let values = matrix.values();
@@ -89,20 +84,14 @@ impl<T: RealField + Copy> SymmetricGaussSeidelSmoother<T> {
 
 impl<T: RealField + Copy + FloatElement + RealScalar> SymmetricGaussSeidelSmoother<T> {
     /// Apply the smoother to the system `Ax = b` for `iterations` sweeps.
-    pub fn apply(
-        &self,
-        matrix: &CsrMatrix<T>,
-        x: &mut Array1<T>,
-        b: &Array1<T>,
-        iterations: usize,
-    ) {
+    pub fn apply(&self, matrix: &CsrMatrix<T>, x: &mut [T], b: &[T], iterations: usize) {
         let offsets = matrix.row_ptr();
         let indices = matrix.col_indices();
         let values = matrix.values();
 
         // Forward sweep
         let gs_forward = GaussSeidelSmoother::new(self.relaxation_factor);
-        gs_forward.apply(matrix, x, b, iterations);
+        gs_forward.apply(matrix, &mut *x, b, iterations);
 
         // Backward sweep
         for _ in 0..iterations {
@@ -144,19 +133,15 @@ impl<T: RealField + Copy> JacobiSmoother<T> {
 
 impl<T: RealField + Copy + FloatElement + RealScalar> JacobiSmoother<T> {
     /// Apply the smoother to the system `Ax = b` for `iterations` sweeps.
-    pub fn apply(
-        &self,
-        matrix: &CsrMatrix<T>,
-        x: &mut Array1<T>,
-        b: &Array1<T>,
-        iterations: usize,
-    ) {
+    pub fn apply(&self, matrix: &CsrMatrix<T>, x: &mut [T], b: &[T], iterations: usize) {
         let offsets = matrix.row_ptr();
         let indices = matrix.col_indices();
         let values = matrix.values();
 
+        let mut x_old = vec![<T as NumericElement>::ZERO; x.len()];
+
         for _ in 0..iterations {
-            let x_old = x.clone();
+            x_old.copy_from_slice(x);
 
             for i in 0..matrix.nrows() {
                 let mut sum = <T as NumericElement>::ZERO;
@@ -196,13 +181,7 @@ impl<T: RealField + Copy> SORSmoother<T> {
 
 impl<T: RealField + Copy + FloatElement + RealScalar> SORSmoother<T> {
     /// Apply the smoother to the system `Ax = b` for `iterations` sweeps.
-    pub fn apply(
-        &self,
-        matrix: &CsrMatrix<T>,
-        x: &mut Array1<T>,
-        b: &Array1<T>,
-        iterations: usize,
-    ) {
+    pub fn apply(&self, matrix: &CsrMatrix<T>, x: &mut [T], b: &[T], iterations: usize) {
         let offsets = matrix.row_ptr();
         let indices = matrix.col_indices();
         let values = matrix.values();
@@ -295,13 +274,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar> ChebyshevSmoother<T> {
 
 impl<T: RealField + Copy + FloatElement + RealScalar> ChebyshevSmoother<T> {
     /// Apply the smoother to the system `Ax = b` for `iterations` sweeps.
-    pub fn apply(
-        &self,
-        matrix: &CsrMatrix<T>,
-        x: &mut Array1<T>,
-        b: &Array1<T>,
-        iterations: usize,
-    ) {
+    pub fn apply(&self, matrix: &CsrMatrix<T>, x: &mut [T], b: &[T], iterations: usize) {
         let theta =
             (self.eigenvalues_max + self.eigenvalues_min) / <T as FloatElement>::from_f64(2.0);
         let delta =
@@ -357,8 +330,8 @@ impl<T: RealField + Copy + FloatElement + RealScalar> ChebyshevSmoother<T> {
 mod tests {
     use super::*;
 
-    fn assert_vector_eq<const N: usize>(vector: &Array1<f64>, expected: [f64; N]) {
-        assert_eq!(vector.shape(), [N]);
+    fn assert_vector_eq<const N: usize>(vector: &[f64], expected: [f64; N]) {
+        assert_eq!(vector.len(), N);
         for (idx, expected_value) in expected.into_iter().enumerate() {
             assert_eq!(vector[idx], expected_value);
         }
@@ -387,14 +360,15 @@ mod tests {
             .expect("invariant: tridiagonal fixture CSR structure is valid")
     }
 
+    const TEST_RHS: [f64; 5] = [1.0, 2.0, 3.0, 4.0, 5.0];
+
     #[test]
     fn test_gauss_seidel_smoother() {
         let matrix = create_test_matrix();
-        let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-        let mut x = Array1::zeros([5]);
+        let mut x = [0.0_f64; 5];
 
         let smoother = GaussSeidelSmoother::new(1.0);
-        smoother.apply(&matrix, &mut x, &b, 1);
+        smoother.apply(&matrix, &mut x, &TEST_RHS, 1);
 
         assert_vector_eq(&x, [0.5, 1.25, 2.125, 3.0625, 4.031_25]);
     }
@@ -402,11 +376,10 @@ mod tests {
     #[test]
     fn test_jacobi_smoother() {
         let matrix = create_test_matrix();
-        let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-        let mut x = Array1::zeros([5]);
+        let mut x = [0.0_f64; 5];
 
         let smoother = JacobiSmoother::new(1.0);
-        smoother.apply(&matrix, &mut x, &b, 1);
+        smoother.apply(&matrix, &mut x, &TEST_RHS, 1);
 
         assert_vector_eq(&x, [0.5, 1.0, 1.5, 2.0, 2.5]);
     }
@@ -414,11 +387,10 @@ mod tests {
     #[test]
     fn test_symmetric_gauss_seidel() {
         let matrix = create_test_matrix();
-        let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-        let mut x = Array1::zeros([5]);
+        let mut x = [0.0_f64; 5];
 
         let smoother = SymmetricGaussSeidelSmoother::new(1.0);
-        smoother.apply(&matrix, &mut x, &b, 1);
+        smoother.apply(&matrix, &mut x, &TEST_RHS, 1);
 
         assert_vector_eq(
             &x,
@@ -435,11 +407,10 @@ mod tests {
     #[test]
     fn test_sor_smoother() {
         let matrix = create_test_matrix();
-        let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-        let mut x = Array1::zeros([5]);
+        let mut x = [0.0_f64; 5];
 
         let smoother = SORSmoother::new(1.0);
-        smoother.apply(&matrix, &mut x, &b, 1);
+        smoother.apply(&matrix, &mut x, &TEST_RHS, 1);
 
         assert_vector_eq(&x, [0.5, 1.25, 2.125, 3.0625, 4.031_25]);
     }
@@ -447,8 +418,8 @@ mod tests {
     #[test]
     fn test_chebyshev_smoother() {
         let matrix = create_test_matrix();
-        let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-        let mut x = Array1::zeros([5]);
+        let b = TEST_RHS;
+        let mut x = [0.0_f64; 5];
 
         let (eigen_min, eigen_max) = ChebyshevSmoother::estimate_eigenvalues(&matrix);
         // Both bounds are the exact literals the estimator clamps through:
