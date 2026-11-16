@@ -18,13 +18,15 @@ pub enum Termination {
     /// least-squares system keeps a residual bounded away from zero, so this
     /// is the only criterion that can report its optimum.
     NormalEquations,
-    /// A restart cycle stopped reducing the residual by more than the
-    /// accuracy of the residual's own evaluation.
+    /// The residual stopped decreasing, so further iterations do not approach
+    /// the threshold.
     ///
-    /// Restarted GMRES(m) minimises over a subspace that contains the zero
-    /// correction, so its residual cannot grow in exact arithmetic and a
-    /// cycle that extracts no reduction seeds the next cycle with the same
-    /// residual and reproduces the same non-reduction. Continuing therefore
+    /// For restarted GMRES, a restart cycle reduced the residual by at most
+    /// the accuracy of the residual's own evaluation. GMRES(m) minimises over
+    /// a subspace that contains the zero correction, so its residual cannot
+    /// grow in exact arithmetic and a cycle that extracts no reduction seeds
+    /// the next cycle with the same residual and reproduces the same
+    /// non-reduction. Continuing therefore
     /// spends the remaining budget without approaching the solution. The
     /// scale of "no reduction" is
     /// [`residual_noise_floor`](crate::residual_noise_floor), not a tuned
@@ -32,6 +34,16 @@ pub enum Termination {
     /// residual algorithm for solving nonsymmetric linear systems*, SIAM J.
     /// Sci. Stat. Comput. 7(3), 856-869, §3.2 records this stall for the
     /// restarted method.
+    ///
+    /// For CG, the recurrence residual met the threshold while the measured
+    /// `‖b - A x‖` exceeds it by more than the threshold. The difference
+    /// bounds the gap between the true and the recurrence residual, which
+    /// accumulates the rounding errors of the updates and which no CG step
+    /// reduces, so further iterations lower only the recurrence residual:
+    /// the threshold is below the attainable accuracy (Greenbaum (1997),
+    /// *Estimating the attainable accuracy of recursively computed residual
+    /// methods*, SIAM J. Matrix Anal. Appl. 18(3), 535-551). The reported
+    /// residual is that measured `‖b - A x‖`.
     Stagnated,
     /// The residual exceeded its initial value by more than the accuracy of
     /// the residual's own evaluation.

@@ -132,7 +132,7 @@ for exactly the first three.
 | `Converged` | a recomputed residual met the threshold |
 | `NormalEquations` | LSQR found the least-squares optimum of an inconsistent system |
 | `MaxIterations` | the budget ran out while still making progress |
-| `Stagnated` | a restart cycle reduced the residual by at most \\(\eta\\) |
+| `Stagnated` | a restart cycle reduced the residual by at most \\(\eta\\), or CG's true residual stalled above the threshold after its recurrence residual met it |
 | `Diverged` | the residual exceeded its initial value by more than \\(\eta\\) |
 | `Breakdown` | a recurrence denominator was numerically zero |
 | `NonPositiveCurvature` | CG met a direction violating its SPD contract |

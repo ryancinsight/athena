@@ -9,6 +9,8 @@ use eunomia::{FloatElement, NumericElement, RealField};
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
 
+#[path = "cg_contract/residual_stall.rs"]
+mod residual_stall;
 #[path = "cg_contract/terminal_residual.rs"]
 mod terminal_residual;
 

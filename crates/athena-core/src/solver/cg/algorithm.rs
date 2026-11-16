@@ -16,6 +16,14 @@ type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 /// Scheduled checks monitor the recurrence residual. Prospective convergence,
 /// curvature failure and budget exhaustion additionally measure `b - A x`.
 /// Only that original-system residual can establish successful termination.
+///
+/// Once the recurrence residual `r_k` meets the threshold, a measured
+/// `‖b - A x_k‖ - ‖r_k‖ > threshold` bounds the gap `(b - A x_k) - r_k`
+/// above the threshold. The gap sums the rounding errors of the updates and
+/// no CG step reduces it (Greenbaum 1997; Cools et al., arXiv:1601.07068,
+/// eq. (11) and (15)), so the solve ends as [`Termination::Stagnated`]
+/// rather than iterating until `<r, z>` underflows. A smaller difference
+/// keeps iterating, because the gap may still be below the threshold.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Cg<B>(PhantomData<fn() -> B>);
 
@@ -246,6 +254,7 @@ where
         Ok(Stage::Continue(CgState {
             initial_residual: residual.initial_residual,
             last_residual: residual.initial_residual,
+            recurrence_residual: residual.initial_residual,
             last_true_residual_iteration: 0,
             threshold: residual.threshold,
             rho,
@@ -318,13 +327,8 @@ where
         iteration: usize,
         state: &mut CgState<B::Scalar>,
     ) -> Result<Option<SolveReport<B::Scalar>>, SolveError<B::Error>> {
-        state.last_residual = self
-            .backend
-            .norm_l2_prepared(
-                &self.workspace.residual_norm,
-                self.backend.view(&self.workspace.residual),
-            )
-            .map_err(SolveError::Backend)?;
+        state.recurrence_residual = self.recurrence_norm()?;
+        state.last_residual = state.recurrence_residual;
         if !state.last_residual.is_finite()
             || state.last_residual <= state.threshold
             || iteration == self.policy.max_iterations()
@@ -340,6 +344,8 @@ where
             Some(Termination::NonFinite)
         } else if state.last_residual <= state.threshold {
             Some(Termination::Converged)
+        } else if state.stalled() {
+            Some(Termination::Stagnated)
         } else if iteration == self.policy.max_iterations() {
             Some(Termination::MaxIterations)
         } else {
@@ -395,8 +401,11 @@ where
         state: &mut CgState<B::Scalar>,
     ) -> ExecutionResult<B, SolveReport<B::Scalar>> {
         // A zero product can mean exact convergence, underflow or a singular
-        // preconditioner. Only the original-system residual distinguishes them.
+        // preconditioner. Only the original-system residual distinguishes
+        // them, and it separates an underflow that follows a converged
+        // recurrence, which is a stall, from a breakdown.
         if state.last_true_residual_iteration != iterations {
+            state.recurrence_residual = self.recurrence_norm()?;
             self.measure_original_residual(iterations, state)?;
             self.observer.observe(IterationState::new(
                 iterations,
@@ -408,10 +417,21 @@ where
             Termination::NonFinite
         } else if state.last_residual <= state.threshold {
             Termination::Converged
+        } else if termination == Termination::Breakdown && state.stalled() {
+            Termination::Stagnated
         } else {
             termination
         };
         Ok(state.report(termination, iterations))
+    }
+
+    fn recurrence_norm(&self) -> ExecutionResult<B, B::Scalar> {
+        self.backend
+            .norm_l2_prepared(
+                &self.workspace.residual_norm,
+                self.backend.view(&self.workspace.residual),
+            )
+            .map_err(SolveError::Backend)
     }
 
     fn measure_original_residual(

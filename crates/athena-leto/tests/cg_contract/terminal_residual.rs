@@ -170,13 +170,16 @@ fn checked_original_system<T: RealScalar + RealField + core::fmt::Debug>() -> So
 fn cg_checks_original_system_before_declaring_convergence() {
     let _guard = test_subscriber();
     // f32 reaches the exact solution; f64 recurrence drift reaches a zero
-    // product with a true residual of 2^-52 (observed at the locked
-    // backend revision), which the unverified solver reported as Converged.
+    // recurrence residual with a true residual of 2^-52 (observed at the
+    // locked backend revision), which the unverified solver reported as
+    // Converged. The recurrence met the zero threshold and the gap 2^-52
+    // exceeds it, so the true residual has stalled at its attainable
+    // accuracy rather than broken down.
     let report = checked_original_system::<f32>();
     assert_eq!(report.termination, Termination::Converged);
     assert_eq!(report.final_residual_norm.to_bits(), 0.0_f32.to_bits());
     let report = checked_original_system::<f64>();
-    assert_eq!(report.termination, Termination::Breakdown);
+    assert_eq!(report.termination, Termination::Stagnated);
     assert_eq!(report.iterations, 21);
     assert_eq!(report.final_residual_norm.to_bits(), f64::EPSILON.to_bits());
 }
