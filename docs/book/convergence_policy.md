@@ -98,12 +98,25 @@ scale is the accuracy of the residual evaluation itself. Athena publishes it as
 Two features of that expression are deliberate.
 
 It is **absolute, and proportional to \\(\\|b\\|\\)** rather than to the current
-residual. Forming \\(b - A x\\) in floating point incurs an error of order
-\\(u(\\|b\\| + \\|A\\|\\|x\\|)\\), and \\(\\|A\\|\\|x\\| \approx \\|b\\|\\) once the
-iterate is near the solution, so \\(\\|b\\|\\) is the scale (Higham, *Accuracy and
-Stability of Numerical Algorithms*, 2nd ed., §7.1). Near convergence
-\\(\\|r\\| \ll \\|b\\|\\), so a floor expressed relative to \\(\\|r\\|\\) would
-understate the uncertainty by exactly the factor \\(\\|b\\| / \\|r\\|\\).
+residual. Forming \\(b - A x\\) in floating point incurs a componentwise error
+of order \\(u(|b - A x| + N_A |A| |x|)\\), with \\(N_A\\) the largest number of
+nonzeros in a row (Carson and Demmel, *A Residual Replacement Strategy for
+Improving the Maximum Attainable Accuracy of s-step Krylov Subspace Methods*,
+UCB/EECS-2012-197, eq. (4.9)--(4.10); the same form is in Higham, *Accuracy
+and Stability of Numerical Algorithms*, 2nd ed., at a section recalled as §7.1
+and not checked against the text). Near convergence \\(\\|r\\| \ll \\|b\\|\\), so a
+floor expressed relative to \\(\\|r\\|\\) would understate the uncertainty by
+exactly the factor \\(\\|b\\| / \\|r\\|\\).
+
+Using \\(\\|b\\|\\) as the scale assumes \\(\\| |A| |x| \\| \approx \\|b\\|\\),
+which holds when \\(A x\\) does not cancel. In general
+\\(\\|b\\| = \\|A x\\| \le \\| |A| |x| \\|\\), and for a smooth solution of an
+ill-conditioned operator the ratio approaches the condition number: for the
+order-62 stiffness matrix with a uniform load, the CG stall test's system, it is
+about \\(1.46 \times 10^3\\) against \\(\kappa \approx 1.61 \times 10^3\\). There
+\\(\eta\\) understates the evaluation error by that factor. The CG stall test in
+the [CG chapter](cg.md) does not use \\(\eta\\) for this reason; it compares the
+measured residuals with the caller's threshold.
 
 It uses \\(\sqrt{n}\\), not \\(n\\). The worst-case bound for summing \\(n\\)
 terms sequentially is \\(nu\\) (ibid., Lemma 3.1), but that is attained only when
