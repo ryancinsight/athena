@@ -38,9 +38,12 @@ All notable changes to Athena are documented in this file.
 
 ### Fixed
 
-- [patch] CG reports `Termination::Stagnated`, not `Breakdown`, when `‖b − Ax‖`
+- [major] CG reports `Termination::Stagnated`, not `Breakdown`, when `‖b − Ax‖`
   exceeds its converged recurrence residual by more than the threshold, and
-  stops there instead of iterating until `<r, z>` underflows (ADR 0004).
+  stops there instead of iterating until `<r, z>` underflows; a stall found
+  before the budget ends the solve no longer reports `MaxIterations` (ADR 0004).
+  Migration: treat `Stagnated` like `Breakdown` and `MaxIterations`. Affected:
+  CFDrs `cfd-math` `interpret`, which maps `Stagnated` to an error.
 - [patch] Recover rank-deficient GMRES reduced least squares with column
   pivoting instead of discarding coefficients in an unpivoted factor.
   Return a basic correction; minimum coefficient/physical solution norm is

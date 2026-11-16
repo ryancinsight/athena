@@ -5,8 +5,7 @@
 - Class: [minor]
 - Revised 2026-11-16: CG detects `Stagnated` when its true residual stalls
   at the attainable accuracy after the recurrence residual met the threshold
-  (athena#167; evidence: `cg_contract::residual_stall` reported `Breakdown`
-  before the change).
+  (athena#167). The change is [major] for callers that match `Breakdown`.
 - Revised 2026-11-16: the noise floor's `||A|| ||x|| ~ ||b||` premise is
   restated as an assumption that fails when `Ax` cancels; the CG stall test
   does not use the floor.
@@ -124,16 +123,19 @@ not monotone, so the divergence argument above does not transfer to it.
 
 CG detects `Stagnated` with its own scale. Once the recurrence residual meets
 the threshold `tau`, a measured `||b - Ax|| - ||r|| > tau` bounds the gap
-`(b - Ax) - r` above `tau` by the reverse triangle inequality, and the
-recurrence has no term that reduces that gap (Greenbaum (1997), SIAM J.
-Matrix Anal. Appl. 18(3), 535-551; Cools et al., arXiv:1601.07068, eq. (11)
-and (15)). The comparison needs only the caller's threshold and two measured
-norms, not the noise floor, whose `||b||` scale fails in exactly the
-ill-conditioned cases that stall. A CG solve that iterated until `<r, z>`
-underflowed and reported `Breakdown` now stops with `Stagnated` at the
-first measurement that satisfies the test. Stopping at the first
-measurement with `||b - Ax|| > tau` was rejected: it cuts off a solve whose
-gap is below `tau` while `||r||` still accounts for the excess.
+`(b - Ax) - r` above `tau` (reverse triangle inequality), and the recurrence
+has no term that reduces that gap (Cools et al., arXiv:1601.07068, (2.11) and
+(2.15); Greenbaum (1997), SIAM J. Matrix Anal. Appl. 18(3), 535-551, read from
+its abstract only). The test needs only `tau` and two measured norms, not the
+noise floor, whose `||b||` scale understates the evaluation error when `Ax`
+cancels. A CG solve that reported `Breakdown` after iterating until `<r, z>`
+underflowed, or `MaxIterations` after a stall found before the budget ended,
+now reports `Stagnated` at the first measurement that satisfies the test; a
+budget ending at that measurement still reports `MaxIterations`, as
+`DeflatedCg` does. A caller that keeps the iterate on `Breakdown` or
+`MaxIterations` must treat `Stagnated` alike. Stopping at the first measurement
+with `||b - Ax|| > tau` was rejected: it cuts off a solve whose gap is below
+`tau` while `||r||` still accounts for the excess.
 
 ## Verification
 
@@ -153,4 +155,5 @@ gap is below `tau` while `||r||` still accounts for the excess.
 - `cg_contract::residual_stall` solves the order-62 stiffness system with a
   uniform load at relative tolerance `4 EPSILON` in `f32` and `f64` and asserts
   `Stagnated` with one measurement of `b - Ax`, both at a scheduled check and
-  at a zero `<r, r>`, and `||b - Ax||` within a first-order gap bound.
+  at a zero `<r, r>`, and `||b - Ax||` within a first-order gap bound; a
+  budget ending at the stall check reports `MaxIterations`.

@@ -126,7 +126,7 @@ where
 
     // The gap `(b - A x_k) - r_k` starts at zero (`x_0 = 0`, `r_0 = b`) and
     // changes only by local rounding errors of the updates (Cools et al.,
-    // arXiv:1601.07068, eq. (11) and (15)). To first order in
+    // arXiv:1601.07068, (2.11) and (2.15)). To first order in
     // `u = EPSILON / 2`, with `|δ(A p)| ≤ N_A u |A| |p|` (Carson and Demmel,
     // UCB/EECS-2012-197, §3), one step adds at most
     // `u (‖|A|‖ ((N_A + 1) ‖α p‖ + ‖x_{j+1}‖) + ‖α A p‖ + ‖r_{j+1}‖)`.
@@ -185,6 +185,20 @@ where
     assert!(report.final_residual_norm > report.threshold);
 }
 
+fn a_budget_ending_at_the_stall_check_is_max_iterations<T>(budget: usize)
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    // One check, at iteration `budget`: with a larger budget it classifies
+    // the stall, so only the budget differs.
+    let (stalled, ..) = solve::<T>(BUDGET, budget);
+    assert_eq!(stalled.termination, Termination::Stagnated, "{stalled:?}");
+    let (report, ..) = solve::<T>(budget, budget);
+    assert_eq!(report.termination, Termination::MaxIterations, "{report:?}");
+    assert_eq!(report.operator_applications, budget + 2);
+    assert_eq!(report.final_residual_norm, stalled.final_residual_norm);
+}
+
 #[test]
 fn cg_reports_a_residual_stall_instead_of_breakdown() {
     let _guard =
@@ -193,4 +207,6 @@ fn cg_reports_a_residual_stall_instead_of_breakdown() {
     stall_terminates_at_the_first_measurement::<f64>();
     zero_product_after_a_converged_recurrence_is_a_stall::<f32>();
     zero_product_after_a_converged_recurrence_is_a_stall::<f64>();
+    a_budget_ending_at_the_stall_check_is_max_iterations::<f32>(100);
+    a_budget_ending_at_the_stall_check_is_max_iterations::<f64>(300);
 }
