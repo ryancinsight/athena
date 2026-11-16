@@ -1,7 +1,9 @@
+//! Smoother sweep fixtures and the owned-adapter equivalence oracle.
+
 use super::*;
 
-fn assert_vector_eq<const N: usize>(vector: &Array1<f64>, expected: [f64; N]) {
-    assert_eq!(vector.shape(), [N]);
+fn assert_vector_eq<const N: usize>(vector: &[f64], expected: [f64; N]) {
+    assert_eq!(vector.len(), N);
     for (idx, expected_value) in expected.into_iter().enumerate() {
         assert_eq!(vector[idx], expected_value);
     }
@@ -30,41 +32,49 @@ fn create_test_matrix() -> CsrMatrix<f64> {
         .expect("invariant: tridiagonal fixture CSR structure is valid")
 }
 
+const TEST_RHS: [f64; 5] = [1.0, 2.0, 3.0, 4.0, 5.0];
+
+/// The fixture's right-hand side as an owned operator operand.
+fn rhs_array() -> Array1<f64> {
+    Array1::from_shape_vec([TEST_RHS.len()], TEST_RHS.to_vec())
+        .expect("invariant: fixture rhs shape matches")
+}
+
 #[test]
 fn test_gauss_seidel_smoother() {
     let matrix = create_test_matrix();
-    let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
+    let b = rhs_array();
     let mut x = Array1::zeros([5]);
 
-    let smoother = GaussSeidelSmoother::new(1.0);
-    smoother.apply(&matrix, &mut x, &b, 1);
+    GaussSeidelSmoother::new(1.0).apply(&matrix, &mut x, &b, 1);
 
-    assert_vector_eq(&x, [0.5, 1.25, 2.125, 3.0625, 4.031_25]);
+    assert_vector_eq(
+        x.as_slice().expect("contiguous"),
+        [0.5, 1.25, 2.125, 3.0625, 4.031_25],
+    );
 }
 
 #[test]
 fn test_jacobi_smoother() {
     let matrix = create_test_matrix();
-    let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
+    let b = rhs_array();
     let mut x = Array1::zeros([5]);
 
-    let smoother = JacobiSmoother::new(1.0);
-    smoother.apply(&matrix, &mut x, &b, 1);
+    JacobiSmoother::new(1.0).apply(&matrix, &mut x, &b, 1);
 
-    assert_vector_eq(&x, [0.5, 1.0, 1.5, 2.0, 2.5]);
+    assert_vector_eq(x.as_slice().expect("contiguous"), [0.5, 1.0, 1.5, 2.0, 2.5]);
 }
 
 #[test]
 fn test_symmetric_gauss_seidel() {
     let matrix = create_test_matrix();
-    let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
+    let b = rhs_array();
     let mut x = Array1::zeros([5]);
 
-    let smoother = SymmetricGaussSeidelSmoother::new(1.0);
-    smoother.apply(&matrix, &mut x, &b, 1);
+    SymmetricGaussSeidelSmoother::new(1.0).apply(&matrix, &mut x, &b, 1);
 
     assert_vector_eq(
-        &x,
+        x.as_slice().expect("contiguous"),
         [
             2.291_015_625,
             3.582_031_25,
@@ -78,20 +88,22 @@ fn test_symmetric_gauss_seidel() {
 #[test]
 fn test_sor_smoother() {
     let matrix = create_test_matrix();
-    let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
+    let b = rhs_array();
     let mut x = Array1::zeros([5]);
 
-    let smoother = SORSmoother::new(1.0);
-    smoother.apply(&matrix, &mut x, &b, 1);
+    SORSmoother::new(1.0).apply(&matrix, &mut x, &b, 1);
 
-    assert_vector_eq(&x, [0.5, 1.25, 2.125, 3.0625, 4.031_25]);
+    assert_vector_eq(
+        x.as_slice().expect("contiguous"),
+        [0.5, 1.25, 2.125, 3.0625, 4.031_25],
+    );
 }
 
 #[test]
 fn test_chebyshev_smoother() {
     let matrix = create_test_matrix();
-    let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-    let mut x = Array1::zeros([5]);
+    let b = TEST_RHS;
+    let mut x = [0.0_f64; 5];
 
     let (eigen_min, eigen_max) = ChebyshevSmoother::estimate_eigenvalues(&matrix);
     // Both bounds are the exact literals the estimator clamps through:
@@ -100,7 +112,7 @@ fn test_chebyshev_smoother() {
     assert_eq!(eigen_max.to_bits(), 4.0_f64.to_bits());
 
     let smoother = ChebyshevSmoother::new(eigen_min, eigen_max, 3);
-    smoother.apply(&matrix, &mut x, &b, 1);
+    smoother.apply_slices(&matrix, &mut x, &b, 1);
 
     let theta = f64::midpoint(eigen_max, eigen_min);
     let delta = (eigen_max - eigen_min) / 2.0;
@@ -110,4 +122,33 @@ fn test_chebyshev_smoother() {
     let alpha = rho_new / rho_old;
     let expected_first = alpha * b[0] / 2.0;
     assert!((x[0] - expected_first).abs() <= f64::EPSILON * 16.0);
+}
+
+/// The slice kernel and the owned adapter agree exactly on one sweep.
+///
+/// The kernel is the single implementation; the owned method is an adapter,
+/// so any divergence between them is a copy or index defect.
+#[test]
+fn owned_adapter_matches_slice_kernel_bitwise() {
+    let matrix = create_test_matrix();
+    let b = rhs_array();
+    let mut through_owned = Array1::zeros([5]);
+    GaussSeidelSmoother::new(1.0).apply(&matrix, &mut through_owned, &b, 1);
+
+    let mut through_slice = [0.0_f64; 5];
+    GaussSeidelSmoother::new(1.0).apply_slices(&matrix, &mut through_slice, &TEST_RHS, 1);
+
+    for (index, (owned, slice)) in through_owned
+        .as_slice()
+        .expect("contiguous")
+        .iter()
+        .zip(through_slice.iter())
+        .enumerate()
+    {
+        assert_eq!(
+            owned.to_bits(),
+            slice.to_bits(),
+            "owned adapter and slice kernel disagree at index {index}"
+        );
+    }
 }
