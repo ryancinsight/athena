@@ -3,8 +3,10 @@
 //! Each smoother is a sweep kernel over a CSR system: it damps the
 //! high-frequency residual components the coarse-grid correction cannot see.
 //! All five dispatch exhaustively from the level's [`Smoother`](super::level::Smoother)
-//! enum; none allocates per sweep except Jacobi's explicit previous-iterate
-//! snapshot, which its update contract requires.
+//! enum. Each kernel takes element slices, and its owned `apply` is a thin
+//! adapter over the same lines. No sweep allocates except Jacobi's
+//! previous-iterate snapshot, which its update contract requires: that buffer
+//! is sized once per `apply` call rather than cloned once per sweep.
 
 use super::scalars::diagonal_epsilon;
 use eunomia::{FloatElement, NumericElement, RealField};
