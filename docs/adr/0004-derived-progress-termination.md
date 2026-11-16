@@ -3,6 +3,9 @@
 - Status: Accepted
 - Date: 2026-08-14
 - Class: [minor]
+- Revised 2026-11-16: CG detects `Stagnated` when its true residual stalls
+  at the attainable accuracy after the recurrence residual met the threshold
+  (athena#167). The change is [major] for callers that match `Breakdown`.
 
 ## Context
 
@@ -130,11 +133,26 @@ contract even though it breaks no signature: a caller matching only on
 already covers every non-converged variant and needs no change as new ones
 appear.
 
-CG, BiCGSTAB, and LSQR keep their existing terminations. The two new variants
-are declared on the shared `Termination` enum because the concepts are shared,
-but only GMRES detects them; extending detection to the other families is
-separate work, and each needs its own derivation — BiCGSTAB's residual is not
-monotone, so the divergence argument above does not transfer to it.
+BiCGSTAB and LSQR keep their existing terminations. The two variants are
+declared on the shared `Termination` enum because the concepts are shared, and
+each family that detects one needs its own derivation — BiCGSTAB's residual is
+not monotone, so the divergence argument above does not transfer to it.
+
+CG detects `Stagnated` with its own scale. Once the recurrence residual meets
+the threshold `tau`, a measured `||b - Ax|| - ||r|| > tau` bounds the gap
+`(b - Ax) - r` above `tau` by the reverse triangle inequality, and the
+recurrence has no term that reduces that gap (Cools et al., arXiv:1601.07068,
+(2.11) and (2.15); Greenbaum (1997), SIAM J. Matrix Anal. Appl. 18(3),
+535-551, read from its abstract only). The comparison needs only the caller's
+threshold and two measured norms. A CG solve that reported `Breakdown` after
+iterating until a dot product underflowed, or `MaxIterations` after a stall the
+test classifies before the budget ends, now stops with `Stagnated` at the first
+measurement that satisfies the test; a budget that ends at that measurement
+still reports `MaxIterations`, as `DeflatedCg` does. A caller that keeps the
+iterate on `Breakdown` or `MaxIterations` must treat `Stagnated` alike.
+Stopping at the first measurement with `||b - Ax|| > tau` was rejected: it
+cuts off a solve whose gap is below `tau` while `||r||` still accounts for the
+excess.
 
 ## Verification
 
@@ -151,3 +169,8 @@ monotone, so the divergence argument above does not transfer to it.
 - Unit tests pin the noise floor's `sqrt(len)` scaling, its linearity in
   `||b||`, and that it stays resolvable at 1e8 single-precision unknowns where
   the worst-case form would not.
+- `cg_contract::residual_stall` solves the order-62 stiffness system with a
+  uniform load at relative tolerance `4 EPSILON` in `f32` and `f64` and asserts
+  `Stagnated` with one measurement of `b - Ax`, both at a scheduled check and
+  at a zero `<r, z>` or `<p, A p>`, and `||b - Ax||` within a first-order gap
+  bound; a budget ending at the stall check reports `MaxIterations`.

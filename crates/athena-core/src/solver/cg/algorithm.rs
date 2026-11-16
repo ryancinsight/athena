@@ -7,6 +7,7 @@ use crate::{
 };
 
 use super::super::dimension::validate_dimensions;
+use super::state::{CgState, ResidualState, Stage, curvature_termination};
 
 type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 
@@ -15,6 +16,15 @@ type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 /// Scheduled checks monitor the recurrence residual. Prospective convergence,
 /// curvature failure and budget exhaustion additionally measure `b - A x`.
 /// Only that original-system residual can establish successful termination.
+///
+/// Once the recurrence residual `r_k` meets the threshold, a measured
+/// `‖b - A x_k‖ - ‖r_k‖ > threshold` bounds the gap `(b - A x_k) - r_k`
+/// above the threshold. The gap sums the local rounding errors of the updates
+/// and the recurrence has no term that reduces it (Cools et al.,
+/// arXiv:1601.07068, (2.11) and (2.15); Greenbaum 1997, abstract only), so
+/// the solve ends as [`Termination::Stagnated`], or as
+/// [`Termination::MaxIterations`] when the budget ends at that check. A
+/// smaller difference keeps iterating.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Cg<B>(PhantomData<fn() -> B>);
 
@@ -245,6 +255,7 @@ where
         Ok(Stage::Continue(CgState {
             initial_residual: residual.initial_residual,
             last_residual: residual.initial_residual,
+            recurrence_residual: residual.initial_residual,
             last_true_residual_iteration: 0,
             threshold: residual.threshold,
             rho,
@@ -317,13 +328,8 @@ where
         iteration: usize,
         state: &mut CgState<B::Scalar>,
     ) -> Result<Option<SolveReport<B::Scalar>>, SolveError<B::Error>> {
-        state.last_residual = self
-            .backend
-            .norm_l2_prepared(
-                &self.workspace.residual_norm,
-                self.backend.view(&self.workspace.residual),
-            )
-            .map_err(SolveError::Backend)?;
+        state.recurrence_residual = self.recurrence_norm()?;
+        state.last_residual = state.recurrence_residual;
         if !state.last_residual.is_finite()
             || state.last_residual <= state.threshold
             || iteration == self.policy.max_iterations()
@@ -341,6 +347,8 @@ where
             Some(Termination::Converged)
         } else if iteration == self.policy.max_iterations() {
             Some(Termination::MaxIterations)
+        } else if state.stalled() {
+            Some(Termination::Stagnated)
         } else {
             None
         };
@@ -396,6 +404,7 @@ where
         // A zero product can mean exact convergence, underflow or a singular
         // preconditioner. Only the original-system residual distinguishes them.
         if state.last_true_residual_iteration != iterations {
+            state.recurrence_residual = self.recurrence_norm()?;
             self.measure_original_residual(iterations, state)?;
             self.observer.observe(IterationState::new(
                 iterations,
@@ -407,10 +416,21 @@ where
             Termination::NonFinite
         } else if state.last_residual <= state.threshold {
             Termination::Converged
+        } else if termination == Termination::Breakdown && state.stalled() {
+            Termination::Stagnated
         } else {
             termination
         };
         Ok(state.report(termination, iterations))
+    }
+
+    fn recurrence_norm(&self) -> ExecutionResult<B, B::Scalar> {
+        self.backend
+            .norm_l2_prepared(
+                &self.workspace.residual_norm,
+                self.backend.view(&self.workspace.residual),
+            )
+            .map_err(SolveError::Backend)
     }
 
     fn measure_original_residual(
@@ -445,52 +465,5 @@ where
             .map_err(SolveError::Backend)?;
         state.last_true_residual_iteration = iteration;
         Ok(())
-    }
-}
-
-enum Stage<S, T> {
-    Continue(S),
-    Complete(SolveReport<T>),
-}
-
-#[derive(Clone, Copy)]
-struct ResidualState<T> {
-    initial_residual: T,
-    threshold: T,
-}
-
-struct CgState<T> {
-    initial_residual: T,
-    last_residual: T,
-    last_true_residual_iteration: usize,
-    threshold: T,
-    rho: T,
-    operator_applications: usize,
-    preconditioner_applications: usize,
-}
-
-impl<T: Copy> CgState<T> {
-    const fn report(&self, termination: Termination, iterations: usize) -> SolveReport<T> {
-        SolveReport::new(
-            termination,
-            iterations,
-            self.operator_applications,
-            self.preconditioner_applications,
-            self.initial_residual,
-            self.last_residual,
-            self.threshold,
-        )
-    }
-}
-
-fn curvature_termination<T: NumericElement>(value: T) -> Option<Termination> {
-    if !value.is_finite() {
-        Some(Termination::NonFinite)
-    } else if value < T::ZERO {
-        Some(Termination::NonPositiveCurvature)
-    } else if value == T::ZERO {
-        Some(Termination::Breakdown)
-    } else {
-        None
     }
 }

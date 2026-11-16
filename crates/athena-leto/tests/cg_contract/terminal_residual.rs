@@ -176,7 +176,7 @@ fn cg_checks_original_system_before_declaring_convergence() {
     assert_eq!(report.termination, Termination::Converged);
     assert_eq!(report.final_residual_norm.to_bits(), 0.0_f32.to_bits());
     let report = checked_original_system::<f64>();
-    assert_eq!(report.termination, Termination::Breakdown);
+    assert_eq!(report.termination, Termination::Stagnated);
     assert_eq!(report.iterations, 21);
     assert_eq!(report.final_residual_norm.to_bits(), f64::EPSILON.to_bits());
 }

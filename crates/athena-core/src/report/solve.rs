@@ -32,6 +32,17 @@ pub enum Termination {
     /// residual algorithm for solving nonsymmetric linear systems*, SIAM J.
     /// Sci. Stat. Comput. 7(3), 856-869, §3.2 records this stall for the
     /// restarted method.
+    ///
+    /// CG reports it when the recurrence residual met the threshold and the
+    /// measured `‖b - A x‖` exceeds it by more than the threshold. The
+    /// difference bounds the gap between the true and the recurrence
+    /// residual from below. The gap sums the local rounding errors of the
+    /// updates and the recurrence has no term that reduces it (Cools et al.,
+    /// arXiv:1601.07068, (2.11)), so further iterations lower only the
+    /// recurrence residual: the threshold is below the attainable accuracy,
+    /// which Greenbaum (1997), SIAM J. Matrix Anal. Appl. 18(3), 535-551
+    /// (abstract only), relates to the machine precision and iterate sizes.
+    /// A budget that ends at the same check reports `MaxIterations`.
     Stagnated,
     /// The residual exceeded its initial value by more than the accuracy of
     /// the residual's own evaluation.
