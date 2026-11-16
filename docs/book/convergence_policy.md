@@ -110,11 +110,19 @@ exactly the factor \\(\\|b\\| / \\|r\\|\\).
 
 Using \\(\\|b\\|\\) as the scale assumes \\(\\| |A| |x| \\| \approx \\|b\\|\\),
 which holds when \\(A x\\) does not cancel. In general
-\\(\\|b\\| = \\|A x\\| \le \\| |A| |x| \\|\\), and for a smooth solution of an
-ill-conditioned operator the ratio approaches the condition number: for the
-order-62 stiffness matrix with a uniform load, the CG stall test's system, it is
-about \\(1.46 \times 10^3\\) against \\(\kappa \approx 1.61 \times 10^3\\). There
-\\(\eta\\) understates the evaluation error by that factor. The CG stall test in
+\\(\\|b\\| = \\|A x\\| \le \\| |A| |x| \\|\\), and \\(\eta\\) understates the
+evaluation error by the ratio \\(\\| |A| |x| \\| / \\|b\\|\\). For symmetric
+positive definite \\(A\\) the ratio is at most \\(\\| |A| \\|_2 / \lambda_{\min}\\),
+because \\(\\| |A| |x| \\| \le \\| |A| \\|_2 \\|x\\|\\) and
+\\(\\|A x\\| \ge \lambda_{\min} \\|x\\|\\). For the order-62 stiffness matrix,
+whose \\(|A|\\) and \\(A\\) share the largest eigenvalue
+\\(2 + 2 \cos(\pi / 63)\\), that bound is the condition number
+\\(\kappa \approx 1.61 \times 10^3\\), and the ratio approaches it only as
+\\(x\\) aligns with the lowest eigenvector. At
+\\(t_i = i / 63\\) the ratio is 22 for \\(x = 1\\), 18 for \\(t\\), 14 for
+\\(t^2\\), 15 for \\(\cos \pi t\\), \\(1.46 \times 10^3\\) for \\(t (1 - t)\\),
+the solution of the CG stall test's uniform load, and \\(1.61 \times 10^3\\) for
+\\(\sin \pi t\\) (evaluated in `f64`). The CG stall test in
 the [CG chapter](cg.md) does not use \\(\eta\\) for this reason; it compares the
 measured residuals with the caller's threshold.
 

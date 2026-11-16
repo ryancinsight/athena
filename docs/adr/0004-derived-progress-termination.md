@@ -52,9 +52,16 @@ Two properties of the derivation matter:
   `u(|b - Ax| + N_A |A| |x|)` (Carson and Demmel, UCB/EECS-2012-197,
   eq. (4.9)-(4.10)), so `||b||` is the scale only while
   `|| |A| |x| || ~ ||b||`. When `Ax` cancels, the ratio
-  `|| |A| |x| || / ||b||` exceeds 1, reaching the order of the condition number
-  for a smooth solution of an ill-conditioned operator, and the floor
-  understates the evaluation error by that ratio.
+  `|| |A| |x| || / ||b||` exceeds 1 and the floor understates the evaluation
+  error by that ratio. For symmetric positive definite `A` the ratio is at
+  most `|| |A| ||_2 / lambda_min`, because `|| |A| |x| || <= || |A| ||_2 ||x||`
+  and `||Ax|| >= lambda_min ||x||`. That is the condition number for the
+  order-62 stiffness matrix, whose `|A|` and `A` share the largest eigenvalue
+  `2 + 2 cos(pi / 63)`, and the ratio approaches it only as `x` aligns with
+  the lowest eigenvector. At `t_i = i / 63` the ratio is 22 for `x = 1`,
+  18 for `t`, 14 for `t^2`, 15 for `cos(pi t)`, 1.46e3 for `t (1 - t)`, the
+  solution of the CG stall test, and 1.61e3 for `sin(pi t)`, against a
+  condition number of 1.61e3 (evaluated in `f64`).
   Near convergence `||r|| << ||b||`, so a floor relative to `||r||` would
   understate the uncertainty by the factor `||b|| / ||r||`.
 - The `len` dependence is `sqrt(len)`, the statistical form (Higham,

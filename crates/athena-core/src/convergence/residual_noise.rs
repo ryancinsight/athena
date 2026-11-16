@@ -47,12 +47,17 @@ use eunomia::RealField;
 /// conservative for it.
 ///
 /// `‖b‖ = ‖Ax‖ ≤ ‖|A||x|‖` at the solution, with equality only when `Ax`
-/// does not cancel. For a smooth solution of an ill-conditioned operator the
-/// ratio approaches the condition number, and this floor understates the
-/// evaluation error by that ratio: about 1.46e3 for the order-62 stiffness
-/// matrix with a uniform load. CG's attainable-accuracy stall test does not
-/// use this floor for that reason; it compares the measured residuals with
-/// the caller's threshold instead.
+/// does not cancel, and this floor understates the evaluation error by the
+/// ratio `‖|A||x|‖ / ‖b‖`. For symmetric positive definite `A` the ratio is at
+/// most `‖|A|‖₂ / λ_min`, because `‖|A||x|‖ ≤ ‖|A|‖₂‖x‖` and
+/// `‖Ax‖ ≥ λ_min‖x‖`. That bound is the condition number for the order-62
+/// stiffness matrix, whose `|A|` and `A` share the largest eigenvalue
+/// `2 + 2 cos(π / 63)`, and the ratio approaches it only as `x` aligns with
+/// the lowest eigenvector. At `t_i = i / 63` the ratio is 22 for `x = 1`, 18 for
+/// `t`, 14 for `t²`, 15 for `cos πt`, 1.46e3 for `t (1 - t)`, the solution of
+/// CG's stall test, and 1.61e3 for `sin πt` (evaluated in `f64`). CG's
+/// attainable-accuracy stall test does not use this floor for that reason; it
+/// compares the measured residuals with the caller's threshold instead.
 ///
 /// # Examples
 ///

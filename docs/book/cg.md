@@ -95,8 +95,10 @@ the \\(x\\) and \\(r\\) updates (Cools et al., arXiv:1601.07068, (2.11) and
 further iterations shrink \\(r_k\\) while \\(\\|b - A x_k\\|\\) stays near
 \\(\\|f_k\\|\\), the attainable accuracy. Greenbaum (1997; abstract only) sets
 its level by the machine precision, \\(\\|A\\|\\), \\(\\|x\\|\\) and the iterate
-sizes. When \\(A x\\) cancels, as for a smooth solution of an ill-conditioned
-operator, it can sit orders of magnitude above \\(\varepsilon \\|b\\|\\).
+sizes. When \\(A x\\) cancels, \\(\\| |A| |x| \\| / \\|b\\|\\) exceeds 1 (about
+\\(1.46 \times 10^3\\) for the CG stall test) and the attainable accuracy
+can sit orders of magnitude above \\(\varepsilon \\|b\\|\\); the
+[convergence policy chapter](convergence_policy.md) bounds the ratio.
 
 Athena classifies the stall at a measurement that finds the recurrence residual
 at or below the threshold \\(\tau\\) and
