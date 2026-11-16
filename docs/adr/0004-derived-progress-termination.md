@@ -137,10 +137,10 @@ has no term that reduces that gap (Cools et al., arXiv:1601.07068, (2.11) and
 (2.15); Greenbaum (1997), SIAM J. Matrix Anal. Appl. 18(3), 535-551, read from
 its abstract only). The test needs only `tau` and two measured norms, not the
 noise floor, whose `||b||` scale understates the evaluation error when `Ax`
-cancels. A CG solve that reported `Breakdown` after iterating until `<r, z>`
-underflowed, or `MaxIterations` after a stall found before the budget ended,
-now reports `Stagnated` at the first measurement that satisfies the test; a
-budget ending at that measurement still reports `MaxIterations`, as
+cancels. A CG solve that reported `Breakdown` after iterating until a dot
+product underflowed, or `MaxIterations` after a stall found before the budget
+ended, now reports `Stagnated` at the first measurement that satisfies the
+test; a budget ending at that measurement still reports `MaxIterations`, as
 `DeflatedCg` does. A caller that keeps the iterate on `Breakdown` or
 `MaxIterations` must treat `Stagnated` alike. Stopping at the first measurement
 with `||b - Ax|| > tau` was rejected: it cuts off a solve whose gap is below
@@ -164,5 +164,5 @@ with `||b - Ax|| > tau` was rejected: it cuts off a solve whose gap is below
 - `cg_contract::residual_stall` solves the order-62 stiffness system with a
   uniform load at relative tolerance `4 EPSILON` in `f32` and `f64` and asserts
   `Stagnated` with one measurement of `b - Ax`, both at a scheduled check and
-  at a zero `<r, r>`, and `||b - Ax||` within a first-order gap bound; a
-  budget ending at the stall check reports `MaxIterations`.
+  at a zero `<r, z>` or `<p, A p>`, and `||b - Ax||` within a first-order gap
+  bound; a budget ending at the stall check reports `MaxIterations`.
