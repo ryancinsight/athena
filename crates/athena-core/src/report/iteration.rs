@@ -4,8 +4,8 @@
 pub struct IterationState<T> {
     /// One-based iteration number.
     pub iteration: usize,
-    /// Current residual norm. GMRES uses its recurrence estimate inside a
-    /// cycle and the explicitly recomputed norm at terminal cycle checks.
+    /// Current residual norm. CG and GMRES can report recurrence estimates
+    /// during iteration and explicitly recomputed norms at terminal checks.
     pub residual_norm: T,
     /// Effective convergence threshold.
     pub threshold: T,
@@ -39,7 +39,7 @@ impl<T> IterationState<T> {
 /// Applications choose whether to store, stream, or discard samples; Athena
 /// never allocates a residual-history vector implicitly.
 pub trait IterationObserver<T> {
-    /// Observe one configured residual check.
+    /// Observe one scheduled or algorithm-required terminal residual check.
     fn observe(&mut self, state: IterationState<T>);
 }
 

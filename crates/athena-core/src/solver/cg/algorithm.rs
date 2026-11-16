@@ -11,6 +11,10 @@ use super::super::dimension::validate_dimensions;
 type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 
 /// Zero-sized preconditioned conjugate-gradient algorithm marker.
+///
+/// Scheduled checks monitor the recurrence residual. Prospective convergence,
+/// curvature failure and budget exhaustion additionally measure `b - A x`.
+/// Only that original-system residual can establish successful termination.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Cg<B>(PhantomData<fn() -> B>);
 
@@ -47,7 +51,7 @@ impl<B: KrylovBackend> Cg<B> {
         )
     }
 
-    /// Solve while reporting configured residual checks to `observer`.
+    /// Solve while reporting scheduled and terminal residual checks to `observer`.
     ///
     /// # Errors
     ///
@@ -75,6 +79,7 @@ impl<B: KrylovBackend> Cg<B> {
             backend,
             operator,
             preconditioner,
+            right_hand_side,
             solution,
             workspace,
             policy,
@@ -101,6 +106,7 @@ where
     backend: &'a B,
     operator: &'a O,
     preconditioner: &'a P,
+    right_hand_side: &'a B::Vector,
     solution: &'a mut B::Vector,
     workspace: &'a mut CgWorkspace<B>,
     policy: ConvergencePolicy<B::Scalar>,
@@ -239,6 +245,7 @@ where
         Ok(Stage::Continue(CgState {
             initial_residual: residual.initial_residual,
             last_residual: residual.initial_residual,
+            last_true_residual_iteration: 0,
             threshold: residual.threshold,
             rho,
             operator_applications: 1,
@@ -281,7 +288,9 @@ where
             )
             .map_err(SolveError::Backend)?;
         if let Some(termination) = curvature_termination(denominator) {
-            return Ok(Some(state.report(termination, iteration - 1)));
+            return self
+                .finish_curvature_failure(termination, iteration - 1, state)
+                .map(Some);
         }
 
         let alpha = state.rho / denominator;
@@ -295,7 +304,9 @@ where
             )
             .map_err(SolveError::Backend)?;
 
-        if let Some(report) = self.check_residual(iteration, state)? {
+        if self.policy.should_check(iteration)
+            && let Some(report) = self.check_residual(iteration, state)?
+        {
             return Ok(Some(report));
         }
         self.prepare_direction(iteration, state)
@@ -306,9 +317,6 @@ where
         iteration: usize,
         state: &mut CgState<B::Scalar>,
     ) -> Result<Option<SolveReport<B::Scalar>>, SolveError<B::Error>> {
-        if !self.policy.should_check(iteration) {
-            return Ok(None);
-        }
         state.last_residual = self
             .backend
             .norm_l2_prepared(
@@ -316,6 +324,12 @@ where
                 self.backend.view(&self.workspace.residual),
             )
             .map_err(SolveError::Backend)?;
+        if !state.last_residual.is_finite()
+            || state.last_residual <= state.threshold
+            || iteration == self.policy.max_iterations()
+        {
+            self.measure_original_residual(iteration, state)?;
+        }
         self.observer.observe(IterationState::new(
             iteration,
             state.last_residual,
@@ -356,7 +370,9 @@ where
             )
             .map_err(SolveError::Backend)?;
         if let Some(termination) = curvature_termination(next_rho) {
-            return Ok(Some(state.report(termination, iteration)));
+            return self
+                .finish_curvature_failure(termination, iteration, state)
+                .map(Some);
         }
 
         let beta = next_rho / state.rho;
@@ -369,6 +385,66 @@ where
             .map_err(SolveError::Backend)?;
         state.rho = next_rho;
         Ok(None)
+    }
+
+    fn finish_curvature_failure(
+        &mut self,
+        termination: Termination,
+        iterations: usize,
+        state: &mut CgState<B::Scalar>,
+    ) -> ExecutionResult<B, SolveReport<B::Scalar>> {
+        // A zero product can mean exact convergence, underflow or a singular
+        // preconditioner. Only the original-system residual distinguishes them.
+        if state.last_true_residual_iteration != iterations {
+            self.measure_original_residual(iterations, state)?;
+            self.observer.observe(IterationState::new(
+                iterations,
+                state.last_residual,
+                state.threshold,
+            ));
+        }
+        let termination = if !state.last_residual.is_finite() {
+            Termination::NonFinite
+        } else if state.last_residual <= state.threshold {
+            Termination::Converged
+        } else {
+            termination
+        };
+        Ok(state.report(termination, iterations))
+    }
+
+    fn measure_original_residual(
+        &mut self,
+        iteration: usize,
+        state: &mut CgState<B::Scalar>,
+    ) -> ExecutionResult<B, ()> {
+        // Ap and z are dead after updating x/r or deciding to terminate.
+        // Reuse them for Ax and b-Ax without disturbing the CG recurrence.
+        self.operator
+            .apply(
+                self.backend,
+                self.backend.view(self.solution),
+                self.backend.view_mut(&mut self.workspace.image),
+            )
+            .map_err(SolveError::Backend)?;
+        state.operator_applications += 1;
+        self.backend
+            .residual(
+                self.backend.view(self.right_hand_side),
+                self.backend.view(&self.workspace.image),
+                self.backend
+                    .view_mut(&mut self.workspace.preconditioned_residual),
+            )
+            .map_err(SolveError::Backend)?;
+        state.last_residual = self
+            .backend
+            .norm_l2_prepared(
+                &self.workspace.checked_residual_norm,
+                self.backend.view(&self.workspace.preconditioned_residual),
+            )
+            .map_err(SolveError::Backend)?;
+        state.last_true_residual_iteration = iteration;
+        Ok(())
     }
 }
 
@@ -386,6 +462,7 @@ struct ResidualState<T> {
 struct CgState<T> {
     initial_residual: T,
     last_residual: T,
+    last_true_residual_iteration: usize,
     threshold: T,
     rho: T,
     operator_applications: usize,
