@@ -51,8 +51,10 @@ Two properties of the derivation matter:
   residual. The error of evaluating `b - Ax` is of order
   `u(|b - Ax| + N_A |A| |x|)` (Carson and Demmel, UCB/EECS-2012-197,
   eq. (4.9)-(4.10)), so `||b||` is the scale only while
-  `|| |A| |x| || ~ ||b||`. When `Ax` cancels, the ratio approaches the
-  condition number and the floor understates the evaluation error by it.
+  `|| |A| |x| || ~ ||b||`. When `Ax` cancels, the ratio
+  `|| |A| |x| || / ||b||` exceeds 1, reaching the order of the condition number
+  for a smooth solution of an ill-conditioned operator, and the floor
+  understates the evaluation error by that ratio.
   Near convergence `||r|| << ||b||`, so a floor relative to `||r||` would
   understate the uncertainty by the factor `||b|| / ||r||`.
 - The `len` dependence is `sqrt(len)`, the statistical form (Higham,

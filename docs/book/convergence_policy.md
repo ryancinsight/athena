@@ -119,10 +119,11 @@ the [CG chapter](cg.md) does not use \\(\eta\\) for this reason; it compares the
 measured residuals with the caller's threshold.
 
 It uses \\(\sqrt{n}\\), not \\(n\\). The worst-case bound for summing \\(n\\)
-terms sequentially is \\(nu\\) (ibid., Lemma 3.1), but that is attained only when
-every rounding error carries the same sign, and the summands inside a Euclidean
-norm are squares of one sign, which removes the cancellation the worst case
-relies on. The statistical \\(\sqrt{n}u\\) of ibid. §3.1 is used instead. The
+terms sequentially is \\(nu\\) (Higham, Lemma 3.1; locator recalled), but that is
+attained only when every rounding error carries the same sign, and the
+summands inside a Euclidean norm are squares of one sign, which removes the
+cancellation the worst case relies on. The statistical \\(\sqrt{n}u\\) of Higham
+§3.1 (locator recalled) is used instead. The
 practical difference is decisive: at \\(n = 10^8\\) in single precision the
 worst-case form gives \\(n\varepsilon \approx 12\\), a "floor" larger than any
 residual, which would declare every large single-precision system stagnant
@@ -166,8 +167,8 @@ call site.
 ## References
 
 - Higham, *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM,
-  2002, §3.1 (summation error) and §7.1 (residual bounds for computed
-  solutions).
+  2002, for summation error and residual bounds for computed solutions; the
+  locators §3.1 and §7.1 used above are recalled, not checked against the text.
 - Barrett et al., *Templates for the Solution of Linear Systems*, §4.2, on
   stopping criteria and the condition-number factor between residual and error.
   <https://www.netlib.org/templates/templates.html>
