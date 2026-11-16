@@ -7,6 +7,7 @@ use crate::{
 };
 
 use super::super::dimension::validate_dimensions;
+use super::state::{CgState, ResidualState, Stage, curvature_termination};
 
 type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 
@@ -445,52 +446,5 @@ where
             .map_err(SolveError::Backend)?;
         state.last_true_residual_iteration = iteration;
         Ok(())
-    }
-}
-
-enum Stage<S, T> {
-    Continue(S),
-    Complete(SolveReport<T>),
-}
-
-#[derive(Clone, Copy)]
-struct ResidualState<T> {
-    initial_residual: T,
-    threshold: T,
-}
-
-struct CgState<T> {
-    initial_residual: T,
-    last_residual: T,
-    last_true_residual_iteration: usize,
-    threshold: T,
-    rho: T,
-    operator_applications: usize,
-    preconditioner_applications: usize,
-}
-
-impl<T: Copy> CgState<T> {
-    const fn report(&self, termination: Termination, iterations: usize) -> SolveReport<T> {
-        SolveReport::new(
-            termination,
-            iterations,
-            self.operator_applications,
-            self.preconditioner_applications,
-            self.initial_residual,
-            self.last_residual,
-            self.threshold,
-        )
-    }
-}
-
-fn curvature_termination<T: NumericElement>(value: T) -> Option<Termination> {
-    if !value.is_finite() {
-        Some(Termination::NonFinite)
-    } else if value < T::ZERO {
-        Some(Termination::NonPositiveCurvature)
-    } else if value == T::ZERO {
-        Some(Termination::Breakdown)
-    } else {
-        None
     }
 }
