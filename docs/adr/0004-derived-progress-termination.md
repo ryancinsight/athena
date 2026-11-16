@@ -145,8 +145,8 @@ recurrence has no term that reduces that gap (Cools et al., arXiv:1601.07068,
 (2.11) and (2.15); Greenbaum (1997), SIAM J. Matrix Anal. Appl. 18(3),
 535-551, read from its abstract only). The comparison needs only the caller's
 threshold and two measured norms. A CG solve that reported `Breakdown` after
-iterating until `<r, z>` underflowed, or `MaxIterations` after a stall the test
-classifies before the budget ends, now stops with `Stagnated` at the first
+iterating until a dot product underflowed, or `MaxIterations` after a stall the
+test classifies before the budget ends, now stops with `Stagnated` at the first
 measurement that satisfies the test; a budget that ends at that measurement
 still reports `MaxIterations`, as `DeflatedCg` does. A caller that keeps the
 iterate on `Breakdown` or `MaxIterations` must treat `Stagnated` alike.
@@ -172,5 +172,5 @@ excess.
 - `cg_contract::residual_stall` solves the order-62 stiffness system with a
   uniform load at relative tolerance `4 EPSILON` in `f32` and `f64` and asserts
   `Stagnated` with one measurement of `b - Ax`, both at a scheduled check and
-  at a zero `<r, r>`, and `||b - Ax||` within a first-order gap bound; a
-  budget ending at the stall check reports `MaxIterations`.
+  at a zero `<r, z>` or `<p, A p>`, and `||b - Ax||` within a first-order gap
+  bound; a budget ending at the stall check reports `MaxIterations`.

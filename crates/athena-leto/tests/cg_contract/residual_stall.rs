@@ -172,8 +172,8 @@ where
     T: RealScalar + RealField + core::fmt::Debug,
 {
     let _span = tracing::info_span!("cg_residual_stall_zero_product").entered();
-    // Without a scheduled check, CG runs past the recurrence crossing until
-    // `<r, r>` underflows to zero, the path that reported `Breakdown`.
+    // Without a scheduled check, CG runs past the recurrence crossing to its
+    // first zero `<r, z>` or `<p, A p>`; the recurrence does not fix which.
     let checked = solve::<T>(BUDGET, 1).0;
     let (report, _, trace) = solve::<T>(BUDGET, BUDGET);
     assert_eq!(report.termination, Termination::Stagnated, "{report:?}");

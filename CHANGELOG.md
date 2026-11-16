@@ -40,7 +40,7 @@ All notable changes to Athena are documented in this file.
 
 - [major] CG reports `Termination::Stagnated`, not `Breakdown`, when `‖b − Ax‖`
   exceeds its converged recurrence residual by more than the threshold, and
-  stops there instead of iterating until `<r, z>` underflows; a stall found
+  stops there instead of iterating until a dot product underflows; a stall found
   before the budget ends the solve no longer reports `MaxIterations` (ADR 0004).
   Migration: treat `Stagnated` like `Breakdown` and `MaxIterations`. Affected:
   CFDrs `cfd-math` `interpret`, which maps `Stagnated` to an error.
