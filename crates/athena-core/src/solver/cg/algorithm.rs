@@ -25,6 +25,12 @@ type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 /// the solve ends as [`Termination::Stagnated`], or as
 /// [`Termination::MaxIterations`] when the budget ends at that check. A
 /// smaller difference keeps iterating.
+///
+/// A zero `<r, z>` ends the solve after the iteration that produced it. A
+/// zero `<p, A p>` ends it inside the next step, whose product `A p` is
+/// already applied: [`SolveReport::operator_applications`] counts that
+/// abandoned product, [`SolveReport::iterations`] does not. The recurrence
+/// does not fix which of the two products reaches zero first.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Cg<B>(PhantomData<fn() -> B>);
 

@@ -4,11 +4,13 @@
 //! is a parabola, `A x` cancels, `‖|A| |x|‖ / ‖b‖ ≈ 1.46e3`, and a relative
 //! tolerance of `4 EPSILON` lies below the attainable `‖b - A x‖`.
 
+use core::cell::Cell;
+
 use athena_core::{
-    Cg, CgWorkspace, ConvergencePolicy, Identity, IterationObserver, IterationState, SolveReport,
-    Termination,
+    Cg, CgWorkspace, ConvergencePolicy, Identity, IterationObserver, IterationState, KrylovBackend,
+    LinearOperator, Preconditioner, SolveReport, Termination,
 };
-use athena_leto::{CsrOperator, LetoBackend};
+use athena_leto::{CsrOperator, LetoBackend, LetoBackendError};
 use eunomia::{FloatElement, NumericElement, RealField};
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
@@ -38,10 +40,7 @@ fn norm<T: RealField>(values: &[T]) -> T {
     values.iter().fold(zero, |sum, &v| sum + v * v).sqrt()
 }
 
-fn solve<T: RealScalar + RealField>(
-    budget: usize,
-    interval: usize,
-) -> (SolveReport<T>, Vec<T>, Vec<IterationState<T>>) {
+fn operator<T: RealScalar + RealField>() -> CsrOperator<T> {
     let one = <T as NumericElement>::ONE;
     let (mut values, mut columns, mut offsets) = (Vec::new(), Vec::new(), vec![0]);
     for row in 0..UNKNOWNS {
@@ -53,8 +52,28 @@ fn solve<T: RealScalar + RealField>(
     }
     let matrix = CsrMatrix::from_parts(values, columns, offsets, UNKNOWNS, UNKNOWNS)
         .expect("invariant: rows are sorted and in range");
+    CsrOperator::new(matrix).expect("invariant: matrix is square")
+}
+
+fn solve<T: RealScalar + RealField>(
+    budget: usize,
+    interval: usize,
+) -> (SolveReport<T>, Vec<T>, Vec<IterationState<T>>) {
+    solve_with(&operator::<T>(), &Identity, budget, interval)
+}
+
+fn solve_with<T, O, P>(
+    operator: &O,
+    preconditioner: &P,
+    budget: usize,
+    interval: usize,
+) -> (SolveReport<T>, Vec<T>, Vec<IterationState<T>>)
+where
+    T: RealScalar + RealField,
+    O: LinearOperator<LetoBackend<T>>,
+    P: Preconditioner<LetoBackend<T>>,
+{
     let backend = LetoBackend::<T>::default();
-    let operator = CsrOperator::new(matrix).expect("invariant: matrix is square");
     let rhs = Array1::from_shape_vec([UNKNOWNS], vec![load::<T>(); UNKNOWNS])
         .expect("invariant: exact vector shape");
     let mut solution = Array1::zeros([UNKNOWNS]);
@@ -70,8 +89,8 @@ fn solve<T: RealScalar + RealField>(
     let mut trace = Trace(Vec::new());
     let report = Cg::solve_with_observer(
         &backend,
-        &operator,
-        &Identity,
+        operator,
+        preconditioner,
         &rhs,
         &mut solution,
         &mut workspace,
@@ -175,15 +194,162 @@ where
     // Without a scheduled check, CG runs past the recurrence crossing to its
     // first zero `<r, z>` or `<p, A p>`; the recurrence does not fix which.
     let checked = solve::<T>(BUDGET, 1).0;
-    let (report, _, trace) = solve::<T>(BUDGET, BUDGET);
+    let matrix = operator::<T>();
+    let probe = ProbedOperator::new(&matrix, None);
+    let (report, _, trace) = solve_with(&probe, &Identity, BUDGET, BUDGET);
     assert_eq!(report.termination, Termination::Stagnated, "{report:?}");
     assert!(report.iterations > checked.iterations, "{report:?}");
     assert!(report.iterations < BUDGET, "{report:?}");
-    let overhead = report.operator_applications - report.iterations;
-    assert!((2..=3).contains(&overhead), "{report:?}");
+    // Exactly one measurement of `b - A x`, whichever product reached zero.
+    assert_eq!(probe.measurements(), 1, "{report:?}");
+    assert_eq!(report.operator_applications, probe.calls.get());
+    // One product per completed iteration, plus the abandoned product when
+    // the zero is `<p, A p>` rather than `<r, z>`. The recurrence does not
+    // fix which dot product reaches zero first, so the two cases are pinned
+    // separately in `a_zero_product_ends_the_solve_at_the_stall_exactly`.
+    assert!(
+        matches!(probe.products() - report.iterations, 0 | 1),
+        "{report:?}"
+    );
     assert_eq!(trace.len(), 1);
     assert_eq!(trace[0].residual_norm, report.final_residual_norm);
     assert!(report.final_residual_norm > report.threshold);
+}
+
+/// Counts applications by input buffer and optionally zeroes the product of
+/// the `zeroed`-th application, counted from one.
+///
+/// The first application evaluates `b - A x_0` on the solution buffer; every
+/// later application with that input buffer is a measurement of `b - A x`.
+struct ProbedOperator<'a, T> {
+    inner: &'a CsrOperator<T>,
+    zeroed: Option<usize>,
+    calls: Cell<usize>,
+    solution: Cell<Option<usize>>,
+    on_solution: Cell<usize>,
+}
+
+impl<'a, T> ProbedOperator<'a, T> {
+    fn new(inner: &'a CsrOperator<T>, zeroed: Option<usize>) -> Self {
+        Self {
+            inner,
+            zeroed,
+            calls: Cell::new(0),
+            solution: Cell::new(None),
+            on_solution: Cell::new(0),
+        }
+    }
+
+    /// Applications to the solution buffer after the initial residual.
+    fn measurements(&self) -> usize {
+        self.on_solution.get() - 1
+    }
+
+    /// Applications to any other buffer: the products `A p`.
+    fn products(&self) -> usize {
+        self.calls.get() - self.on_solution.get()
+    }
+}
+
+impl<T: RealScalar + RealField> LinearOperator<LetoBackend<T>> for ProbedOperator<'_, T> {
+    fn dimension(&self) -> usize {
+        self.inner.dimension()
+    }
+
+    fn apply(
+        &self,
+        backend: &LetoBackend<T>,
+        input: <LetoBackend<T> as KrylovBackend>::View<'_>,
+        mut output: <LetoBackend<T> as KrylovBackend>::ViewMut<'_>,
+    ) -> Result<(), LetoBackendError> {
+        let address = input
+            .as_slice()
+            .ok_or(LetoBackendError::NonContiguousVector)?
+            .as_ptr()
+            .addr();
+        self.calls.set(self.calls.get() + 1);
+        if self.solution.get().is_none() {
+            self.solution.set(Some(address));
+        }
+        if self.solution.get() == Some(address) {
+            self.on_solution.set(self.on_solution.get() + 1);
+        }
+        if self.zeroed != Some(self.calls.get()) {
+            return self.inner.apply(backend, input, output);
+        }
+        output
+            .as_mut_slice()
+            .ok_or(LetoBackendError::NonContiguousVector)?
+            .fill(<T as NumericElement>::ZERO);
+        Ok(())
+    }
+}
+
+/// Identity that zeroes the output of the `ordinal`-th application.
+struct ZeroedPreconditioner {
+    ordinal: usize,
+    calls: Cell<usize>,
+}
+
+impl<T: RealScalar + RealField> Preconditioner<LetoBackend<T>> for ZeroedPreconditioner {
+    fn apply(
+        &self,
+        backend: &LetoBackend<T>,
+        residual: <LetoBackend<T> as KrylovBackend>::View<'_>,
+        mut output: <LetoBackend<T> as KrylovBackend>::ViewMut<'_>,
+    ) -> Result<(), LetoBackendError> {
+        self.calls.set(self.calls.get() + 1);
+        if self.calls.get() != self.ordinal {
+            return Identity.apply(backend, residual, output);
+        }
+        output
+            .as_mut_slice()
+            .ok_or(LetoBackendError::NonContiguousVector)?
+            .fill(<T as NumericElement>::ZERO);
+        Ok(())
+    }
+}
+
+fn a_zero_product_ends_the_solve_at_the_stall_exactly<T>()
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let _span = tracing::info_span!("cg_residual_stall_forced_zero").entered();
+    // The checked run classifies the stall at iteration `s`; both forced runs
+    // reproduce its iterates up to `s` and zero the next product.
+    let (checked, ..) = solve::<T>(BUDGET, 1);
+    let stall = checked.iterations;
+    assert_eq!(checked.termination, Termination::Stagnated, "{checked:?}");
+
+    // `<p, A p> = 0` in iteration `s + 1`: the initial residual is
+    // application 1 and the product of iteration `j` is application `j + 1`.
+    // The abandoned product is counted, the iteration is not.
+    let matrix = operator::<T>();
+    let product = ProbedOperator::new(&matrix, Some(stall + 2));
+    let (report, _, trace) = solve_with(&product, &Identity, BUDGET, BUDGET);
+    assert_eq!(report.termination, Termination::Stagnated, "{report:?}");
+    assert_eq!(report.iterations, stall);
+    assert_eq!(report.operator_applications, stall + 3);
+    assert_eq!(product.measurements(), 1);
+    assert_eq!(product.products(), stall + 1);
+    assert_eq!(report.final_residual_norm, checked.final_residual_norm);
+    assert_eq!(trace.len(), 1);
+
+    // `<r, z> = 0` after iteration `s`: the preconditioner application after
+    // iteration `j` is application `j + 1`. No product is abandoned.
+    let preconditioner = ZeroedPreconditioner {
+        ordinal: stall + 1,
+        calls: Cell::new(0),
+    };
+    let probe = ProbedOperator::new(&matrix, None);
+    let (report, _, trace) = solve_with(&probe, &preconditioner, BUDGET, BUDGET);
+    assert_eq!(report.termination, Termination::Stagnated, "{report:?}");
+    assert_eq!(report.iterations, stall);
+    assert_eq!(report.operator_applications, stall + 2);
+    assert_eq!(probe.measurements(), 1);
+    assert_eq!(probe.products(), stall);
+    assert_eq!(report.final_residual_norm, checked.final_residual_norm);
+    assert_eq!(trace.len(), 1);
 }
 
 fn a_budget_ending_at_the_stall_check_is_max_iterations<T>(budget: usize)
@@ -208,6 +374,8 @@ fn cg_reports_a_residual_stall_instead_of_breakdown() {
     stall_terminates_at_the_first_measurement::<f64>();
     zero_product_after_a_converged_recurrence_is_a_stall::<f32>();
     zero_product_after_a_converged_recurrence_is_a_stall::<f64>();
+    a_zero_product_ends_the_solve_at_the_stall_exactly::<f32>();
+    a_zero_product_ends_the_solve_at_the_stall_exactly::<f64>();
     a_budget_ending_at_the_stall_check_is_max_iterations::<f32>(100);
     a_budget_ending_at_the_stall_check_is_max_iterations::<f64>(300);
 }
