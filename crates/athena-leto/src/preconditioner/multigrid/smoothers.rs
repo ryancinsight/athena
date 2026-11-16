@@ -3,29 +3,45 @@
 //! Each smoother is a sweep kernel over a CSR system: it damps the
 //! high-frequency residual components the coarse-grid correction cannot see.
 //! All five dispatch exhaustively from the level's [`Smoother`](super::level::Smoother)
-//! enum. Jacobi snapshots the previous iterate and Chebyshev recomputes
-//! the residual. Each smoother serves both owned and borrowed operands.
+//! enum. Each kernel takes element slices, and its owned `apply` is a thin
+//! adapter over the same lines. No sweep allocates except Jacobi's
+//! previous-iterate snapshot, which its update contract requires: that buffer
+//! is sized once per `apply` call rather than cloned once per sweep.
 
 use super::scalars::diagonal_epsilon;
-use super::vector::Vector;
 use eunomia::{FloatElement, NumericElement, RealField};
 use leto::Array1;
-use leto_ops::{CsrMatrix, RealScalar};
-use std::ops::{Index, IndexMut};
+use leto_ops::{CsrMatrix, RealScalar, spmv as leto_spmv};
 
-fn residual<T>(
-    matrix: &CsrMatrix<T>,
-    b: &(impl Index<usize, Output = T> + ?Sized),
-    x: &(impl Vector<T> + ?Sized),
-) -> Vec<T>
+/// Borrow an owned smoother operand as its element slice.
+///
+/// Every [`Array1`] constructor builds a C-contiguous layout, so a rank-one
+/// array is always one slice and the borrow cannot fail for an array this
+/// crate allocates.
+fn contiguous<T>(vector: &Array1<T>) -> &[T] {
+    vector
+        .as_slice()
+        .expect("invariant: rank-one array storage is contiguous")
+}
+
+/// Mutably borrow an owned smoother operand as its element slice.
+fn contiguous_mut<T>(vector: &mut Array1<T>) -> &mut [T] {
+    vector
+        .as_slice_mut()
+        .expect("invariant: rank-one array storage is contiguous")
+}
+
+fn residual<T>(matrix: &CsrMatrix<T>, b: &[T], x: &[T]) -> Vec<T>
 where
     T: RealField + Copy + RealScalar,
 {
-    let mut out = vec![<T as NumericElement>::ZERO; matrix.nrows()];
-    super::vector::sparse_apply_into(matrix, x, &mut out)
+    let layout = leto::Layout::c_contiguous([x.len()])
+        .expect("invariant: rank-one layout over an allocated vector is valid");
+    let applied = leto_spmv(matrix, &leto::ArrayView1::new(layout, x))
         .expect("invariant: smoother SpMV dimensions are valid");
-    for (index, value) in out.iter_mut().enumerate() {
-        *value = b[index] - *value;
+    let mut out = vec![<T as NumericElement>::ZERO; b.len()];
+    for (out_entry, (rhs, applied_entry)) in out.iter_mut().zip(b.iter().zip(applied.iter())) {
+        *out_entry = *rhs - *applied_entry;
     }
     out
 }
@@ -52,14 +68,19 @@ impl<T: RealField + Copy + FloatElement + RealScalar> GaussSeidelSmoother<T> {
         b: &Array1<T>,
         iterations: usize,
     ) {
-        self.sweep(matrix, x, b, iterations);
+        self.apply_slices(matrix, contiguous_mut(x), contiguous(b), iterations);
     }
 
-    pub(super) fn sweep(
+    /// Apply the smoother over borrowed slices.
+    ///
+    /// The one sweep kernel: the owned [`Self::apply`] adapter and the AMG
+    /// cycle's slice-driven V-cycle both run these lines, so a smoother never
+    /// carries two copies of its arithmetic.
+    pub(crate) fn apply_slices(
         &self,
         matrix: &CsrMatrix<T>,
-        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
-        b: &(impl Index<usize, Output = T> + ?Sized),
+        x: &mut [T],
+        b: &[T],
         iterations: usize,
     ) {
         let offsets = matrix.row_ptr();
@@ -112,14 +133,15 @@ impl<T: RealField + Copy + FloatElement + RealScalar> SymmetricGaussSeidelSmooth
         b: &Array1<T>,
         iterations: usize,
     ) {
-        self.sweep(matrix, x, b, iterations);
+        self.apply_slices(matrix, contiguous_mut(x), contiguous(b), iterations);
     }
 
-    pub(super) fn sweep(
+    /// Apply the smoother over borrowed slices: forward sweep, then back.
+    pub(crate) fn apply_slices(
         &self,
         matrix: &CsrMatrix<T>,
-        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
-        b: &(impl Index<usize, Output = T> + ?Sized),
+        x: &mut [T],
+        b: &[T],
         iterations: usize,
     ) {
         let offsets = matrix.row_ptr();
@@ -128,7 +150,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar> SymmetricGaussSeidelSmooth
 
         // Forward sweep
         let gs_forward = GaussSeidelSmoother::new(self.relaxation_factor);
-        gs_forward.sweep(matrix, x, b, iterations);
+        gs_forward.apply_slices(matrix, &mut *x, b, iterations);
 
         // Backward sweep
         for _ in 0..iterations {
@@ -177,14 +199,15 @@ impl<T: RealField + Copy + FloatElement + RealScalar> JacobiSmoother<T> {
         b: &Array1<T>,
         iterations: usize,
     ) {
-        self.sweep(matrix, x, b, iterations);
+        self.apply_slices(matrix, contiguous_mut(x), contiguous(b), iterations);
     }
 
-    pub(super) fn sweep(
+    /// Apply the smoother over borrowed slices.
+    pub(crate) fn apply_slices(
         &self,
         matrix: &CsrMatrix<T>,
-        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
-        b: &(impl Index<usize, Output = T> + ?Sized),
+        x: &mut [T],
+        b: &[T],
         iterations: usize,
     ) {
         let offsets = matrix.row_ptr();
@@ -194,7 +217,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar> JacobiSmoother<T> {
         let mut x_old = vec![<T as NumericElement>::ZERO; x.len()];
 
         for _ in 0..iterations {
-            x.copy_into(&mut x_old);
+            x_old.copy_from_slice(x);
 
             for i in 0..matrix.nrows() {
                 let mut sum = <T as NumericElement>::ZERO;
@@ -241,14 +264,15 @@ impl<T: RealField + Copy + FloatElement + RealScalar> SORSmoother<T> {
         b: &Array1<T>,
         iterations: usize,
     ) {
-        self.sweep(matrix, x, b, iterations);
+        self.apply_slices(matrix, contiguous_mut(x), contiguous(b), iterations);
     }
 
-    pub(super) fn sweep(
+    /// Apply the smoother over borrowed slices.
+    pub(crate) fn apply_slices(
         &self,
         matrix: &CsrMatrix<T>,
-        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
-        b: &(impl Index<usize, Output = T> + ?Sized),
+        x: &mut [T],
+        b: &[T],
         iterations: usize,
     ) {
         let offsets = matrix.row_ptr();
@@ -350,14 +374,15 @@ impl<T: RealField + Copy + FloatElement + RealScalar> ChebyshevSmoother<T> {
         b: &Array1<T>,
         iterations: usize,
     ) {
-        self.sweep(matrix, x, b, iterations);
+        self.apply_slices(matrix, contiguous_mut(x), contiguous(b), iterations);
     }
 
-    pub(super) fn sweep(
+    /// Apply the smoother over borrowed slices.
+    pub(crate) fn apply_slices(
         &self,
         matrix: &CsrMatrix<T>,
-        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
-        b: &(impl Index<usize, Output = T> + ?Sized),
+        x: &mut [T],
+        b: &[T],
         iterations: usize,
     ) {
         let theta =

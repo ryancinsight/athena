@@ -4,7 +4,7 @@
 use super::super::{AMGConfig, AMGHierarchy, AMGStatistics, MultigridLevel};
 use crate::LetoBackendError;
 use eunomia::RealField;
-use leto_ops::{CsrMatrix, RealScalar, spgemm};
+use leto_ops::{CsrMatrix, RealScalar, spgemm, spmv_into as leto_spmv_into};
 use std::sync::{Arc, Mutex};
 
 use super::cycle::AMGLevelWorkspace;
@@ -18,6 +18,16 @@ pub(super) fn sparse_product<T: RealField + Copy + RealScalar>(
             "AMG sparse product failed: {error}"
         )))
     })
+}
+
+pub(super) fn sparse_apply_into<T: RealField + Copy + RealScalar>(
+    matrix: &CsrMatrix<T>,
+    vector: &[T],
+    output: &mut [T],
+) -> Result<(), LetoBackendError> {
+    let layout = leto::Layout::c_contiguous([vector.len()])?;
+    leto_spmv_into(matrix, &leto::ArrayView1::new(layout, vector), output)
+        .map_err(LetoBackendError::from)
 }
 
 /// Algebraic Multigrid preconditioner.

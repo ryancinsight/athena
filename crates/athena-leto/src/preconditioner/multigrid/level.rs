@@ -4,11 +4,7 @@
 //! neighbours and the smoother that damps its high-frequency error; the
 //! hierarchy is the cached transfer pairing the cycles rewalk.
 
-use std::ops::{Index, IndexMut};
-
 use eunomia::RealField;
-
-use super::vector::Vector;
 use leto_ops::{CsrMatrix, RealScalar};
 
 use super::smoothers::{
@@ -48,22 +44,33 @@ where
         b: &leto::Array1<T>,
         iterations: usize,
     ) {
-        self.sweep(matrix, x, b, iterations);
+        match self {
+            Self::GaussSeidel(smoother) => smoother.apply(matrix, x, b, iterations),
+            Self::SymmetricGaussSeidel(smoother) => smoother.apply(matrix, x, b, iterations),
+            Self::Jacobi(smoother) => smoother.apply(matrix, x, b, iterations),
+            Self::Sor(smoother) => smoother.apply(matrix, x, b, iterations),
+            Self::Chebyshev(smoother) => smoother.apply(matrix, x, b, iterations),
+        }
     }
 
-    pub(super) fn sweep(
+    /// Apply the carried smoother over borrowed slices.
+    ///
+    /// The AMG cycle owns its scratch as plain slices and calls this, so a
+    /// pre- or post-smoothing sweep costs no rank-one layout wrapper. The same
+    /// exhaustive match guards the closed smoother set.
+    pub(crate) fn apply_slices(
         &self,
         matrix: &CsrMatrix<T>,
-        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
-        b: &(impl Index<usize, Output = T> + ?Sized),
+        x: &mut [T],
+        b: &[T],
         iterations: usize,
     ) {
         match self {
-            Self::GaussSeidel(smoother) => smoother.sweep(matrix, x, b, iterations),
-            Self::SymmetricGaussSeidel(smoother) => smoother.sweep(matrix, x, b, iterations),
-            Self::Jacobi(smoother) => smoother.sweep(matrix, x, b, iterations),
-            Self::Sor(smoother) => smoother.sweep(matrix, x, b, iterations),
-            Self::Chebyshev(smoother) => smoother.sweep(matrix, x, b, iterations),
+            Self::GaussSeidel(smoother) => smoother.apply_slices(matrix, x, b, iterations),
+            Self::SymmetricGaussSeidel(smoother) => smoother.apply_slices(matrix, x, b, iterations),
+            Self::Jacobi(smoother) => smoother.apply_slices(matrix, x, b, iterations),
+            Self::Sor(smoother) => smoother.apply_slices(matrix, x, b, iterations),
+            Self::Chebyshev(smoother) => smoother.apply_slices(matrix, x, b, iterations),
         }
     }
 }
