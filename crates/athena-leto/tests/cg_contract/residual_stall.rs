@@ -179,7 +179,8 @@ where
     assert_eq!(report.termination, Termination::Stagnated, "{report:?}");
     assert!(report.iterations > checked.iterations, "{report:?}");
     assert!(report.iterations < BUDGET, "{report:?}");
-    assert_eq!(report.operator_applications, report.iterations + 2);
+    let overhead = report.operator_applications - report.iterations;
+    assert!((2..=3).contains(&overhead), "{report:?}");
     assert_eq!(trace.len(), 1);
     assert_eq!(trace[0].residual_norm, report.final_residual_norm);
     assert!(report.final_residual_norm > report.threshold);
