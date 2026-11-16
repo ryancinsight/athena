@@ -19,11 +19,12 @@ type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 ///
 /// Once the recurrence residual `r_k` meets the threshold, a measured
 /// `‖b - A x_k‖ - ‖r_k‖ > threshold` bounds the gap `(b - A x_k) - r_k`
-/// above the threshold. The gap sums the rounding errors of the updates and
-/// no CG step reduces it (Greenbaum 1997; Cools et al., arXiv:1601.07068,
-/// eq. (11) and (15)), so the solve ends as [`Termination::Stagnated`]
-/// rather than iterating until `<r, z>` underflows. A smaller difference
-/// keeps iterating, because the gap may still be below the threshold.
+/// above the threshold. The gap sums the local rounding errors of the updates
+/// and the recurrence has no term that reduces it (Cools et al.,
+/// arXiv:1601.07068, (2.11) and (2.15); Greenbaum 1997, abstract only), so
+/// the solve ends as [`Termination::Stagnated`], or as
+/// [`Termination::MaxIterations`] when the budget ends at that check. A
+/// smaller difference keeps iterating.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Cg<B>(PhantomData<fn() -> B>);
 
@@ -344,10 +345,10 @@ where
             Some(Termination::NonFinite)
         } else if state.last_residual <= state.threshold {
             Some(Termination::Converged)
-        } else if state.stalled() {
-            Some(Termination::Stagnated)
         } else if iteration == self.policy.max_iterations() {
             Some(Termination::MaxIterations)
+        } else if state.stalled() {
+            Some(Termination::Stagnated)
         } else {
             None
         };
@@ -401,9 +402,7 @@ where
         state: &mut CgState<B::Scalar>,
     ) -> ExecutionResult<B, SolveReport<B::Scalar>> {
         // A zero product can mean exact convergence, underflow or a singular
-        // preconditioner. Only the original-system residual distinguishes
-        // them, and it separates an underflow that follows a converged
-        // recurrence, which is a stall, from a breakdown.
+        // preconditioner. Only the original-system residual distinguishes them.
         if state.last_true_residual_iteration != iterations {
             state.recurrence_residual = self.recurrence_norm()?;
             self.measure_original_residual(iterations, state)?;

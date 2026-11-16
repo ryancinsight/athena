@@ -90,12 +90,13 @@ iteration if the following curvature check prevents another step.
 
 The recurrence residual \\(r_k\\) and the true residual \\(b - A x_k\\) differ by
 the gap \\(f_k = (b - A x_k) - r_k\\), the sum of the local rounding errors of
-the \\(x\\) and \\(r\\) updates (Cools et al., arXiv:1601.07068, eq. (11) and
-(15)); nothing in the recurrence reduces it. Once \\(r_k\\) is small, further
-iterations shrink \\(r_k\\) while \\(\\|b - A x_k\\|\\) stays at
-\\(\\|f_k\\|\\), the attainable accuracy (Greenbaum 1997). When \\(A x\\) cancels,
-as for a smooth solution of an ill-conditioned operator, that accuracy can sit
-orders of magnitude above \\(\varepsilon \\|b\\|\\).
+the \\(x\\) and \\(r\\) updates (Cools et al., arXiv:1601.07068, (2.11) and
+(2.15)); the recurrence has no term that reduces it. Once \\(r_k\\) is small,
+further iterations shrink \\(r_k\\) while \\(\\|b - A x_k\\|\\) stays near
+\\(\\|f_k\\|\\), the attainable accuracy. Greenbaum (1997; abstract only) sets
+its level by the machine precision, \\(\\|A\\|\\), \\(\\|x\\|\\) and the iterate
+sizes. When \\(A x\\) cancels, as for a smooth solution of an ill-conditioned
+operator, it can sit orders of magnitude above \\(\varepsilon \\|b\\|\\).
 
 Athena classifies the stall at a measurement that finds the recurrence residual
 at or below the threshold \\(\tau\\) and
@@ -104,8 +105,9 @@ below (reverse triangle inequality), so the gap alone exceeds \\(\tau\\). The
 solve ends as `Termination::Stagnated` and reports the measured
 \\(\\|b - A x_k\\|\\); the test needs only \\(\tau\\) and the two norms. A smaller
 difference leaves room for a gap below \\(\tau\\), so iteration continues until a
-later measurement meets \\(\tau\\) or classifies the stall. A zero
-\\(\langle r, z \rangle\\) between scheduled checks applies the same test.
+later measurement meets \\(\tau\\) or classifies the stall, unless the budget
+ends there (`MaxIterations`). A zero \\(\langle r, z \rangle\\) between scheduled
+checks applies the same test.
 
 `Stagnated` means the tolerance asks for more than the arithmetic delivers for
 this operator and right-hand side: raise it to at least the reported residual,
@@ -166,10 +168,10 @@ residual, which is how you obtain a convergence history.
 
 Terminal conditions specific to CG are `NonPositiveCurvature`, above;
 `Breakdown` when \\(\langle r, z \rangle\\) or \\(\langle p, A p \rangle\\)
-reaches exact zero without the recurrence residual having met the threshold;
-and `Stagnated` when the recurrence residual met the threshold but
-\\(\\|b - A x\\|\\) stalled above it at the attainable accuracy, described
-above. The rest are shared and listed in the
+reaches exact zero and the measured \\(\\|b - A x\\|\\) neither meets the
+threshold nor stalls above it; and `Stagnated` when the recurrence residual met
+the threshold but \\(\\|b - A x\\|\\) sits above it at the attainable accuracy,
+described above. The rest are shared and listed in the
 [Convergence Policy](convergence_policy.md) chapter.
 
 See [Example: CG Solver](examples/cg_solver.md) for a complete program.
@@ -188,10 +190,9 @@ See [Example: CG Solver](examples/cg_solver.md) for a complete program.
   symmetric matrix*, IMA J. Applied Mathematics 18(3), 341--349, for the
   finite-precision loss of orthogonality.
 - Greenbaum (1997), *Estimating the attainable accuracy of recursively computed
-  residual methods*, SIAM J. Matrix Anal. Appl. 18(3), 535--551, for the gap
-  between the true and the updated residual and the level at which the true
-  residual stalls. Preprint 95-1515 (May 1995), Cornell eCommons.
-  <https://hdl.handle.net/1813/7172>
+  residual methods*, SIAM J. Matrix Anal. Appl. 18(3), 535--551, for the level
+  at which the true residual stalls. Read from the abstract only (Cornell
+  eCommons <https://hdl.handle.net/1813/7172>); no theorem is cited.
 - Cools, Yetkin, Agullo, Giraud and Vanroose, *Analyzing the effect of local
   rounding error propagation on the maximal attainable accuracy of the
   pipelined Conjugate Gradient method*, arXiv:1601.07068, §2.1, for the gap of

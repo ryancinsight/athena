@@ -94,8 +94,7 @@ mod tests {
         // Dyadic values make every difference exact in both formats.
         // Converged recurrence, gap bound 3/2 above the threshold: stall.
         assert!(measured(half, one + one).stalled());
-        // Gap bound exactly the threshold, then below it: the gap may be
-        // below the threshold, so iteration continues.
+        // Gap bound equal to, then below, the threshold: keep iterating.
         assert!(!measured(half, one + half).stalled());
         assert!(!measured(half, one + half / (one + one)).stalled());
         // Gap bound 5/2, but the recurrence has not met the threshold.
