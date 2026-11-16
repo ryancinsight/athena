@@ -6,16 +6,17 @@
 - Revised 2026-11-16: CG detects `Stagnated` when its true residual stalls
   at the attainable accuracy after the recurrence residual met the threshold
   (athena#167). The change is [major] for callers that match `Breakdown`.
+- Revised 2026-11-16: the noise floor's `||A|| ||x|| ~ ||b||` premise is
+  restated as an assumption that fails when `Ax` cancels; the CG stall test
+  does not use the floor.
 
 ## Context
 
-Restarted GMRES had two ways to stop short of the solution: the residual
-threshold and the iteration cap. Neither describes a solve that has stopped
-making progress. A stalled GMRES(m) run consumed its whole budget and reported
-`Termination::MaxIterations`, which is indistinguishable from a solve that was
-converging steadily and simply ran out of iterations. The two call for opposite
+A stalled GMRES(m) run consumed its whole budget and reported
+`Termination::MaxIterations`, indistinguishable from a solve that was
+converging steadily and ran out of iterations. The two call for opposite
 responses — raise the budget, versus change the preconditioner, the restart
-width, or the method — and the report could not tell them apart.
+width, or the method.
 
 Stagnation is not an edge case for the restarted method. GMRES(m) minimises the
 residual over the Krylov space of one cycle; when that space yields no
@@ -27,10 +28,8 @@ method, and Greenbaum, Pták and Strakoš (1996), *Any nonincreasing convergence
 curve is possible for GMRES*, SIAM J. Matrix Anal. Appl. 17(3), 465-469, show
 the stalling family is not pathological.
 
-Any progress criterion needs a scale to compare two residuals against. Adding a
-tuned tolerance for it would put an unjustified magic number on the solver's
-termination path, which is exactly what the repository's numerical contracts
-forbid.
+Any progress criterion needs a scale to compare two residuals against, and a
+tuned tolerance would put an unjustified number on the termination path.
 
 ## Decision
 
@@ -41,27 +40,36 @@ quantity they are both measured against:
 residual_noise_floor(len, ||b||) = sqrt(len) * EPSILON * ||b||
 ```
 
-This is the absolute accuracy of one explicitly recomputed `||b - Ax||_2`. It
-is published as `athena_core::residual_noise_floor` with its full derivation
-and its limits at the definition site, rather than inlined, because it is the
-scale that makes any residual comparison meaningful and callers writing a
-custom convergence test need the same number.
+This estimates the absolute accuracy of one explicitly recomputed
+`||b - Ax||_2`. It is published as `athena_core::residual_noise_floor` with its
+derivation and limits, because callers writing a custom convergence test need
+the same number.
 
 Two properties of the derivation matter:
 
 - The floor is **absolute and scaled by `||b||`**, not relative to the current
-  residual. The error of evaluating `b - Ax` is `O(u(||b|| + ||A|| ||x||))`,
-  and `||A|| ||x|| ~ ||b||` for an iterate near the solution (Higham,
-  *Accuracy and Stability of Numerical Algorithms*, 2nd ed., §7.1). Near
-  convergence `||r|| << ||b||`, so a floor relative to `||r||` would understate
-  the uncertainty by the factor `||b|| / ||r||`.
-- The `len` dependence is `sqrt(len)`, the statistical form (ibid. §3.1), not
-  the worst-case `len * u` of Lemma 3.1. The worst case is attained only when
-  every rounding error shares a sign, and the norm's summands are squares of
-  one sign, which removes the cancellation it relies on. Using `len * u` would
-  exceed 1 in `f32` at roughly 1.7e7 unknowns and declare every large
-  single-precision system stagnant while its residual still carried several
-  correct digits.
+  residual. The error of evaluating `b - Ax` is of order
+  `u(|b - Ax| + N_A |A| |x|)` (Carson and Demmel, UCB/EECS-2012-197,
+  eq. (4.9)-(4.10)), so `||b||` is the scale only while
+  `|| |A| |x| || ~ ||b||`. When `Ax` cancels, the ratio
+  `|| |A| |x| || / ||b||` exceeds 1 and the floor understates the evaluation
+  error by that ratio. For symmetric positive definite `A` the ratio is at
+  most `|| |A| ||_2 / lambda_min`, because `|| |A| |x| || <= || |A| ||_2 ||x||`
+  and `||Ax|| >= lambda_min ||x||`. That is the condition number for the
+  order-62 stiffness matrix, whose `|A|` and `A` share the largest eigenvalue
+  `2 + 2 cos(pi / 63)`, and the ratio approaches it only as `x` aligns with
+  the lowest eigenvector. At `t_i = i / 63` the ratio is 22 for `x = 1`,
+  18 for `t`, 14 for `t^2`, 15 for `cos(pi t)`, 1.46e3 for `t (1 - t)`, the
+  solution of the CG stall test, and 1.61e3 for `sin(pi t)`, against a
+  condition number of 1.61e3 (evaluated in `f64`).
+  Near convergence `||r|| << ||b||`, so a floor relative to `||r||` would
+  understate the uncertainty by the factor `||b|| / ||r||`.
+- The `len` dependence is `sqrt(len)`, the statistical form (Higham,
+  *Accuracy and Stability of Numerical Algorithms*, 2nd ed., §3.1; locators
+  recalled), not the worst-case `len * u` of Lemma 3.1, which is attained only
+  when every rounding error shares a sign; the norm's summands are squares of
+  one sign. `len * u` would exceed 1 in `f32` at roughly 1.7e7 unknowns and
+  declare every large single-precision system stagnant.
 
 GMRES classifies a completed, unconverged restart cycle after the convergence,
 breakdown, and non-finite tests:
@@ -84,39 +92,26 @@ breakdown, and non-finite tests:
 
 ### Return `Err` for every non-converged termination
 
-Rejected. It reads as the stronger guarantee, but it is the wrong shape here
-and would cost more than it buys.
-
-`SolveError<E>` is parameterised by the backend error alone. Carrying a report
-or a residual history in it would add a scalar parameter, `SolveError<T, E>`,
-to a published crate, and would do so across all four solver families for a
-change scoped to one. More substantially, the repository's control-flow rule
-reserves `Result::Err` for contract failures and requires domain enums for
-domain branching, and which terminal condition a legitimate solve reached —
-converged, budget exhausted, stagnated, broke down — is domain branching. A
-caller that asks for at most 32 iterations and receives 32 iterations' worth of
-progress has not suffered a failed call.
-
-The real defect the proposal targets is narrower: a caller could bind the
-report and never inspect `termination`. `#[must_use]` on `SolveReport` closes
-exactly that, at no API cost, and the three warm-up call sites it flagged were
-strengthened to assert convergence rather than discard the report.
+Rejected. `SolveError<E>` is parameterised by the backend error alone;
+carrying a report in it would add a scalar parameter to a published crate
+across every solver family. The control-flow rule reserves `Result::Err` for
+contract failures, and which terminal condition a legitimate solve reached is
+domain branching. The real defect, a caller never inspecting `termination`,
+is closed by `#[must_use]` on `SolveReport` at no API cost; the three warm-up
+call sites it flagged now assert convergence.
 
 ### Carry an owned residual history in the error or the report
 
-Rejected. `IterationObserver` is already the residual-history seam, and its
-contract is that Athena never allocates a history implicitly. Recording one
-inside the solve would allocate on the iteration path in an `no_std + alloc`
-crate and break the allocation-stability contract that warm solves touch no
-heap. A caller who wants the history supplies an observer that stores it; a
-caller who does not pays nothing. The stagnation test uses exactly this seam.
+Rejected. `IterationObserver` is the residual-history seam, and Athena never
+allocates a history implicitly: recording one would allocate on the iteration
+path and break the contract that warm solves touch no heap. A caller who wants
+the history supplies an observer that stores it, as the stagnation tests do.
 
 ### Detect stagnation from a multi-cycle residual window
 
-Rejected. A window longer than one cycle needs a length, and no derivation
-fixes one. The single-cycle test is already sound for the restarted method: a
-cycle that extracts nothing seeds the next cycle with the same residual, so the
-first unproductive cycle is evidence, not noise.
+Rejected. A longer window needs a length no derivation fixes, and a cycle that
+extracts nothing seeds the next with the same residual, so the first
+unproductive cycle is evidence, not noise.
 
 ### Tune the thresholds against a benchmark suite
 
@@ -125,13 +120,10 @@ systems terminates as desired encodes those systems, not the method.
 
 ## Consequences
 
-A GMRES solve that previously reported `MaxIterations` after stalling now
-reports `Stagnated` at the first unproductive cycle, so it stops earlier and
-with a different terminal value. This is a behavioural change to the public
-contract even though it breaks no signature: a caller matching only on
-`MaxIterations` to detect "did not converge" must use `converged()`, which
-already covers every non-converged variant and needs no change as new ones
-appear.
+A stalled GMRES solve now reports `Stagnated` at the first unproductive cycle
+instead of `MaxIterations` at the budget: a behavioural change without a
+signature break. Callers detecting non-convergence use `converged()`, which
+covers every non-converged variant as new ones appear.
 
 BiCGSTAB and LSQR keep their existing terminations. The two variants are
 declared on the shared `Termination` enum because the concepts are shared, and
@@ -140,19 +132,19 @@ not monotone, so the divergence argument above does not transfer to it.
 
 CG detects `Stagnated` with its own scale. Once the recurrence residual meets
 the threshold `tau`, a measured `||b - Ax|| - ||r|| > tau` bounds the gap
-`(b - Ax) - r` above `tau` by the reverse triangle inequality, and the
-recurrence has no term that reduces that gap (Cools et al., arXiv:1601.07068,
-(2.11) and (2.15); Greenbaum (1997), SIAM J. Matrix Anal. Appl. 18(3),
-535-551, read from its abstract only). The comparison needs only the caller's
-threshold and two measured norms. A CG solve that reported `Breakdown` after
-iterating until a dot product underflowed, or `MaxIterations` after a stall the
-test classifies before the budget ends, now stops with `Stagnated` at the first
-measurement that satisfies the test; a budget that ends at that measurement
-still reports `MaxIterations`, as `DeflatedCg` does. A caller that keeps the
-iterate on `Breakdown` or `MaxIterations` must treat `Stagnated` alike.
-Stopping at the first measurement with `||b - Ax|| > tau` was rejected: it
-cuts off a solve whose gap is below `tau` while `||r||` still accounts for the
-excess.
+`(b - Ax) - r` above `tau` (reverse triangle inequality), and the recurrence
+has no term that reduces that gap (Cools et al., arXiv:1601.07068, (2.11) and
+(2.15); Greenbaum (1997), SIAM J. Matrix Anal. Appl. 18(3), 535-551, read from
+its abstract only). The test needs only `tau` and two measured norms, not the
+noise floor, whose `||b||` scale understates the evaluation error when `Ax`
+cancels. A CG solve that reported `Breakdown` after iterating until a dot
+product underflowed, or `MaxIterations` after a stall found before the budget
+ended, now reports `Stagnated` at the first measurement that satisfies the
+test; a budget ending at that measurement still reports `MaxIterations`, as
+`DeflatedCg` does. A caller that keeps the iterate on `Breakdown` or
+`MaxIterations` must treat `Stagnated` alike. Stopping at the first measurement
+with `||b - Ax|| > tau` was rejected: it cuts off a solve whose gap is below
+`tau` while `||r||` still accounts for the excess.
 
 ## Verification
 

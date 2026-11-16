@@ -13,23 +13,26 @@ use eunomia::RealField;
 ///
 /// The floor is **absolute** and scales with `‖b‖₂`, not relative to the
 /// current residual. Athena recomputes the residual explicitly as `b − Ax`
-/// rather than carrying a recurrence value, and the error of that evaluation
-/// is bounded by `O(u(‖b‖ + ‖A‖‖x‖))`; for an iterate approaching the
-/// solution `‖A‖‖x‖ ≈ ‖b‖`, leaving `‖b‖` as the scale (Higham, *Accuracy and
-/// Stability of Numerical Algorithms*, 2nd ed., §7.1). Near convergence
-/// `‖r‖ ≪ ‖b‖`, so a floor expressed relative to `‖r‖` would understate the
-/// true uncertainty by exactly the factor `‖b‖ / ‖r‖`.
+/// rather than carrying a recurrence value, and the componentwise error of
+/// that evaluation is of order `u(|b − Ax| + N_A |A||x|)`, `N_A` the largest
+/// number of nonzeros in a row (Carson and Demmel, UCB/EECS-2012-197,
+/// eq. (4.9)-(4.10)). Taking `‖b‖` as the scale assumes
+/// `‖|A||x|‖ ≈ ‖b‖`. Near convergence `‖r‖ ≪ ‖b‖`, so a floor expressed
+/// relative to `‖r‖` would understate the true uncertainty by exactly the
+/// factor `‖b‖ / ‖r‖`.
 ///
 /// The `len` dependence is the accumulation error of the length-`len`
 /// summation inside the Euclidean norm and of the sparse product forming
-/// `Ax`. Worst-case sequential accumulation is bounded by `len · u` (ibid.,
-/// Lemma 3.1), but that bound is attained only when every rounding error
-/// carries the same sign. Treating them as independent gives the `√len · u`
-/// rule of thumb of ibid. §3.1, and the norm's summands are squares of one
-/// sign, which removes the cancellation the worst case relies on. The
-/// statistical form is used because `len · u` exceeds 1 in `f32` at roughly
-/// 1.7e7 unknowns, which would declare every large single-precision system
-/// stagnant while its residual still carried several correct digits.
+/// `Ax`. Worst-case sequential accumulation is bounded by `len · u` (Higham,
+/// *Accuracy and Stability of Numerical Algorithms*, 2nd ed., Lemma 3.1),
+/// but that bound is attained only when every rounding error carries the
+/// same sign. Treating them as independent gives the `√len · u` rule of
+/// thumb of ibid. §3.1 (both locators recalled, not checked against the
+/// text), and the norm's summands are squares of one sign, which removes
+/// the cancellation the worst case relies on. The statistical form is
+/// used because `len · u` exceeds 1 in `f32` at roughly 1.7e7 unknowns,
+/// which would declare every large single-precision system stagnant
+/// while its residual still carried several correct digits.
 ///
 /// With `u = EPSILON / 2` the returned `√len · EPSILON · ‖b‖` keeps a factor
 /// of two of margin over `√len · u · ‖b‖`.
@@ -42,6 +45,19 @@ use eunomia::RealField;
 /// and in an order no worse than sequential. A backend that accumulates
 /// pairwise is bounded more tightly than this, so the floor stays
 /// conservative for it.
+///
+/// `‖b‖ = ‖Ax‖ ≤ ‖|A||x|‖` at the solution, with equality only when `Ax`
+/// does not cancel, and this floor understates the evaluation error by the
+/// ratio `‖|A||x|‖ / ‖b‖`. For symmetric positive definite `A` the ratio is at
+/// most `‖|A|‖₂ / λ_min`, because `‖|A||x|‖ ≤ ‖|A|‖₂‖x‖` and
+/// `‖Ax‖ ≥ λ_min‖x‖`. That bound is the condition number for the order-62
+/// stiffness matrix, whose `|A|` and `A` share the largest eigenvalue
+/// `2 + 2 cos(π / 63)`, and the ratio approaches it only as `x` aligns with
+/// the lowest eigenvector. At `t_i = i / 63` the ratio is 22 for `x = 1`, 18 for
+/// `t`, 14 for `t²`, 15 for `cos πt`, 1.46e3 for `t (1 - t)`, the solution of
+/// CG's stall test, and 1.61e3 for `sin πt` (evaluated in `f64`). CG's
+/// attainable-accuracy stall test does not use this floor for that reason; it
+/// compares the measured residuals with the caller's threshold instead.
 ///
 /// # Examples
 ///

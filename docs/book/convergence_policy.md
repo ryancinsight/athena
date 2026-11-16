@@ -98,18 +98,40 @@ scale is the accuracy of the residual evaluation itself. Athena publishes it as
 Two features of that expression are deliberate.
 
 It is **absolute, and proportional to \\(\\|b\\|\\)** rather than to the current
-residual. Forming \\(b - A x\\) in floating point incurs an error of order
-\\(u(\\|b\\| + \\|A\\|\\|x\\|)\\), and \\(\\|A\\|\\|x\\| \approx \\|b\\|\\) once the
-iterate is near the solution, so \\(\\|b\\|\\) is the scale (Higham, *Accuracy and
-Stability of Numerical Algorithms*, 2nd ed., §7.1). Near convergence
-\\(\\|r\\| \ll \\|b\\|\\), so a floor expressed relative to \\(\\|r\\|\\) would
-understate the uncertainty by exactly the factor \\(\\|b\\| / \\|r\\|\\).
+residual. Forming \\(b - A x\\) in floating point incurs a componentwise error
+of order \\(u(|b - A x| + N_A |A| |x|)\\), with \\(N_A\\) the largest number of
+nonzeros in a row (Carson and Demmel, *A Residual Replacement Strategy for
+Improving the Maximum Attainable Accuracy of s-step Krylov Subspace Methods*,
+UCB/EECS-2012-197, eq. (4.9)--(4.10); the same form is in Higham, *Accuracy
+and Stability of Numerical Algorithms*, 2nd ed., at a section recalled as §7.1
+and not checked against the text). Near convergence \\(\\|r\\| \ll \\|b\\|\\), so a
+floor expressed relative to \\(\\|r\\|\\) would understate the uncertainty by
+exactly the factor \\(\\|b\\| / \\|r\\|\\).
+
+Using \\(\\|b\\|\\) as the scale assumes \\(\\| |A| |x| \\| \approx \\|b\\|\\),
+which holds when \\(A x\\) does not cancel. In general
+\\(\\|b\\| = \\|A x\\| \le \\| |A| |x| \\|\\), and \\(\eta\\) understates the
+evaluation error by the ratio \\(\\| |A| |x| \\| / \\|b\\|\\). For symmetric
+positive definite \\(A\\) the ratio is at most \\(\\| |A| \\|_2 / \lambda_{\min}\\),
+because \\(\\| |A| |x| \\| \le \\| |A| \\|_2 \\|x\\|\\) and
+\\(\\|A x\\| \ge \lambda_{\min} \\|x\\|\\). For the order-62 stiffness matrix,
+whose \\(|A|\\) and \\(A\\) share the largest eigenvalue
+\\(2 + 2 \cos(\pi / 63)\\), that bound is the condition number
+\\(\kappa \approx 1.61 \times 10^3\\), and the ratio approaches it only as
+\\(x\\) aligns with the lowest eigenvector. At
+\\(t_i = i / 63\\) the ratio is 22 for \\(x = 1\\), 18 for \\(t\\), 14 for
+\\(t^2\\), 15 for \\(\cos \pi t\\), \\(1.46 \times 10^3\\) for \\(t (1 - t)\\),
+the solution of the CG stall test's uniform load, and \\(1.61 \times 10^3\\) for
+\\(\sin \pi t\\) (evaluated in `f64`). The CG stall test in
+the [CG chapter](cg.md) does not use \\(\eta\\) for this reason; it compares the
+measured residuals with the caller's threshold.
 
 It uses \\(\sqrt{n}\\), not \\(n\\). The worst-case bound for summing \\(n\\)
-terms sequentially is \\(nu\\) (ibid., Lemma 3.1), but that is attained only when
-every rounding error carries the same sign, and the summands inside a Euclidean
-norm are squares of one sign, which removes the cancellation the worst case
-relies on. The statistical \\(\sqrt{n}u\\) of ibid. §3.1 is used instead. The
+terms sequentially is \\(nu\\) (Higham, Lemma 3.1; locator recalled), but that is
+attained only when every rounding error carries the same sign, and the
+summands inside a Euclidean norm are squares of one sign, which removes the
+cancellation the worst case relies on. The statistical \\(\sqrt{n}u\\) of Higham
+§3.1 (locator recalled) is used instead. The
 practical difference is decisive: at \\(n = 10^8\\) in single precision the
 worst-case form gives \\(n\varepsilon \approx 12\\), a "floor" larger than any
 residual, which would declare every large single-precision system stagnant
@@ -153,8 +175,8 @@ call site.
 ## References
 
 - Higham, *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM,
-  2002, §3.1 (summation error) and §7.1 (residual bounds for computed
-  solutions).
+  2002, for summation error and residual bounds for computed solutions; the
+  locators §3.1 and §7.1 used above are recalled, not checked against the text.
 - Barrett et al., *Templates for the Solution of Linear Systems*, §4.2, on
   stopping criteria and the condition-number factor between residual and error.
   <https://www.netlib.org/templates/templates.html>
