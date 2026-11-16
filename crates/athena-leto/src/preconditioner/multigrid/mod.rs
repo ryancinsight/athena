@@ -36,6 +36,7 @@ mod level;
 mod restriction;
 mod scalars;
 mod smoothers;
+mod vector;
 
 pub use amg::AlgebraicMultigrid;
 pub use coarsening::{

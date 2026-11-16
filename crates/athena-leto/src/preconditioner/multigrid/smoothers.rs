@@ -3,23 +3,29 @@
 //! Each smoother is a sweep kernel over a CSR system: it damps the
 //! high-frequency residual components the coarse-grid correction cannot see.
 //! All five dispatch exhaustively from the level's [`Smoother`](super::level::Smoother)
-//! enum; none allocates per sweep except Jacobi's explicit previous-iterate
-//! snapshot, which its update contract requires.
+//! enum. Jacobi snapshots the previous iterate and Chebyshev recomputes
+//! the residual. Each smoother serves both owned and borrowed operands.
 
 use super::scalars::diagonal_epsilon;
+use super::vector::Vector;
 use eunomia::{FloatElement, NumericElement, RealField};
 use leto::Array1;
-use leto_ops::{CsrMatrix, RealScalar, spmv as leto_spmv};
+use leto_ops::{CsrMatrix, RealScalar};
+use std::ops::{Index, IndexMut};
 
-fn residual<T>(matrix: &CsrMatrix<T>, b: &Array1<T>, x: &Array1<T>) -> Array1<T>
+fn residual<T>(
+    matrix: &CsrMatrix<T>,
+    b: &(impl Index<usize, Output = T> + ?Sized),
+    x: &(impl Vector<T> + ?Sized),
+) -> Vec<T>
 where
     T: RealField + Copy + RealScalar,
 {
-    let applied =
-        leto_spmv(matrix, &x.view()).expect("invariant: smoother SpMV dimensions are valid");
-    let mut out = Array1::zeros([b.shape()[0]]);
-    for i in 0..b.shape()[0] {
-        out[i] = b[i] - applied[i];
+    let mut out = vec![<T as NumericElement>::ZERO; matrix.nrows()];
+    super::vector::sparse_apply_into(matrix, x, &mut out)
+        .expect("invariant: smoother SpMV dimensions are valid");
+    for (index, value) in out.iter_mut().enumerate() {
+        *value = b[index] - *value;
     }
     out
 }
@@ -44,6 +50,16 @@ impl<T: RealField + Copy + FloatElement + RealScalar> GaussSeidelSmoother<T> {
         matrix: &CsrMatrix<T>,
         x: &mut Array1<T>,
         b: &Array1<T>,
+        iterations: usize,
+    ) {
+        self.sweep(matrix, x, b, iterations);
+    }
+
+    pub(super) fn sweep(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
+        b: &(impl Index<usize, Output = T> + ?Sized),
         iterations: usize,
     ) {
         let offsets = matrix.row_ptr();
@@ -96,13 +112,23 @@ impl<T: RealField + Copy + FloatElement + RealScalar> SymmetricGaussSeidelSmooth
         b: &Array1<T>,
         iterations: usize,
     ) {
+        self.sweep(matrix, x, b, iterations);
+    }
+
+    pub(super) fn sweep(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
+        b: &(impl Index<usize, Output = T> + ?Sized),
+        iterations: usize,
+    ) {
         let offsets = matrix.row_ptr();
         let indices = matrix.col_indices();
         let values = matrix.values();
 
         // Forward sweep
         let gs_forward = GaussSeidelSmoother::new(self.relaxation_factor);
-        gs_forward.apply(matrix, x, b, iterations);
+        gs_forward.sweep(matrix, x, b, iterations);
 
         // Backward sweep
         for _ in 0..iterations {
@@ -151,12 +177,24 @@ impl<T: RealField + Copy + FloatElement + RealScalar> JacobiSmoother<T> {
         b: &Array1<T>,
         iterations: usize,
     ) {
+        self.sweep(matrix, x, b, iterations);
+    }
+
+    pub(super) fn sweep(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
+        b: &(impl Index<usize, Output = T> + ?Sized),
+        iterations: usize,
+    ) {
         let offsets = matrix.row_ptr();
         let indices = matrix.col_indices();
         let values = matrix.values();
 
+        let mut x_old = vec![<T as NumericElement>::ZERO; x.len()];
+
         for _ in 0..iterations {
-            let x_old = x.clone();
+            x.copy_into(&mut x_old);
 
             for i in 0..matrix.nrows() {
                 let mut sum = <T as NumericElement>::ZERO;
@@ -201,6 +239,16 @@ impl<T: RealField + Copy + FloatElement + RealScalar> SORSmoother<T> {
         matrix: &CsrMatrix<T>,
         x: &mut Array1<T>,
         b: &Array1<T>,
+        iterations: usize,
+    ) {
+        self.sweep(matrix, x, b, iterations);
+    }
+
+    pub(super) fn sweep(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
+        b: &(impl Index<usize, Output = T> + ?Sized),
         iterations: usize,
     ) {
         let offsets = matrix.row_ptr();
@@ -300,6 +348,16 @@ impl<T: RealField + Copy + FloatElement + RealScalar> ChebyshevSmoother<T> {
         matrix: &CsrMatrix<T>,
         x: &mut Array1<T>,
         b: &Array1<T>,
+        iterations: usize,
+    ) {
+        self.sweep(matrix, x, b, iterations);
+    }
+
+    pub(super) fn sweep(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut (impl Vector<T> + IndexMut<usize> + ?Sized),
+        b: &(impl Index<usize, Output = T> + ?Sized),
         iterations: usize,
     ) {
         let theta =
