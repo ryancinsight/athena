@@ -11,33 +11,40 @@ use crate::{LetoBackend, LetoBackendError};
 
 /// Per-level V-cycle scratch: the applied image, the residual, and the coarse
 /// pair, reused across applications so a cycle allocates nothing.
+///
+/// The buffers are plain contiguous `Vec`s, not `Array1`s: the cycle and the
+/// smoothers walk them as slices, so a rank-one layout wrapper would only be
+/// rebuilt on every access.
 pub(super) struct AMGLevelWorkspace<T: RealField + Copy> {
-    applied: Array1<T>,
-    residual: Array1<T>,
-    coarse_residual: Array1<T>,
-    coarse_solution: Array1<T>,
-    correction: Array1<T>,
+    applied: Vec<T>,
+    residual: Vec<T>,
+    coarse_residual: Vec<T>,
+    coarse_solution: Vec<T>,
+    correction: Vec<T>,
 }
 
 impl<T: RealField + Copy + RealScalar> AMGLevelWorkspace<T> {
     fn new(size: usize, coarse_size: usize) -> Self {
         Self {
-            applied: Array1::zeros([size]),
-            residual: Array1::zeros([size]),
-            coarse_residual: Array1::zeros([coarse_size]),
-            coarse_solution: Array1::zeros([coarse_size]),
-            correction: Array1::zeros([size]),
+            applied: vec![<T as NumericElement>::ZERO; size],
+            residual: vec![<T as NumericElement>::ZERO; size],
+            coarse_residual: vec![<T as NumericElement>::ZERO; coarse_size],
+            coarse_solution: vec![<T as NumericElement>::ZERO; coarse_size],
+            correction: vec![<T as NumericElement>::ZERO; size],
         }
     }
 }
 
 impl<T: RealField + Copy + FloatElement + RealScalar> AlgebraicMultigrid<T> {
     /// Perform a single V-cycle from `level_idx` down to the coarsest level.
+    ///
+    /// Runs entirely on borrowed slices: the caller's residual and output are
+    /// passed straight through, so the seam copies nothing in or out.
     fn v_cycle(
         &self,
         level_idx: usize,
-        b: &Array1<T>,
-        x: &mut Array1<T>,
+        b: &[T],
+        x: &mut [T],
         workspace: &mut [AMGLevelWorkspace<T>],
     ) {
         let current_level = &self.levels[level_idx];
@@ -46,7 +53,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar> AlgebraicMultigrid<T> {
             .expect("invariant: AMG workspace matches hierarchy levels");
 
         // 1. Pre-smoothing
-        current_level.smoother.apply(
+        current_level.smoother.apply_slices(
             &current_level.matrix,
             x,
             b,
@@ -71,7 +78,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar> AlgebraicMultigrid<T> {
                     .restriction
                     .as_ref()
                     .expect("invariant: non-coarsest AMG level has restriction"),
-                residual,
+                &current_workspace.residual,
                 &mut current_workspace.coarse_residual,
             )
             .expect("invariant: AMG restriction dimensions are valid");
@@ -104,7 +111,7 @@ impl<T: RealField + Copy + FloatElement + RealScalar> AlgebraicMultigrid<T> {
             }
 
             // 7. Post-smoothing
-            current_level.smoother.apply(
+            current_level.smoother.apply_slices(
                 &current_level.matrix,
                 x,
                 b,
@@ -114,14 +121,11 @@ impl<T: RealField + Copy + FloatElement + RealScalar> AlgebraicMultigrid<T> {
             // Coarsest level solve
             current_level
                 .smoother
-                .apply(&current_level.matrix, x, b, 10);
+                .apply_slices(&current_level.matrix, x, b, 10);
         }
     }
 
     /// Apply one multigrid cycle as a preconditioner: `z = M^-1 r`.
-    ///
-    /// This is the concrete cycle. The Athena [`Preconditioner`] impl below is
-    /// the seam that exposes it to a Krylov solve; both share this one body.
     ///
     /// # Errors
     ///
@@ -132,15 +136,24 @@ impl<T: RealField + Copy + FloatElement + RealScalar> AlgebraicMultigrid<T> {
     ///
     /// Panics never: the cycle's internal failures are invariant-guarded
     /// (workspace matches the assembled hierarchy by construction).
-    ///
-    /// Returns [`leto::LetoError::InvalidInput`] when `r` and `z` disagree in
-    /// shape, or when the cached level workspace lock is poisoned.
     pub fn apply_to(&self, r: &Array1<T>, z: &mut Array1<T>) -> Result<(), leto::LetoError> {
-        if r.shape() != z.shape() {
+        let residual = r.as_slice().ok_or_else(|| non_contiguous("residual"))?;
+        let output = z.as_slice_mut().ok_or_else(|| non_contiguous("output"))?;
+        self.cycle(residual, output)
+    }
+
+    /// Apply one cycle over borrowed slices: `z = M^-1 r`.
+    ///
+    /// This is the cycle proper. [`Self::apply_to`] and the Athena
+    /// [`Preconditioner`] seam both delegate here, so every caller — an owned
+    /// array, a view, or a plain buffer — runs the same body with no copy in
+    /// or out.
+    fn cycle(&self, r: &[T], z: &mut [T]) -> Result<(), leto::LetoError> {
+        if r.len() != z.len() {
             return Err(leto::LetoError::InvalidInput(format!(
                 "AMG preconditioner vector length mismatch: {} != {}",
-                r.shape()[0],
-                z.shape()[0]
+                r.len(),
+                z.len()
             )));
         }
         let mut workspace_guard = self.workspace.lock().map_err(|_| {
@@ -154,8 +167,8 @@ impl<T: RealField + Copy + FloatElement + RealScalar> AlgebraicMultigrid<T> {
                             .levels
                             .get(level_idx + 1)
                             .map_or(0, |coarse_level| coarse_level.matrix.nrows());
-                        workspace.applied.shape() != [level.matrix.nrows()]
-                            || workspace.coarse_residual.shape() != [coarse_size]
+                        workspace.applied.len() != level.matrix.nrows()
+                            || workspace.coarse_residual.len() != coarse_size
                     },
                 )
         });
@@ -184,6 +197,13 @@ impl<T: RealField + Copy + FloatElement + RealScalar> AlgebraicMultigrid<T> {
     }
 }
 
+/// The typed error for a vector the cycle cannot address as one slice.
+fn non_contiguous(role: &str) -> leto::LetoError {
+    leto::LetoError::InvalidInput(format!(
+        "AMG {role} vector must be contiguous to run the cycle in place"
+    ))
+}
+
 impl<T: RealField + Copy + FloatElement + RealScalar> Preconditioner<LetoBackend<T>>
     for AlgebraicMultigrid<T>
 {
@@ -200,27 +220,14 @@ impl<T: RealField + Copy + FloatElement + RealScalar> Preconditioner<LetoBackend
                 right: output.shape()[0],
             });
         }
-        let mut guard = self.athena_boundary.lock().map_err(|_| {
-            LetoBackendError::Leto(leto::LetoError::InvalidInput(
-                "AMG boundary buffers poisoned".to_string(),
-            ))
-        })?;
-        if guard.as_ref().is_none_or(|(r, _)| r.shape()[0] != length) {
-            *guard = Some((Array1::zeros([length]), Array1::zeros([length])));
-        }
-        let (scratch_residual, scratch_output) = guard
-            .as_mut()
-            .expect("invariant: AMG boundary buffers installed above");
-
-        for index in 0..length {
-            scratch_residual[index] = residual[index];
-        }
-        self.apply_to(scratch_residual, scratch_output)
-            .map_err(LetoBackendError::Leto)?;
-        for index in 0..length {
-            output[index] = scratch_output[index];
-        }
-        Ok(())
+        let residual_slice = residual
+            .as_slice()
+            .ok_or(LetoBackendError::NonContiguousVector)?;
+        let output_slice = output
+            .as_mut_slice()
+            .ok_or(LetoBackendError::NonContiguousVector)?;
+        self.cycle(residual_slice, output_slice)
+            .map_err(LetoBackendError::Leto)
     }
 }
 
@@ -322,5 +329,65 @@ mod tests {
     fn diagonal_system_solve_is_exact() {
         diagonal_case!(f32);
         diagonal_case!(f64);
+    }
+
+    /// The Athena seam and the public owned entry point return the same bytes.
+    ///
+    /// Both delegate to one slice-based cycle, so the seam is a
+    /// view-to-slice hand-off and nothing else: no copy can change a result,
+    /// and the shared body is the one the deletion of the boundary buffers
+    /// left behind.
+    ///
+    /// The `digest` is the pre-change cycle's own output over this fixture at
+    /// origin/main `bd349c5e` (measured before the slice migration): the
+    /// arithmetic order is unchanged, so the value must not move.
+    #[test]
+    fn seam_matches_owned_cycle_bitwise() {
+        let dimension = 128;
+        let matrix = tridiagonal!(f64, dimension);
+        let amg = AlgebraicMultigrid::new(&matrix, AMGConfig::default())
+            .expect("invariant: tridiagonal SPD system assembles");
+        assert_eq!(
+            amg.levels.len(),
+            3,
+            "invariant: fixture must exercise a multi-level cycle"
+        );
+
+        let values: Vec<f64> = (0..dimension)
+            .map(|index| {
+                let index = u32::try_from(index).expect("invariant: fixture index fits in u32");
+                (f64::from(index) + 1.0) * 0.5
+            })
+            .collect();
+        let rhs = Array1::from_shape_vec([dimension], values).expect("rhs shape matches");
+
+        let mut through_seam = Array1::zeros([dimension]);
+        Preconditioner::apply(
+            &amg,
+            &LetoBackend::<f64>::default(),
+            rhs.view(),
+            through_seam.view_mut(),
+        )
+        .expect("invariant: shapes agree");
+
+        let mut through_owned = Array1::zeros([dimension]);
+        amg.apply_to(&rhs, &mut through_owned)
+            .expect("invariant: shapes agree");
+
+        for (index, (seam, owned)) in through_seam.iter().zip(through_owned.iter()).enumerate() {
+            assert_eq!(
+                seam.to_bits(),
+                owned.to_bits(),
+                "seam and owned cycle disagree at index {index}"
+            );
+        }
+
+        let digest = through_owned
+            .iter()
+            .fold(0u64, |acc, value| acc.wrapping_add(value.to_bits()));
+        assert_eq!(
+            digest, 1_457_391_189_608_935_786,
+            "cycle must reproduce the pre-change output bitwise"
+        );
     }
 }

@@ -52,6 +52,27 @@ where
             Self::Chebyshev(smoother) => smoother.apply(matrix, x, b, iterations),
         }
     }
+
+    /// Apply the carried smoother over borrowed slices.
+    ///
+    /// The AMG cycle owns its scratch as plain slices and calls this, so a
+    /// pre- or post-smoothing sweep costs no rank-one layout wrapper. The same
+    /// exhaustive match guards the closed smoother set.
+    pub(crate) fn apply_slices(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut [T],
+        b: &[T],
+        iterations: usize,
+    ) {
+        match self {
+            Self::GaussSeidel(smoother) => smoother.apply_slices(matrix, x, b, iterations),
+            Self::SymmetricGaussSeidel(smoother) => smoother.apply_slices(matrix, x, b, iterations),
+            Self::Jacobi(smoother) => smoother.apply_slices(matrix, x, b, iterations),
+            Self::Sor(smoother) => smoother.apply_slices(matrix, x, b, iterations),
+            Self::Chebyshev(smoother) => smoother.apply_slices(matrix, x, b, iterations),
+        }
+    }
 }
 
 /// Multigrid level representation.

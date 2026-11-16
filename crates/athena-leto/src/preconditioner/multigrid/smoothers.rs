@@ -11,15 +11,35 @@ use eunomia::{FloatElement, NumericElement, RealField};
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar, spmv as leto_spmv};
 
-fn residual<T>(matrix: &CsrMatrix<T>, b: &Array1<T>, x: &Array1<T>) -> Array1<T>
+/// Borrow an owned smoother operand as its element slice.
+///
+/// Every [`Array1`] constructor builds a C-contiguous layout, so a rank-one
+/// array is always one slice and the borrow cannot fail for an array this
+/// crate allocates.
+fn contiguous<T>(vector: &Array1<T>) -> &[T] {
+    vector
+        .as_slice()
+        .expect("invariant: rank-one array storage is contiguous")
+}
+
+/// Mutably borrow an owned smoother operand as its element slice.
+fn contiguous_mut<T>(vector: &mut Array1<T>) -> &mut [T] {
+    vector
+        .as_slice_mut()
+        .expect("invariant: rank-one array storage is contiguous")
+}
+
+fn residual<T>(matrix: &CsrMatrix<T>, b: &[T], x: &[T]) -> Vec<T>
 where
     T: RealField + Copy + RealScalar,
 {
-    let applied =
-        leto_spmv(matrix, &x.view()).expect("invariant: smoother SpMV dimensions are valid");
-    let mut out = Array1::zeros([b.shape()[0]]);
-    for i in 0..b.shape()[0] {
-        out[i] = b[i] - applied[i];
+    let layout = leto::Layout::c_contiguous([x.len()])
+        .expect("invariant: rank-one layout over an allocated vector is valid");
+    let applied = leto_spmv(matrix, &leto::ArrayView1::new(layout, x))
+        .expect("invariant: smoother SpMV dimensions are valid");
+    let mut out = vec![<T as NumericElement>::ZERO; b.len()];
+    for (out_entry, (rhs, applied_entry)) in out.iter_mut().zip(b.iter().zip(applied.iter())) {
+        *out_entry = *rhs - *applied_entry;
     }
     out
 }
@@ -44,6 +64,21 @@ impl<T: RealField + Copy + FloatElement + RealScalar> GaussSeidelSmoother<T> {
         matrix: &CsrMatrix<T>,
         x: &mut Array1<T>,
         b: &Array1<T>,
+        iterations: usize,
+    ) {
+        self.apply_slices(matrix, contiguous_mut(x), contiguous(b), iterations);
+    }
+
+    /// Apply the smoother over borrowed slices.
+    ///
+    /// The one sweep kernel: the owned [`Self::apply`] adapter and the AMG
+    /// cycle's slice-driven V-cycle both run these lines, so a smoother never
+    /// carries two copies of its arithmetic.
+    pub(crate) fn apply_slices(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut [T],
+        b: &[T],
         iterations: usize,
     ) {
         let offsets = matrix.row_ptr();
@@ -96,13 +131,24 @@ impl<T: RealField + Copy + FloatElement + RealScalar> SymmetricGaussSeidelSmooth
         b: &Array1<T>,
         iterations: usize,
     ) {
+        self.apply_slices(matrix, contiguous_mut(x), contiguous(b), iterations);
+    }
+
+    /// Apply the smoother over borrowed slices: forward sweep, then back.
+    pub(crate) fn apply_slices(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut [T],
+        b: &[T],
+        iterations: usize,
+    ) {
         let offsets = matrix.row_ptr();
         let indices = matrix.col_indices();
         let values = matrix.values();
 
         // Forward sweep
         let gs_forward = GaussSeidelSmoother::new(self.relaxation_factor);
-        gs_forward.apply(matrix, x, b, iterations);
+        gs_forward.apply_slices(matrix, &mut *x, b, iterations);
 
         // Backward sweep
         for _ in 0..iterations {
@@ -151,12 +197,25 @@ impl<T: RealField + Copy + FloatElement + RealScalar> JacobiSmoother<T> {
         b: &Array1<T>,
         iterations: usize,
     ) {
+        self.apply_slices(matrix, contiguous_mut(x), contiguous(b), iterations);
+    }
+
+    /// Apply the smoother over borrowed slices.
+    pub(crate) fn apply_slices(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut [T],
+        b: &[T],
+        iterations: usize,
+    ) {
         let offsets = matrix.row_ptr();
         let indices = matrix.col_indices();
         let values = matrix.values();
 
+        let mut x_old = vec![<T as NumericElement>::ZERO; x.len()];
+
         for _ in 0..iterations {
-            let x_old = x.clone();
+            x_old.copy_from_slice(x);
 
             for i in 0..matrix.nrows() {
                 let mut sum = <T as NumericElement>::ZERO;
@@ -201,6 +260,17 @@ impl<T: RealField + Copy + FloatElement + RealScalar> SORSmoother<T> {
         matrix: &CsrMatrix<T>,
         x: &mut Array1<T>,
         b: &Array1<T>,
+        iterations: usize,
+    ) {
+        self.apply_slices(matrix, contiguous_mut(x), contiguous(b), iterations);
+    }
+
+    /// Apply the smoother over borrowed slices.
+    pub(crate) fn apply_slices(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut [T],
+        b: &[T],
         iterations: usize,
     ) {
         let offsets = matrix.row_ptr();
@@ -302,6 +372,17 @@ impl<T: RealField + Copy + FloatElement + RealScalar> ChebyshevSmoother<T> {
         b: &Array1<T>,
         iterations: usize,
     ) {
+        self.apply_slices(matrix, contiguous_mut(x), contiguous(b), iterations);
+    }
+
+    /// Apply the smoother over borrowed slices.
+    pub(crate) fn apply_slices(
+        &self,
+        matrix: &CsrMatrix<T>,
+        x: &mut [T],
+        b: &[T],
+        iterations: usize,
+    ) {
         let theta =
             (self.eigenvalues_max + self.eigenvalues_min) / <T as FloatElement>::from_f64(2.0);
         let delta =
@@ -354,118 +435,4 @@ impl<T: RealField + Copy + FloatElement + RealScalar> ChebyshevSmoother<T> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn assert_vector_eq<const N: usize>(vector: &Array1<f64>, expected: [f64; N]) {
-        assert_eq!(vector.shape(), [N]);
-        for (idx, expected_value) in expected.into_iter().enumerate() {
-            assert_eq!(vector[idx], expected_value);
-        }
-    }
-
-    fn create_test_matrix() -> CsrMatrix<f64> {
-        let n = 5;
-        let mut row_ptr = Vec::with_capacity(n + 1);
-        let mut col_indices = Vec::new();
-        let mut values = Vec::new();
-        row_ptr.push(0);
-        for i in 0..n {
-            if i > 0 {
-                col_indices.push(i - 1);
-                values.push(-1.0);
-            }
-            col_indices.push(i);
-            values.push(2.0);
-            if i < n - 1 {
-                col_indices.push(i + 1);
-                values.push(-1.0);
-            }
-            row_ptr.push(col_indices.len());
-        }
-        CsrMatrix::from_parts(values, col_indices, row_ptr, n, n)
-            .expect("invariant: tridiagonal fixture CSR structure is valid")
-    }
-
-    #[test]
-    fn test_gauss_seidel_smoother() {
-        let matrix = create_test_matrix();
-        let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-        let mut x = Array1::zeros([5]);
-
-        let smoother = GaussSeidelSmoother::new(1.0);
-        smoother.apply(&matrix, &mut x, &b, 1);
-
-        assert_vector_eq(&x, [0.5, 1.25, 2.125, 3.0625, 4.031_25]);
-    }
-
-    #[test]
-    fn test_jacobi_smoother() {
-        let matrix = create_test_matrix();
-        let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-        let mut x = Array1::zeros([5]);
-
-        let smoother = JacobiSmoother::new(1.0);
-        smoother.apply(&matrix, &mut x, &b, 1);
-
-        assert_vector_eq(&x, [0.5, 1.0, 1.5, 2.0, 2.5]);
-    }
-
-    #[test]
-    fn test_symmetric_gauss_seidel() {
-        let matrix = create_test_matrix();
-        let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-        let mut x = Array1::zeros([5]);
-
-        let smoother = SymmetricGaussSeidelSmoother::new(1.0);
-        smoother.apply(&matrix, &mut x, &b, 1);
-
-        assert_vector_eq(
-            &x,
-            [
-                2.291_015_625,
-                3.582_031_25,
-                4.664_062_5,
-                5.078_125,
-                4.031_25,
-            ],
-        );
-    }
-
-    #[test]
-    fn test_sor_smoother() {
-        let matrix = create_test_matrix();
-        let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-        let mut x = Array1::zeros([5]);
-
-        let smoother = SORSmoother::new(1.0);
-        smoother.apply(&matrix, &mut x, &b, 1);
-
-        assert_vector_eq(&x, [0.5, 1.25, 2.125, 3.0625, 4.031_25]);
-    }
-
-    #[test]
-    fn test_chebyshev_smoother() {
-        let matrix = create_test_matrix();
-        let b = Array1::from_shape_vec([5], vec![1.0, 2.0, 3.0, 4.0, 5.0]).expect("expected value");
-        let mut x = Array1::zeros([5]);
-
-        let (eigen_min, eigen_max) = ChebyshevSmoother::estimate_eigenvalues(&matrix);
-        // Both bounds are the exact literals the estimator clamps through:
-        // 0.1 is the Gershgorin floor fallback, 4.0 is the dyadic row bound.
-        assert_eq!(eigen_min.to_bits(), 0.1_f64.to_bits());
-        assert_eq!(eigen_max.to_bits(), 4.0_f64.to_bits());
-
-        let smoother = ChebyshevSmoother::new(eigen_min, eigen_max, 3);
-        smoother.apply(&matrix, &mut x, &b, 1);
-
-        let theta = f64::midpoint(eigen_max, eigen_min);
-        let delta = (eigen_max - eigen_min) / 2.0;
-        let sigma = theta / delta;
-        let rho_old = 1.0 / sigma;
-        let rho_new = 1.0 / (2.0 * sigma - rho_old);
-        let alpha = rho_new / rho_old;
-        let expected_first = alpha * b[0] / 2.0;
-        assert!((x[0] - expected_first).abs() <= f64::EPSILON * 16.0);
-    }
-}
+mod tests;

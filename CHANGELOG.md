@@ -6,6 +6,23 @@ All notable changes to Athena are documented in this file.
 
 ### Changed
 
+- [patch] Run the algebraic-multigrid V-cycle on borrowed slices, deleting the
+  two `O(n)` boundary copies and the cached `athena_boundary` buffer pair.
+  `AlgebraicMultigrid`'s Athena `Preconditioner::apply` previously copied the
+  residual view into an owned `Array1`, ran the cycle, and copied the result
+  back out; the cycle itself only ever needed element slices. `v_cycle`, both
+  pre-/post-smoothing dispatches, and `sparse_apply_into` now take `&[T]` /
+  `&mut [T]`, and the per-level workspace holds plain `Vec`s, so the seam hands
+  the caller's views straight through. Each smoother keeps one sweep kernel
+  (`apply_slices`, crate-internal) with the public owned `apply` as a thin
+  adapter, so no smoother carries two copies of its arithmetic and no public
+  signature moves. The cycle's output is bit-identical to the pre-change cycle
+  on a three-level SPD fixture (pinned by digest in
+  `seam_matches_owned_cycle_bitwise`), and a second oracle pins the owned
+  adapter against the slice kernel. No wall-clock claim: the two removed passes
+  were `O(n)` beside the cycle's `O(nnz)` sweeps, so this is a memory- and
+  copy-elimination change measured by the equivalence tests, not a benchmark.
+
 - [patch] Admit Leto 0.50.0 and widen the `leto` and `leto-ops`
   workspace requirements from `>=0.46.3, <0.49.0` to `>=0.46.3, <0.51.0`.
   The lock moves Leto and Leto-ops (0.48.0 to 0.50.0, source `39d65120` to
