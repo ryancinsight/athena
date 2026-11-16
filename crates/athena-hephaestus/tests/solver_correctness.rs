@@ -2,8 +2,8 @@
 //! An unavailable adapter fails these checks instead of silently skipping them.
 
 use athena_core::{
-    CgWorkspace, Chebyshev, ChebyshevWorkspace, ConvergencePolicy, DeflatedCg, DeflationSubspace,
-    KrylovBackend, SpectralBounds, Termination,
+    Cg, CgWorkspace, Chebyshev, ChebyshevWorkspace, ConvergencePolicy, DeflatedCg,
+    DeflationSubspace, Identity, KrylovBackend, SpectralBounds, Termination,
 };
 use athena_hephaestus::{CsrOperator, HephaestusBackend};
 use hephaestus_core::ComputeDevice;
@@ -17,6 +17,38 @@ fn backend() -> Backend {
         .expect("a real adapter is required for solver correctness coverage");
     let operations = WgpuVectorOps::new(&device).expect("invariant: kernels compile");
     HephaestusBackend::new(device, operations)
+}
+
+#[test]
+fn cg_checks_exact_convergence_between_device_residual_checks() {
+    let backend = backend();
+    let operator =
+        Operator::from_parts(WgpuSparseOps, backend.device(), &[1.0], &[0], &[0, 1], 1, 1)
+            .expect("identity operator");
+    let rhs = backend.device().upload(&[2.0]).expect("upload");
+    let mut solution = backend.allocate(1).expect("allocation");
+    let mut workspace = CgWorkspace::new(&backend, 1).expect("workspace");
+    let policy = ConvergencePolicy::with_check_interval(0.0, 0.0, 4, 4).expect("valid policy");
+    let report = Cg::solve_into(
+        &backend,
+        &operator,
+        &Identity,
+        &rhs,
+        &mut solution,
+        &mut workspace,
+        policy,
+    )
+    .expect("valid dimensions and real device operations");
+    let mut host = [0.0];
+    backend
+        .device()
+        .download(&solution, &mut host)
+        .expect("readback");
+    assert_eq!(host[0].to_bits(), 2.0_f32.to_bits());
+    assert_eq!(report.termination, Termination::Converged);
+    assert_eq!(report.iterations, 1);
+    assert_eq!(report.operator_applications, 3);
+    assert_eq!(report.final_residual_norm.to_bits(), 0.0_f32.to_bits());
 }
 
 #[test]

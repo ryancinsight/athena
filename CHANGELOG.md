@@ -64,6 +64,12 @@ All notable changes to Athena are documented in this file.
 
 ### Fixed
 
+- [patch] Classify exact CG convergence between scheduled residual checks as
+  convergence and report current original-system residuals on curvature and
+  budget termination. Recompute `b - A x` before accepting convergence so
+  recurrence drift cannot produce a false success. Reuse existing vector
+  scratch and prepared resources; each verification operator application is
+  counted in the report.
 - Deflated CG now eliminates coarse/complement coupling through the Schur
   operator `A - A U (Uᵀ A U)⁻¹ Uᵀ A`, supports noninvariant bases, preserves
   the incoming initial guess and original RHS threshold, and reports the

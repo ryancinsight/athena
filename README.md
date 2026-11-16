@@ -233,6 +233,13 @@ PCG requires a symmetric positive-definite operator and preconditioner.
 Athena reports non-positive curvature, exact recurrence breakdown,
 non-finite values, or iteration-budget exhaustion as explicit terminal values.
 
+PCG recomputes the original-system residual `b - A x` before accepting
+convergence and at curvature and budget terminations, so recurrence drift
+cannot produce a false success and exact convergence between scheduled checks
+succeeds. A zero preconditioned product with a nonzero residual remains a
+breakdown. Each verification counts in `operator_applications`, reuses
+workspace scratch, and allocates nothing in a warm solve.
+
 GMRES uses right preconditioning, modified Gram--Schmidt Arnoldi
 orthogonalization, scaled Givens rotations, and true-residual recomputation
 before convergence. Its restart width is a structural const generic.

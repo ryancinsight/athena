@@ -11,17 +11,6 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - standing: `member_lockfile_copies` in `python -I scripts/atlas-conformance.py report --repo athena --json` stays at or below 1 (run from the Atlas root with `--member-path` at the athena revision; read 1 at the basis export); installed state: `target_forks`, `excess_worktrees`, `worktrees_outside_lane_root`, `detached_lanes`, `root_sprawl_untracked` and `second_output_root` read 0 in the same report, and `git config --get core.hooksPath` names a directory holding an executable `pre-push` (the scan has no detector for hook or include paths and athena tracks no `.gitconfig`; `ATHENA-GITCONFIG-20261113` files it and adds the `git config --get include.path` assertion here).
 - non-goals: device incomplete-LU, SOR, multigrid and saddle-point preconditioners; a device stencil operator; device scalars other than `f32`; nonlinear solver policy; QMR, TFQMR, IDR, LSMR and recycling; eigenvalue machinery; complex scalars; coarsening over unstructured meshes beyond the shipped strategies; publication without release authority.
 
-<a id="athena-cg-terminal-residual-20261103"></a>
-## ATHENA-CG-TERMINAL-RESIDUAL-20261103 — Verify CG convergence against the original residual [patch] — todo
-
-- priority: correctness; needs: none; milestone: M-device-least-squares
-- scope: `crates/athena-core/src/solver/cg/`, `crates/athena-leto/tests/`, `crates/athena-hephaestus/tests/solver_correctness.rs`
-- outcome: CG reports `Termination::Converged` only when the recomputed `b - A x` meets the policy, and exact convergence between scheduled samples ends the solve; GMRES and BiCGSTAB already recompute (README numerical contract).
-- acceptance: a CPU regression where the recurrence residual passes and the original residual does not reports a non-converged termination; an exactly solved identity system reports success, not breakdown; warm solves allocate nothing; the same case passes on a device.
-- state: released claim. The work sits at `refs/pull/141/head` (PR 141, closed `released`). On this board's basis, `check_residual` in `solver/cg/algorithm.rs` accepts `Converged` from the recurrence residual: a hypothesis until the claim's regression reproduces on unpatched main.
-- next step: `git fetch origin pull/141/head:fix/cg-terminal-residual`, rebase onto main, run its regression against unpatched main, then land.
-- basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
-
 <a id="athena-preconditioner-contract-20261113"></a>
 ## ATHENA-PRECONDITIONER-CONTRACT-20261113 — Pin multigrid and saddle-point preconditioners to solve-level oracles [test] — todo
 
