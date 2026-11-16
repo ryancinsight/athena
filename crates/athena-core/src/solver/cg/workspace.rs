@@ -11,6 +11,7 @@ pub struct CgWorkspace<B: KrylovBackend> {
     pub(super) direction: B::Vector,
     pub(super) image: B::Vector,
     pub(super) residual_norm: B::PreparedNorm,
+    pub(super) checked_residual_norm: B::PreparedNorm,
     pub(super) residual_preconditioned_dot: B::PreparedDot,
     pub(super) direction_image_dot: B::PreparedDot,
     len: usize,
@@ -28,6 +29,8 @@ impl<B: KrylovBackend> CgWorkspace<B> {
         let direction = backend.allocate(len)?;
         let image = backend.allocate(len)?;
         let residual_norm = backend.prepare_norm_l2(backend.view(&residual))?;
+        let checked_residual_norm =
+            backend.prepare_norm_l2(backend.view(&preconditioned_residual))?;
         let residual_preconditioned_dot = backend.prepare_dot(
             backend.view(&residual),
             backend.view(&preconditioned_residual),
@@ -40,6 +43,7 @@ impl<B: KrylovBackend> CgWorkspace<B> {
             direction,
             image,
             residual_norm,
+            checked_residual_norm,
             residual_preconditioned_dot,
             direction_image_dot,
             len,
