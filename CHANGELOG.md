@@ -6,6 +6,15 @@ All notable changes to Athena are documented in this file.
 
 ### Changed
 
+- [patch] Admit Leto 0.50.0 and widen the `leto` and `leto-ops`
+  workspace requirements from `>=0.46.3, <0.49.0` to `>=0.46.3, <0.51.0`.
+  The lock moves Leto and Leto-ops (0.48.0 to 0.50.0, source `39d65120` to
+  `6483eac3`) and the Hephaestus core and WGPU 0.28.0 source to `742cdb84`,
+  the revision whose Leto requirement admits 0.50; no other row changes.
+  Leto 0.50 removes the unsafe `VecStorage::uninit`, which Athena does not
+  call, and zero-fills five allocating Leto-ops wrappers. No Athena
+  signature changes.
+
 - [patch] Advance every first-party lock row onto its repository's current
   default head. The lock is regenerated outside the Atlas dependency overlay,
   so the `source = "git+..."` rows survive and the registry rows are
