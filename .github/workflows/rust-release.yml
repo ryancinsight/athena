@@ -79,4 +79,4 @@ jobs:
     with:
       rust-toolchain: "1.97.0"
       semver-baseline-source: locked-registry
-      cohort-json: '{"athena-core":"0.4.0","athena-leto":"0.5.0"}'
+      cohort-json: '{"athena-krylov":"0.5.0","athena-hephaestus":"0.5.0","athena-leto":"0.5.0"}'
