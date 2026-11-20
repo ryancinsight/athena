@@ -149,3 +149,9 @@ test and example lists, the release tags, and Atlas ADRs 0022, 0034 and 0062.
 The `solver_chain` module has zero `#[test]` items. No Atlas conformance
 detector reads `include.path` or `core.hooksPath` and athena tracks no
 `.gitconfig` (`ATHENA-GITCONFIG-20261113`).
+
+## Aequitas 0.5 provider revision
+
+Athena 0.5 adopts the Leto 0.52 and Hephaestus 0.30 types. The existing
+CPU and accelerator numerical verification remains the release gate.
+Consumers select one array identity and update related providers together.
