@@ -13,6 +13,12 @@ All notable changes to Athena are documented in this file.
   operators, and preconditioners. Their private fields are initialized
   through those APIs.
 
+### Fixed
+
+- Verify standalone registry lockfiles by matching source-less packages to
+  declared Athena workspace members. The staged check reads the index,
+  and the full check resolves the lockfile outside the Atlas overlay.
+
 ## [0.3.2] - Unreleased
 
 ### Changed
