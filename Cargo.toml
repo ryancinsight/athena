@@ -28,10 +28,10 @@ mnemosyne-arena = { version = "0.7.2", features = ["eunomia"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std"] }
 eunomia = { version = "0.12.1", default-features = false }
-leto = { version = "0.52.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
-leto-ops = { version = "0.52.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
-hephaestus-core = { version = "0.30.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false }
-hephaestus-wgpu = { version = "0.30.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false, features = ["sparse"] }
+leto = { version = "0.52.0", default-features = false, features = ["std"] }
+leto-ops = { version = "0.52.0", default-features = false, features = ["std"] }
+hephaestus-core = { version = "0.30.0", default-features = false }
+hephaestus-wgpu = { version = "0.30.0", default-features = false, features = ["sparse"] }
 bytemuck = { version = "1.25", features = ["derive"] }
 criterion = "0.8"
 
