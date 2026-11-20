@@ -2,6 +2,23 @@
 
 All notable changes to Athena are documented in this file.
 
+## 0.4.0
+
+### Breaking
+
+- Use registry Eunomia 0.12.1 in the Krylov scalar contract and Leto 0.51
+  in the CPU adapter's public array views. Update applications that
+  implement Athena operators to these dependency versions together.
+- Use the public constructors or defaults for solver state, workspaces,
+  operators, and preconditioners. Their private fields are initialized
+  through those APIs.
+
+### Fixed
+
+- Verify standalone registry lockfiles by matching source-less packages to
+  declared Athena workspace members. The staged check reads the index,
+  and the full check resolves the lockfile outside the Atlas overlay.
+
 ## [0.3.2] - Unreleased
 
 ### Changed
