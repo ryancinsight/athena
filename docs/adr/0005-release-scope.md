@@ -152,6 +152,7 @@ detector reads `include.path` or `core.hooksPath` and athena tracks no
 
 ## Aequitas 0.5 provider revision
 
-Athena 0.5 adopts the Leto 0.52 and Hephaestus 0.30 types. The existing
+The Athena 0.5 adapters adopt Leto 0.52 and Hephaestus 0.30.
+Athena Core stays at 0.4.0 and retains its Eunomia solver contracts. The existing
 CPU and accelerator numerical verification remains the release gate.
 Consumers select one array identity and update related providers together.

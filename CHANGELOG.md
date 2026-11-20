@@ -2,13 +2,14 @@
 
 All notable changes to Athena are documented in this file.
 
-## 0.5.0
+## Athena adapters 0.5.0
 
 ### Breaking
 
 - Use Leto 0.52 for public CPU array views and Hephaestus 0.30 for the
   accelerator bridge. Update the array and device providers together.
-  The solver and preconditioner contracts are unchanged.
+  The solver and preconditioner contracts retain the published
+  athena-core 0.4.0 package identity.
 
 ## 0.4.0
 
