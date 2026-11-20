@@ -131,8 +131,8 @@ dependencies = [
  "eunomia",
  "leto",
  "leto-ops",
- "mnemosyne-arena 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-memory 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mnemosyne-arena",
+ "mnemosyne-memory",
  "tracing",
  "tracing-subscriber",
 ]
@@ -608,19 +608,21 @@ dependencies = [
 [[package]]
 name = "hephaestus-core"
 version = "0.30.0"
-source = "git+https://github.com/ryancinsight/hephaestus.git#bef4f973ab38fd02585a62a91dc7051a0c74cff6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92919f11f9adbc8c46a68d417d8193055910128e1340a016fb0bc64083d68d34"
 dependencies = [
  "aequitas",
  "eunomia",
  "leto",
- "themis-topology 0.11.5 (git+https://github.com/ryancinsight/themis)",
+ "themis-topology",
  "thiserror",
 ]
 
 [[package]]
 name = "hephaestus-wgpu"
 version = "0.30.0"
-source = "git+https://github.com/ryancinsight/hephaestus.git#bef4f973ab38fd02585a62a91dc7051a0c74cff6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91f886650e3b0e4085e7037cbd168fd8b580c568aaacfb5f31e0da66b0e38df3"
 dependencies = [
  "eunomia",
  "futures",
@@ -629,7 +631,7 @@ dependencies = [
  "leto-ops",
  "moirai-sync",
  "smallvec",
- "themis-topology 0.11.5 (git+https://github.com/ryancinsight/themis)",
+ "themis-topology",
  "wgpu",
  "windows",
 ]
@@ -637,32 +639,35 @@ dependencies = [
 [[package]]
 name = "hermes-simd"
 version = "0.10.0"
-source = "git+https://github.com/ryancinsight/hermes.git#d95d1cbf894e54ed679416181020764fc9a181b6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd1feb445f55967cbf6bc3537a151409934dbf7a593f06a443d9672dc7991c11"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
  "hermes-simd-intrinsics",
  "hermes-simd-macros",
  "hermes-simd-types",
- "themis-topology 0.11.5 (git+https://github.com/ryancinsight/themis)",
+ "themis-topology",
  "tracing",
 ]
 
 [[package]]
 name = "hermes-simd-core"
 version = "0.10.0"
-source = "git+https://github.com/ryancinsight/hermes.git#d95d1cbf894e54ed679416181020764fc9a181b6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5161b72190051bfdfd03352a92770023d1e7f84e1502fcfc1b25c657f2b1d2d"
 dependencies = [
  "eunomia",
- "mnemosyne-memory 0.10.2 (git+https://github.com/ryancinsight/Mnemosyne.git)",
+ "mnemosyne-memory",
  "rkyv",
- "themis-topology 0.11.5 (git+https://github.com/ryancinsight/themis)",
+ "themis-topology",
 ]
 
 [[package]]
 name = "hermes-simd-intrinsics"
 version = "0.10.0"
-source = "git+https://github.com/ryancinsight/hermes.git#d95d1cbf894e54ed679416181020764fc9a181b6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73ee40db3eb820402b7bcfa2999e355488766a4fd35b45865d7907cbde0f1c2a"
 dependencies = [
  "eunomia",
  "hermes-simd-core",
@@ -672,7 +677,8 @@ dependencies = [
 [[package]]
 name = "hermes-simd-macros"
 version = "0.9.0"
-source = "git+https://github.com/ryancinsight/hermes.git#d95d1cbf894e54ed679416181020764fc9a181b6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67fb179583fca545a1d2c52dc8dc51e30ec675c9604905dcc5bc1aa0ac7b830d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -682,7 +688,8 @@ dependencies = [
 [[package]]
 name = "hermes-simd-types"
 version = "0.10.0"
-source = "git+https://github.com/ryancinsight/hermes.git#d95d1cbf894e54ed679416181020764fc9a181b6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b4c2438460f32abacfe98ef1687c8f97906aa81adb98476f9e367c9ce8a5a7f"
 dependencies = [
  "hermes-simd-core",
  "hermes-simd-intrinsics",
@@ -733,11 +740,12 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 [[package]]
 name = "leto"
 version = "0.52.0"
-source = "git+https://github.com/ryancinsight/leto.git#a98b8a706b6644bdd28c9fd5680c2dc044bb2b67"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebc2dcc1b2fb90e6f8f3c53de0ca975914b26219cacb10dea87a59c3fa8e0d1a"
 dependencies = [
  "aequitas",
  "eunomia",
- "mnemosyne-memory 0.10.2 (git+https://github.com/ryancinsight/Mnemosyne.git)",
+ "mnemosyne-memory",
  "serde",
  "thiserror",
 ]
@@ -745,13 +753,14 @@ dependencies = [
 [[package]]
 name = "leto-ops"
 version = "0.52.0"
-source = "git+https://github.com/ryancinsight/leto.git#a98b8a706b6644bdd28c9fd5680c2dc044bb2b67"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a00c590edea971a5c6130fee3d3a9c9e03b2cd7c6b3606f5b5fe81984105525"
 dependencies = [
  "eunomia",
  "hermes-simd",
  "leto",
  "serde",
- "themis-topology 0.11.5 (git+https://github.com/ryancinsight/themis)",
+ "themis-topology",
  "thiserror",
 ]
 
@@ -827,11 +836,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aea7e15b946fc4131a113942783184c9a645f7a26e4418b118fc9bb39af33ae4"
 
 [[package]]
-name = "melinoe"
-version = "0.10.0"
-source = "git+https://github.com/ryancinsight/melinoe.git#ae347a95c788c23247abaa8781b243d41bb03934"
-
-[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -855,22 +859,9 @@ dependencies = [
  "eunomia",
  "libc",
  "loom",
- "mnemosyne-backend 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-memory-core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "themis-topology 0.11.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "mnemosyne-arena"
-version = "0.7.2"
-source = "git+https://github.com/ryancinsight/Mnemosyne.git#b81d685a55bcf16b9261d1d3fb46d0ed3766a559"
-dependencies = [
- "eunomia",
- "libc",
- "loom",
- "mnemosyne-backend 0.6.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-memory-core 0.3.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "themis-topology 0.11.5 (git+https://github.com/ryancinsight/themis)",
+ "mnemosyne-backend",
+ "mnemosyne-memory-core",
+ "themis-topology",
 ]
 
 [[package]]
@@ -879,15 +870,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c5a1ba0d64a7a84de5773463e5c099a9c8e787b71991d5ca023d51c9f5facfe"
 dependencies = [
- "mnemosyne-memory-core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "mnemosyne-backend"
-version = "0.6.0"
-source = "git+https://github.com/ryancinsight/Mnemosyne.git#b81d685a55bcf16b9261d1d3fb46d0ed3766a559"
-dependencies = [
- "mnemosyne-memory-core 0.3.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
+ "mnemosyne-memory-core",
 ]
 
 [[package]]
@@ -897,29 +880,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a1b0aee13be41f79e4a97a2c6e2542923ab8a2017f916454e78fef6a41e49a0"
 
 [[package]]
-name = "mnemosyne-build-util"
-version = "0.2.1"
-source = "git+https://github.com/ryancinsight/Mnemosyne.git#b81d685a55bcf16b9261d1d3fb46d0ed3766a559"
-
-[[package]]
 name = "mnemosyne-decay"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5123cfd9231741d692b3860f0498577962a81aac8b33018a431587ab5c6e9b2c"
 dependencies = [
- "mnemosyne-arena 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-backend 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-memory-core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "mnemosyne-decay"
-version = "0.3.3"
-source = "git+https://github.com/ryancinsight/Mnemosyne.git#b81d685a55bcf16b9261d1d3fb46d0ed3766a559"
-dependencies = [
- "mnemosyne-arena 0.7.2 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-backend 0.6.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-memory-core 0.3.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
+ "mnemosyne-arena",
+ "mnemosyne-backend",
+ "mnemosyne-memory-core",
 ]
 
 [[package]]
@@ -929,28 +897,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baaf13fcadc5d699ee71d5bc157e45c739cf2ed7c713a120667dc803ab1e31dc"
 dependencies = [
  "libc",
- "melinoe 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-arena 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-backend 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-local 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-memory-core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-prof 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "themis-topology 0.11.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "mnemosyne-heap"
-version = "0.7.0"
-source = "git+https://github.com/ryancinsight/Mnemosyne.git#b81d685a55bcf16b9261d1d3fb46d0ed3766a559"
-dependencies = [
- "libc",
- "melinoe 0.10.0 (git+https://github.com/ryancinsight/melinoe.git)",
- "mnemosyne-arena 0.7.2 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-backend 0.6.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-local 0.7.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-memory-core 0.3.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-prof 0.2.1 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "themis-topology 0.11.5 (git+https://github.com/ryancinsight/themis)",
+ "melinoe",
+ "mnemosyne-arena",
+ "mnemosyne-backend",
+ "mnemosyne-local",
+ "mnemosyne-memory-core",
+ "mnemosyne-prof",
+ "themis-topology",
 ]
 
 [[package]]
@@ -959,29 +912,14 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e2e5729346946d80bf14523d707e3dc3f7e347b09895d6cfb98ba0174702406"
 dependencies = [
- "melinoe 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-arena 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-backend 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-build-util 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-decay 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-memory-core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-prof 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "themis-topology 0.11.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "mnemosyne-local"
-version = "0.7.0"
-source = "git+https://github.com/ryancinsight/Mnemosyne.git#b81d685a55bcf16b9261d1d3fb46d0ed3766a559"
-dependencies = [
- "melinoe 0.10.0 (git+https://github.com/ryancinsight/melinoe.git)",
- "mnemosyne-arena 0.7.2 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-backend 0.6.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-build-util 0.2.1 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-decay 0.3.3 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-memory-core 0.3.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-prof 0.2.1 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "themis-topology 0.11.5 (git+https://github.com/ryancinsight/themis)",
+ "melinoe",
+ "mnemosyne-arena",
+ "mnemosyne-backend",
+ "mnemosyne-build-util",
+ "mnemosyne-decay",
+ "mnemosyne-memory-core",
+ "mnemosyne-prof",
+ "themis-topology",
 ]
 
 [[package]]
@@ -991,28 +929,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6b4ad8c809bc1f7e27b606aee09006808039b27a5f33c469c5f82a1bd1f62c7"
 dependencies = [
  "eunomia",
- "mnemosyne-arena 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-backend 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-decay 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-heap 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-local 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-memory-core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-prof 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "mnemosyne-memory"
-version = "0.10.2"
-source = "git+https://github.com/ryancinsight/Mnemosyne.git#b81d685a55bcf16b9261d1d3fb46d0ed3766a559"
-dependencies = [
- "eunomia",
- "mnemosyne-arena 0.7.2 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-backend 0.6.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-decay 0.3.3 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-heap 0.7.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-local 0.7.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-memory-core 0.3.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-prof 0.2.1 (git+https://github.com/ryancinsight/Mnemosyne.git)",
+ "mnemosyne-arena",
+ "mnemosyne-backend",
+ "mnemosyne-decay",
+ "mnemosyne-heap",
+ "mnemosyne-local",
+ "mnemosyne-memory-core",
+ "mnemosyne-prof",
 ]
 
 [[package]]
@@ -1025,50 +948,34 @@ dependencies = [
 ]
 
 [[package]]
-name = "mnemosyne-memory-core"
-version = "0.3.0"
-source = "git+https://github.com/ryancinsight/Mnemosyne.git#b81d685a55bcf16b9261d1d3fb46d0ed3766a559"
-dependencies = [
- "loom",
-]
-
-[[package]]
 name = "mnemosyne-prof"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "433d24d38cb8fa8bc3296389f1e2469a69d6666cb908dc21815d05ca93e621e1"
 dependencies = [
  "backtrace",
- "mnemosyne-build-util 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnemosyne-memory-core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "mnemosyne-prof"
-version = "0.2.1"
-source = "git+https://github.com/ryancinsight/Mnemosyne.git#b81d685a55bcf16b9261d1d3fb46d0ed3766a559"
-dependencies = [
- "backtrace",
- "mnemosyne-build-util 0.2.1 (git+https://github.com/ryancinsight/Mnemosyne.git)",
- "mnemosyne-memory-core 0.3.0 (git+https://github.com/ryancinsight/Mnemosyne.git)",
+ "mnemosyne-build-util",
+ "mnemosyne-memory-core",
 ]
 
 [[package]]
 name = "moirai-core"
 version = "0.12.0"
-source = "git+https://github.com/ryancinsight/Moirai.git#e5108b5d420ba302ebe534e1f07f26e5cd7262ef"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5f0a2bd5c637b6225a24705f8a406932fbe5a98fe3017013fa6e6a305e5c26c"
 dependencies = [
  "bytemuck",
  "libc",
- "mnemosyne-memory 0.10.2 (git+https://github.com/ryancinsight/Mnemosyne.git)",
+ "mnemosyne-memory",
  "moirai-utils",
- "themis-topology 0.11.5 (git+https://github.com/ryancinsight/themis)",
+ "themis-topology",
 ]
 
 [[package]]
 name = "moirai-sync"
 version = "0.12.0"
-source = "git+https://github.com/ryancinsight/Moirai.git#e5108b5d420ba302ebe534e1f07f26e5cd7262ef"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b26fb8d638408ca2a000aa9d265d46a4ce739c85bc70bdfcb540771ffe392fb8"
 dependencies = [
  "libc",
  "moirai-core",
@@ -1078,7 +985,8 @@ dependencies = [
 [[package]]
 name = "moirai-utils"
 version = "0.12.0"
-source = "git+https://github.com/ryancinsight/Moirai.git#e5108b5d420ba302ebe534e1f07f26e5cd7262ef"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "169dbabce30dffaa19e5d190408d6fbfa2145822646e64c683bfd45d2d564682"
 
 [[package]]
 name = "munge"
@@ -1694,16 +1602,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53a355bea9ffa5f1f59a3a2306617833395b7a5a830a015b1722697c0c0451de"
 dependencies = [
  "libc",
- "melinoe 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "themis-topology"
-version = "0.11.5"
-source = "git+https://github.com/ryancinsight/themis#4ec2fb99b1910a3bc1265f7a5386e99e7f84cdea"
-dependencies = [
- "libc",
- "melinoe 0.10.0 (git+https://github.com/ryancinsight/melinoe.git)",
+ "melinoe",
 ]
 
 [[package]]
