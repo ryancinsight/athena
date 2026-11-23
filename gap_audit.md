@@ -1,5 +1,11 @@
 # Solver correctness audit
 
+## Incremental release baseline
+
+Reviewed [athena-krylov 0.5.0](crates/athena/Cargo.toml) at [0ad161c90b07](https://github.com/ryancinsight/athena/tree/0ad161c90b0747c4694f17b665ba9ea0e344e9d8). The exact version appears in the [registry](https://crates.io/crates/athena-krylov/0.5.0).
+
+The next [patch] checkpoint uses [lsqr contract](crates/athena-leto/tests/lsqr_contract.rs). [Target version and acceptance criteria](backlog.md#athena-stable-qualification).
+
 At main `6c8d81cc122c353be3239a38cdfee50d23dc6e14`, executable regressions
 reproduce both source-derived failures: deflated CG returns `(0.5,0)` with
 reported residual zero for the coupled two-by-two system, and Chebyshev
