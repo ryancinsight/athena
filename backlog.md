@@ -117,7 +117,7 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: tightening; needs: none; milestone: M-device-least-squares
 - scope: `docs/adr/0004-derived-progress-termination.md`
-- outcome: ADR 0004 is 168 lines (`docs/adr/0004-derived-progress-termination.md`, Context at :13, Verification at :149) against the budget of about 150 lines per ADR; the in-place revisions of 2026-11-16 (CG stall detection, noise-floor premise) and the Verification list grew it. Compact it without dropping the decision, the four rejected alternatives, the evidence or the revision notes; delivery narrative belongs to commits. ADR 0005 is 164 lines at `9741050` and stays outside this item (`ATHENA-ADR-0005-FORM-20261124`).
+- outcome: ADR 0004 is 168 lines (`docs/adr/0004-derived-progress-termination.md`, Context at :13, Verification at :149) against the budget of about 150 lines per ADR; the in-place revisions of 2026-11-16 (CG stall detection, noise-floor premise) and the Verification list grew it. Compact it without dropping the decision, the four rejected alternatives, the evidence or the revision notes; delivery narrative belongs to commits. ADR 0005 is within that budget and stays outside this item.
 - acceptance: `test "$(wc -l < docs/adr/0004-derived-progress-termination.md)" -le 150` exits 0 (exits 1 at the basis, 168 lines); the Context, Decision, Rejected alternatives, Consequences and Verification headings and the four rejected-alternative headings remain; `python scripts/adr-index.py check --directory docs/adr` from an Atlas checkout passes.
 - next step: trim statements Consequences repeats from Decision, then shorten the Verification list to each test's name and oracle; keep every cited source.
 - basis: 68d618e87e42d1b4d9f77e56e2e8e05f7653b7f9
@@ -160,14 +160,4 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - outcome: `docs/book/bicgstab.md:118` cites Templates §2.3.7 for the preconditioned algorithm. In the netlib text of <https://www.netlib.org/templates/templates.html> (read 2026-11-24), §2.3.7 is "Conjugate Gradient Squared Method (CGS)" and §2.3.8 is "BiConjugate Gradient Stabilized (BiCGSTAB)", whose Figure 2.10 is the preconditioned method.
 - acceptance: the chapter cites the section that carries the preconditioned BiCGSTAB algorithm: `git grep -n "2\.3\.7" -- docs/book` is empty and `git grep -n "2\.3\.8" -- docs/book/bicgstab.md` prints the citation; `mdbook test docs/book` passes.
 - next step: change §2.3.7 to §2.3.8 in `bicgstab.md:118` and re-read that section's figure.
-- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
-
-<a id="athena-adr-0005-form-20261124"></a>
-## ATHENA-ADR-0005-FORM-20261124 — Reconcile ADR 0005 with the ladder and bring it to the ADR form [docs] — todo
-
-- priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `docs/adr/0005-release-scope.md`, `docs/adr/README.md`, `backlog.md` (ladder preamble)
-- outcome: (1) veto 1 (`:82-87`) rejects "a 0.4.0 device block before a 1.0.0 block", while the ladder preamble plans `athena-krylov` 0.5.1, then 0.6.0, before 1.0.0 (`backlog.md:6, 11-12`); the manifest already reads 0.5.0 (ADR 0005 `:14-16`), so "0.4.0" names a released version. I read the veto as rejecting a milestone block and the 0.5.1 and 0.6.0 lines as checkpoints inside the one milestone, so this is a judgment call the ADR must state. (2) The revision note (`:153-157`) cites neither the delivering PR nor evidence (ADR governance). (3) The ADR is 164 lines against about 150.
-- acceptance: veto 1 states how the 0.5.1 and 0.6.0 checkpoints relate to the single milestone, naming the version it rejects correctly; the revision note cites PR 185 (merge `9741050`) and the verification read; `test "$(wc -l < docs/adr/0005-release-scope.md)" -le 150` exits 0 (exits 1 at the basis); the decision, alternatives and evidence remain; `python scripts/adr-index.py check --directory docs/adr` from an Atlas checkout passes.
-- next step: move the 2026-11-24 delivery narrative and the Aequitas revision text to their owners, then rewrite veto 1.
 - basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
