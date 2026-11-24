@@ -176,10 +176,11 @@ and `to_vec` only in the workspace constructors and the deflation module, and
 the allocation tests cover `Cg`, `Gmres` and `BiCgStab`. `DeflatedCg::solve_into`
 allocates on every solve (see the table), and so does `LinearSolverChain`: each
 solve builds the solution vector, and `solve_with_guess_state` clones a given
-guess into it. Each iterative tier a solve attempts constructs its
+guess into it. A solve the direct tier ends runs one sparse LU solve, with a
+dense retry for small systems, and builds no iterative-tier preconditioner or
+workspace. Otherwise each iterative tier a solve attempts constructs its
 preconditioner (the unpreconditioned and `BiCgStab` tiers use `Identity` and
-build none) and, once that succeeds, a workspace; a solve the direct tier ends
-builds neither.
+build none) and, once that succeeds, a workspace.
 GMRES stores exactly `RESTART + 1` Arnoldi vectors, `RESTART` preconditioned
 vectors, and const-bounded host scalar storage. Those two vector sets are
 `KrylovBackend::VectorBlock` values rather than `Vec<Vector>`, so each backend
