@@ -93,7 +93,6 @@ All notable changes to Athena are documented in this file.
 - Require Leto/LetoOps >=0.46.3,<0.48 to exclude the 0.46.2 finite-range
   regression. The canonical lock selects merged/published Leto #376 at
   5051cd9; native 0.46.3 registry source and fresh consumers are verified.
-  Athena dependency-delta review and lifecycle gates remain required.
 - Admit Hephaestus >=0.22.2,<0.26 and test its current 0.25 public default.
   The consumed core/WGPU crate files are byte-identical across 0.24/0.25;
   #506 adds embedding ports outside Athena's dependency surface.
@@ -119,8 +118,7 @@ All notable changes to Athena are documented in this file.
 
 - [patch] Admit Eunomia>=0.10,<0.12 and Leto/LetoOps>=0.46,<0.48,preserving current-provider support and all Rust
   implementation/test/feature bytes. Current canonical lock and real typed
-  current/future consumer probes verify the bridge; final provider ordering,
-  exact-head review and hosted/publication gates remain required.
+  current/future consumer probes verify the bridge.
 
 - Advance the locked Atlas provider graph to Eunomia 0.10.0, Mnemosyne 0.10.0
   (arena 0.7.0), Leto/Leto-ops 0.46.0, and Hephaestus 0.22.1, following the
