@@ -3,7 +3,8 @@
 
 use athena_core::{
     Cg, CgWorkspace, Chebyshev, ChebyshevWorkspace, ConvergencePolicy, DeflatedCg,
-    DeflationSubspace, Identity, KrylovBackend, SpectralBounds, Termination,
+    DeflationSubspace, Identity, KrylovBackend, Minres, MinresWorkspace, SpectralBounds,
+    Termination,
 };
 use athena_hephaestus::{CsrOperator, HephaestusBackend};
 use hephaestus_core::ComputeDevice;
@@ -137,4 +138,80 @@ fn chebyshev_reports_the_exact_singleton_spectrum_solution_on_device() {
     assert_eq!(report.iterations, 1);
     assert_eq!(report.operator_applications, 2);
     assert_eq!(report.final_residual_norm.to_bits(), 0.0_f32.to_bits());
+}
+
+/// Absolute error bound, in machine epsilons of `f32`, for the MINRES solution
+/// components and its final residual estimate.
+///
+/// Two Lanczos steps over length-two vectors perform fewer than 48 rounded
+/// scalar operations (`crates/athena-leto/tests/minres_contract.rs`), each
+/// amplified by at most `κ(diag(1, −1)) = 1`, so the first-order error is
+/// below `48 ε`. The device recurrence performs no more operations: the
+/// two-element dot and squared-norm reductions have one addition, so the
+/// sequential host order and any device workgroup tree evaluate the same two
+/// products and one sum, and the axpy kernels fuse `factor * source +
+/// destination` into one rounding in place of two. The bound `256 ε` is the
+/// host contract's factor-of-five margin over that count (`240 ε`, rounded
+/// up), which also covers a per-operation device error of up to five
+/// epsilons. No source read for this derivation states the device square-root
+/// and division accuracy, so that per-operation allowance is an assumption: a
+/// result beyond the bound reports a device accuracy outside it, and the
+/// bound is never widened to absorb it.
+const ORACLE_BOUND_EPSILONS: u16 = 256;
+
+fn oracle_bound() -> f32 {
+    f32::from(ORACLE_BOUND_EPSILONS) * f32::EPSILON
+}
+
+#[test]
+fn minres_solves_the_indefinite_oracle_on_device() {
+    let backend = backend();
+    // `diag(1, -1)`: symmetric indefinite with condition number one, on which
+    // `Cg` fails its first curvature test (`dᵀAd = 1 - 4 < 0` for `d = b`).
+    let operator = Operator::from_parts(
+        WgpuSparseOps,
+        backend.device(),
+        &[1.0, -1.0],
+        &[0, 1],
+        &[0, 1, 2],
+        2,
+        2,
+    )
+    .expect("invariant: manufactured CSR parts are valid");
+    // `x = (1, -2)` gives `b = (1, 2)`; the Krylov space of `b` is complete
+    // after two Lanczos steps because `A` has two distinct eigenvalues.
+    let rhs = backend.device().upload(&[1.0, 2.0]).expect("upload");
+    let mut solution = backend.allocate(2).expect("allocation");
+    let mut workspace = MinresWorkspace::new(&backend, 2).expect("workspace");
+    let bound = oracle_bound();
+    let policy = ConvergencePolicy::new(bound, bound, 3).expect("invariant: valid policy");
+    let report = Minres::<Backend>::solve_into(
+        &backend,
+        &operator,
+        &rhs,
+        &mut solution,
+        &mut workspace,
+        policy,
+    )
+    .expect("invariant: valid dimensions and real device operations");
+    let mut host = [0.0_f32; 2];
+    backend
+        .device()
+        .download(&solution, &mut host)
+        .expect("readback");
+
+    assert!((host[0] - 1.0).abs() <= bound, "x0 = {}", host[0]);
+    assert!((host[1] + 2.0).abs() <= bound, "x1 = {}", host[1]);
+    // Direct substitution in `f64`, exact for `f32` operands: the rows give
+    // `x0 - 1` and `-x1 - 2`, so the solver's own residual path is not trusted.
+    let r0 = f64::from(host[0]) - 1.0;
+    let r1 = -f64::from(host[1]) - 2.0;
+    assert!(r0.abs() <= f64::from(bound), "row 0 residual {r0}");
+    assert!(r1.abs() <= f64::from(bound), "row 1 residual {r1}");
+    assert_eq!(report.termination, Termination::Converged);
+    // One step leaves residual `‖b - c·A·b‖ = √3.2` (`c = -3/5`), far above
+    // the threshold, so convergence is reported by the second step.
+    assert_eq!(report.iterations, 2);
+    assert_eq!(report.operator_applications, 3);
+    assert!(report.final_residual_norm <= report.threshold);
 }
