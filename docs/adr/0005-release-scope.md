@@ -79,22 +79,21 @@ rejected alternative and the evidence that overturns the choice.
 
 1. One milestone, released as 1.0.0; the 0.5.1 patch and proposed 0.6.0 minor
    (`backlog.md:6,11-12`) are release checkpoints inside it, not blocks: they
-   add no exit and the milestone closes on its two exits and standing conditions
-   alone. Rejected: a leading preconditioned-solves milestone (its exits test
-   AMG and the chain, which ship at base, ADR 0062 revision 2026-10-11); a
-   closing stable-suite milestone (a quality state); a device block below 1.0.0
-   (the proposed 0.6.0), which would hold device `Lsqr`, the one capability
-   absent at the basis, or shipped capability. Overturned by: a second absent
+   add no exit and the milestone closes on its two exits and standing
+   conditions alone. Rejected: a leading preconditioned-solves milestone (its
+   exits test AMG and the chain, which ship at base, ADR 0062 revision
+   2026-10-11); a closing stable-suite milestone (a quality state); a device
+   block below 1.0.0 (the proposed 0.6.0) ahead of the 1.0.0 block, which would
+   then hold no feature absent at the basis. Overturned by: a second absent
    capability that a consumer requires adds a block before 1.0.0.
 2. Consumer migration is not a milestone gate. Rejected: gating 1.0 on CFDrs
    and Kwavers conversions, which makes Athena wait on two repositories it
    does not own. Overturned by: a conversion that names a missing Athena
    capability (`ATLAS-CFDRS-ATHENA-MIGRATION-001` names `chain.rs` and
    multigrid as its next step), which then becomes an item or a block.
-3. `Lsqr` on device is in scope. Grounds: README:27-30 states the
-   backend-neutral contract and README:35-36 names this pair as the one that
-   does not ship; no consumer requirement was found in the README roadmap or
-   the Atlas items read.
+3. `Lsqr` on device is in scope. Grounds: README:32-36 states the backend-neutral
+   contract and names this pair as the one that does not ship; no consumer
+   requirement was found in the README roadmap or the Atlas items read.
    Rejected: a non-goal with CPU-only `Lsqr`. Design open:
    Hephaestus `SparseOperatorOps` has `upload_csr` and `apply` but no
    transposed apply, so `Aᵀ` is a second uploaded CSR (twice the device
