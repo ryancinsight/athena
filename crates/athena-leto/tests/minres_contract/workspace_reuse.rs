@@ -85,10 +85,10 @@ where
 /// Solve `diag(s, −s)·x = (1, 2)` with `s` the first power of the machine
 /// epsilon whose reciprocal overflows.
 ///
-/// The rotation radius is `|s|`, so `1/ρ₁` is infinite and the first update
-/// vector `w₁` leaves the solve non-finite; the returned solution is
-/// infinite and the solve ends after that one step.
-fn solve_with_overflowing_update_vector<T>(
+/// The squared image entries underflow in the norm, so the computed β₂
+/// is zero. The radius is then |α₁| (approximately `0.6·abs(s)`), its
+/// reciprocal overflows, and the first update leaves the solution infinite.
+pub(super) fn solve_with_overflowing_update_vector<T>(
     backend: LetoBackend<T>,
     workspace: &mut MinresWorkspace<LetoBackend<T>>,
 ) -> (Array1<T>, SolveReport<T>)
@@ -170,6 +170,36 @@ where
     .expect("invariant: manufactured CSR parts are valid")
 }
 
+pub(super) fn solve_with_overflowing_second_update<T>(
+    backend: LetoBackend<T>,
+    workspace: &mut MinresWorkspace<LetoBackend<T>>,
+    exponents: [i32; 4],
+) -> (Array1<T>, SolveReport<T>)
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let operator = CsrOperator::new(overflowing_second_update_matrix::<T>(exponents))
+        .expect("invariant: matrix is square");
+    let right_hand_side = Array1::from_shape_vec(
+        [3],
+        vec![T::from_f64(1.0), T::from_f64(0.0), T::from_f64(0.0)],
+    )
+    .expect("invariant: vector shape is exact");
+    let mut solution = Array1::zeros([3]);
+    let policy = ConvergencePolicy::new(<T as RealField>::EPSILON, <T as RealField>::EPSILON, 3)
+        .expect("invariant: tolerance is finite and positive");
+    let report = Minres::<LetoBackend<T>>::solve_into(
+        &backend,
+        &operator,
+        &right_hand_side,
+        &mut solution,
+        workspace,
+        policy,
+    )
+    .expect("invariant: manufactured solve has valid dimensions");
+    (solution, report)
+}
+
 /// A first solve whose step-two update overflows and which then runs a third
 /// step leaves `wⱼ₋₂` non-finite. A finite stale `wⱼ₋₂` is annihilated by
 /// `ε₁ = 0`, but `−ε₁·NaN` is NaN, so the next solve must not inherit it.
@@ -181,25 +211,8 @@ pub(super) fn workspace_reused_after_overflowing_second_update_matches_fresh_wor
     let backend = LetoBackend::<T>::default();
     let mut workspace =
         MinresWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
-    let operator = CsrOperator::new(overflowing_second_update_matrix::<T>(exponents))
-        .expect("invariant: matrix is square");
-    let right_hand_side = Array1::from_shape_vec(
-        [3],
-        vec![T::from_f64(1.0), T::from_f64(0.0), T::from_f64(0.0)],
-    )
-    .expect("invariant: vector shape is exact");
-    let mut poisoned = Array1::zeros([3]);
-    let policy = ConvergencePolicy::new(<T as RealField>::EPSILON, <T as RealField>::EPSILON, 3)
-        .expect("invariant: tolerance is finite and positive");
-    let report = Minres::<LetoBackend<T>>::solve_into(
-        &backend,
-        &operator,
-        &right_hand_side,
-        &mut poisoned,
-        &mut workspace,
-        policy,
-    )
-    .expect("invariant: manufactured solve has valid dimensions");
+    let (poisoned, report) =
+        solve_with_overflowing_second_update(backend, &mut workspace, exponents);
     assert_eq!(report.iterations, 3, "the step that moves w₂ into wⱼ₋₂");
     assert!(
         !poisoned
@@ -213,6 +226,7 @@ pub(super) fn workspace_reused_after_overflowing_second_update_matches_fresh_wor
     assert_tridiagonal_closed_form(&reused, &reused_report);
     let mut fresh = MinresWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
     let (reference, reference_report) = solve_tridiagonal_oracle(backend, &mut fresh);
+    assert_eq!(reused_report.termination, reference_report.termination);
     assert_eq!(reused_report.iterations, reference_report.iterations);
     assert_eq!(reused.as_slice(), reference.as_slice());
 }

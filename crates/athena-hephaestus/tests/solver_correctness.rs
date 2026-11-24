@@ -287,3 +287,44 @@ fn minres_solves_the_indefinite_oracle_on_device() {
     .expect("invariant: valid dimensions and real device operations");
     assert_eq!(cg_report.termination, Termination::NonPositiveCurvature);
 }
+
+/// The empty second CSR column keeps x[1] out of the residual. Exercise
+/// exceptional values directly on the device, independently of how its
+/// arithmetic treats the subnormals in the host overflow fixtures.
+#[test]
+fn minres_checks_nullspace_components_on_device() {
+    let backend = backend();
+    let operator = Operator::from_parts(
+        WgpuSparseOps,
+        backend.device(),
+        &[1.0],
+        &[0],
+        &[0, 1, 1],
+        2,
+        2,
+    )
+    .expect("square sparse diagonal");
+    let mut workspace = MinresWorkspace::new(&backend, 2).expect("workspace");
+    let policy = ConvergencePolicy::new(0.0, 0.0, 1).expect("exact convergence");
+
+    for (rhs0, finite_exit, steps) in [
+        (0.0, Termination::InitialResidual, 0),
+        (1.0, Termination::Converged, 1),
+    ] {
+        let rhs = backend.device().upload(&[rhs0, 0.0]).expect("upload");
+        for (value, expected) in [
+            (f32::MAX, finite_exit),
+            (f32::NAN, Termination::NonFinite),
+            (f32::INFINITY, Termination::NonFinite),
+            (f32::NEG_INFINITY, Termination::NonFinite),
+        ] {
+            let mut x = backend.device().upload(&[0.0, value]).expect("upload");
+            let report =
+                Minres::solve_into(&backend, &operator, &rhs, &mut x, &mut workspace, policy)
+                    .expect("valid solve");
+            assert_eq!(report.termination, expected, "x[1]={value}, rhs[0]={rhs0}");
+            assert_eq!(report.iterations, steps);
+            assert_eq!(report.operator_applications, steps + 1);
+        }
+    }
+}

@@ -105,8 +105,8 @@ where
     /// `image` are overwritten, `previous_direction`, `update_previous` and
     /// `update_previous_2` are overwritten and zeroed, and `update` is
     /// overwritten before it is read. The zeroing multiplies the seed
-    /// residual by `+0`, so entries beneath a negative residual entry are
-    /// `-0` where a fresh workspace holds `+0`; the two compare equal.
+    /// residual by `+0`. A negative residual entry, including `-0`, gives
+    /// `-0`, which compares equal to the fresh workspace's `+0`.
     pub(super) fn seed(
         &mut self,
         right_hand_side: &B::Vector,
@@ -207,6 +207,28 @@ where
             iterations: 0,
             operator_applications: 1,
         }))
+    }
+
+    /// Under IEEE arithmetic, each entry of `x − x` is zero for a finite
+    /// operand and NaN for either infinity or NaN. Its norm cannot overflow
+    /// on a finite solution, even when squaring an entry of `x` would.
+    pub(super) fn solution_is_finite(&mut self) -> ExecutionResult<B, bool> {
+        let solution = self.backend.view(self.solution);
+        self.backend
+            .residual(
+                solution,
+                solution,
+                self.backend.view_mut(&mut self.workspace.seed_residual),
+            )
+            .map_err(SolveError::Backend)?;
+        let norm = self
+            .backend
+            .norm_l2_prepared(
+                &self.workspace.seed_norm,
+                self.backend.view(&self.workspace.seed_residual),
+            )
+            .map_err(SolveError::Backend)?;
+        Ok(norm == <B::Scalar as NumericElement>::ZERO)
     }
 
     pub(super) fn iterate(

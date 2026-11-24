@@ -253,13 +253,87 @@ fn minres_workspace_reused_after_non_finite_solve_matches_fresh_workspace() {
     workspace_reuse::workspace_reused_after_non_finite_solve_matches_fresh_workspace::<f64>();
 }
 
+const F32_OVERFLOW_EXPONENTS: [i32; 4] = [-120, -60, 80, 20];
+const F64_OVERFLOW_EXPONENTS: [i32; 4] = [-1000, -500, 600, 100];
+
+fn overflowing_terminations<T>(exponents: [i32; 4]) -> [Termination; 2]
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let backend = LetoBackend::<T>::default();
+    let mut two = MinresWorkspace::new(&backend, 2).expect("two-row workspace");
+    let mut three = MinresWorkspace::new(&backend, 3).expect("three-row workspace");
+    let outcomes = [
+        workspace_reuse::solve_with_overflowing_update_vector(backend, &mut two),
+        workspace_reuse::solve_with_overflowing_second_update(backend, &mut three, exponents),
+    ];
+    outcomes.map(|(solution, report)| {
+        assert!(solution.iter().any(|entry| !entry.is_finite()));
+        report.termination
+    })
+}
+
+#[test]
+fn minres_never_reports_a_non_finite_solution_as_converged() {
+    assert_eq!(
+        [
+            overflowing_terminations::<f32>(F32_OVERFLOW_EXPONENTS),
+            overflowing_terminations::<f64>(F64_OVERFLOW_EXPONENTS),
+        ],
+        [[Termination::NonFinite; 2]; 2]
+    );
+}
+
+/// The empty second column hides x[1] from every operator application.
+fn check_nullspace_component<T>(large: T)
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let zero = T::from_f64(0.0);
+    let one = T::from_f64(1.0);
+    let backend = LetoBackend::<T>::default();
+    let matrix = CsrMatrix::from_parts(vec![one], vec![0], vec![0, 1, 1], 2, 2)
+        .expect("valid sparse diagonal");
+    let operator = CsrOperator::new(matrix).expect("square operator");
+    let mut workspace = MinresWorkspace::new(&backend, 2).expect("workspace");
+    let policy = ConvergencePolicy::new(zero, zero, 1).expect("exact convergence");
+
+    for (rhs0, finite_exit, steps) in [
+        (zero, Termination::InitialResidual, 0),
+        (one, Termination::Converged, 1),
+    ] {
+        let rhs = Array1::from_shape_vec([2], vec![rhs0, zero]).expect("two entries");
+        for (value, expected) in [
+            (large, finite_exit),
+            (T::from_f64(f64::NAN), Termination::NonFinite),
+            (T::from_f64(f64::INFINITY), Termination::NonFinite),
+            (T::from_f64(f64::NEG_INFINITY), Termination::NonFinite),
+        ] {
+            let mut x = Array1::from_shape_vec([2], vec![zero, value]).expect("two entries");
+            let report =
+                Minres::solve_into(&backend, &operator, &rhs, &mut x, &mut workspace, policy)
+                    .expect("valid dimensions");
+            assert_eq!(report.termination, expected);
+            assert_eq!(report.iterations, steps);
+            assert_eq!(report.operator_applications, steps + 1);
+            assert_eq!(report.final_residual_norm, zero);
+        }
+    }
+}
+
+#[test]
+fn minres_checks_nullspace_components_at_both_convergence_exits() {
+    check_nullspace_component(f32::MAX);
+    check_nullspace_component(f64::MAX);
+}
+
 #[test]
 fn minres_workspace_reused_after_overflowing_second_update_matches_fresh_workspace() {
     workspace_reuse::workspace_reused_after_overflowing_second_update_matches_fresh_workspace::<f32>(
-        [-120, -60, 80, 20],
+        F32_OVERFLOW_EXPONENTS,
     );
     workspace_reuse::workspace_reused_after_overflowing_second_update_matches_fresh_workspace::<f64>(
-        [-1000, -500, 600, 100],
+        F64_OVERFLOW_EXPONENTS,
     );
 }
 

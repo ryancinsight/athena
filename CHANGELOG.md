@@ -6,6 +6,10 @@ All notable changes to Athena are documented in this file.
 
 ### Fixed
 
+- [patch] MINRES checks that every solution entry is finite before reporting
+  initial or iterative convergence. A candidate containing NaN or infinity
+  now returns `Termination::NonFinite`, even when the residual meets tolerance.
+
 - [patch] Damped LSQR (`Lsqr::solve_damped_into` and
   `solve_damped_with_observer`) eliminates the damping term with its own plane
   rotation before eliminating the bidiagonal subdiagonal, as Paige and
