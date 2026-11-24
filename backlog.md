@@ -163,13 +163,13 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
 
 <a id="athena-book-krylov-claim-20261124"></a>
-## ATHENA-BOOK-KRYLOV-CLAIM-20261124 — Qualify the book's Krylov-subspace and Templates claims [docs] — todo
+## ATHENA-BOOK-KRYLOV-CLAIM-20261124 — Correct the BiCGSTAB chapter's Templates section [docs] — todo
 
 - priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `docs/book/README.md`
-- outcome: `docs/book/README.md:58-61` says every method in the book draws its k-th iterate from `x₀ + K_k(A, r₀)`. Deflated CG (table row `:98`) returns `x₀ + y + C(r₀ − A y)` (`deflation/execution.rs:163, 178-193`), which lies in that affine set only when the coarse correction does; LSQR (row `:95`) admits rectangular `A`, for which `A·r₀` is undefined (`r₀ ∈ ℝᵐ`, `m ≠ n`), so `K_k(A, r₀)` does not exist (derived). `:152-155` says Athena's recurrences follow the Templates algorithm statements "cited by section in the chapters below", yet `git grep -n -i templates -- docs/book` finds section citations only in `cg`, `bicgstab`, `gmres` and `convergence_policy`, none in `lsqr.md`; that Templates (1994) states no LSQR or deflated-CG algorithm is recalled, not read. Two further counterexamples (judge-derived, source not read for them): right preconditioning, which the book states throughout (`:113`), iterates in `x₀ + M⁻¹K_k(A M⁻¹, r₀)`, and BiCGSTAB's k-th iterate uses 2k operator applications.
-- acceptance: a truth condition per method, not a wording condition: no sentence of the paragraph asserts `x₀ + K_k(A, r₀)` for LSQR, Deflated CG or a right-preconditioned run, and a method it names is one for which the PR records a `git grep -n` command over `crates/athena-core/src/solver/<method>/` and the lines read from its output that form `x` from `x₀` and vectors in the stated set (a command that prints nothing for the method names no evidence: `axpy` prints nothing for `cg` at the basis), otherwise the sentence is removed; dropping or rewording "every" alone does not satisfy it; the Templates sentence names only methods whose chapters cite a Templates section, each section read from the source text, or is dropped; `mdbook test docs/book` passes.
-- next step: restate the paragraph per table row, then check each Templates section number against the text.
+- scope: `docs/book/bicgstab.md`
+- outcome: `docs/book/bicgstab.md:118` cites Templates §2.3.7 for the preconditioned algorithm. In the netlib text of <https://www.netlib.org/templates/templates.html> (read 2026-11-24), §2.3.7 is "Conjugate Gradient Squared Method (CGS)" and §2.3.8 is "BiConjugate Gradient Stabilized (BiCGSTAB)", whose Figure 2.10 is the preconditioned method.
+- acceptance: the chapter cites the section that carries the preconditioned BiCGSTAB algorithm: `git grep -n "2\.3\.7" -- docs/book` is empty and `git grep -n "2\.3\.8" -- docs/book/bicgstab.md` prints the citation; `mdbook test docs/book` passes.
+- next step: change §2.3.7 to §2.3.8 in `bicgstab.md:118` and re-read that section's figure.
 - basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
 
 <a id="athena-readme-chain-wording-20261124"></a>
