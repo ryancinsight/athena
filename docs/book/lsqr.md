@@ -63,7 +63,7 @@ requirement there is no way around it: the problem itself is stated in terms of
 
 ## Two stopping criteria, because there are two problems
 
-This is the part of LSQR that differs most from the other three solvers, and
+This is the part of LSQR that differs most from the other solvers, and
 getting it wrong makes correct solves look like failures.
 
 A **consistent** system has \\(b\\) in the range of \\(A\\), so the residual goes
