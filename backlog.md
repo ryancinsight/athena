@@ -54,16 +54,6 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - next step: derive the MINRES recurrence in `further_solvers.md` with a compiled block, then the Chebyshev and deflated CG sections and the References section; the two source comments are `.rs` edits and take the cargo gates.
 - basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
 
-<a id="athena-device-minres-20261113"></a>
-## ATHENA-DEVICE-MINRES-20261113 — Pin MINRES on a Hephaestus device to its oracle [test] — todo
-
-- priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `crates/athena-hephaestus/tests/solver_correctness.rs`
-- outcome: `Minres<B: KrylovBackend>` is backend-generic (`athena-core/src/solver/minres/algorithm.rs:46`); the device suites run `Cg`, `Gmres`, `BiCgStab`, `DeflatedCg` and `Chebyshev` and none runs `Minres`. The recurrence is expected to run unchanged; this item verifies that and builds nothing.
-- acceptance: the `diag(1, -1)` oracle of `crates/athena-leto/tests/minres_contract.rs` solves on a device at `f32` within a bound derived from the reduction order; the test sits in `solver_correctness.rs`, whose `backend()` panics without an adapter, so an unavailable adapter fails it.
-- next step: derive the `f32` bound from the dot-product reduction depth of a two-element system, then write the test first beside the Chebyshev device regression.
-- basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
-
 <a id="athena-gitconfig-20261113"></a>
 ## ATHENA-GITCONFIG-20261113 — Commit the conflict-hygiene repository config [chore] — todo
 

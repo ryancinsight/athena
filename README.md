@@ -31,7 +31,7 @@ squaring the condition number.
 
 Leto CPU and Hephaestus accelerator execution share one backend-neutral
 recurrence per solver family. The accelerator suites run `Cg`, `Gmres`,
-`BiCgStab`, `DeflatedCg` and `Chebyshev`; no accelerator test runs `Minres`.
+`BiCgStab`, `DeflatedCg`, `Chebyshev` and `Minres`.
 `Lsqr` runs on any backend, but `RectangularOperator` is implemented for Leto
 only, so its shipped execution is CPU.
 
@@ -342,7 +342,7 @@ the vector blocks; and zero-sized markers. The accelerator suite runs the
 manufactured SPD and nonsymmetric systems through real Hephaestus allocation,
 CSR upload, SpMV, reductions, and Athena kernels with CG, GMRES, and
 `BiCGSTAB`, then downloads each final solution once; separate device
-regressions run `DeflatedCg` and `Chebyshev`. A local machine without
+regressions run `DeflatedCg`, `Chebyshev` and `Minres`. A local machine without
 an adapter records the unavailable lane; CI treats adapter acquisition failure
 as an infrastructure failure.
 
