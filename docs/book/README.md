@@ -61,8 +61,9 @@ Chebyshev iteration draw their \\(k\\)-th iterate from the affine set
 impose on themselves; it is everything reachable with \\(k\\) applications of
 the operator. BiCGSTAB, LSQR and Deflated CG do not:
 
-- BiCGSTAB's recurrence applies the operator twice per step, so its \\(k\\)-th
-  iterate lies in \\(x_0 + \mathcal{K}_{2k}(A, r_0)\\).
+- BiCGSTAB's recurrence applies the operator twice per step, so, run without a
+  preconditioner, its \\(k\\)-th iterate lies in
+  \\(x_0 + \mathcal{K}_{2k}(A, r_0)\\).
 - LSQR accepts a rectangular \\(A\\), for which \\(A r_0\\) is undefined, so it
   builds its subspace from \\(A^{\mathsf T} r_0\\) and \\(A^{\mathsf T} A\\):
   the \\(k\\)-th iterate lies in
