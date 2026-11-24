@@ -54,16 +54,6 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - next step: derive the MINRES recurrence in `further_solvers.md` with a compiled block, then the Chebyshev and deflated CG sections and the References section; the two source comments are `.rs` edits and take the cargo gates.
 - basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
 
-<a id="athena-device-minres-20261113"></a>
-## ATHENA-DEVICE-MINRES-20261113 — Pin MINRES on a Hephaestus device to its oracle [test] — todo
-
-- priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `crates/athena-hephaestus/tests/solver_correctness.rs`
-- outcome: `Minres<B: KrylovBackend>` is backend-generic (`athena-core/src/solver/minres/algorithm.rs:46`); the device suites run `Cg`, `Gmres`, `BiCgStab`, `DeflatedCg` and `Chebyshev` and none runs `Minres`. The recurrence is expected to run unchanged; this item verifies that and builds nothing.
-- acceptance: the `diag(1, -1)` oracle of `crates/athena-leto/tests/minres_contract.rs` solves on a device at `f32` within a bound derived from the reduction order; the test sits in `solver_correctness.rs`, whose `backend()` panics without an adapter, so an unavailable adapter fails it.
-- next step: derive the `f32` bound from the dot-product reduction depth of a two-element system, then write the test first beside the Chebyshev device regression.
-- basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
-
 <a id="athena-gitconfig-20261113"></a>
 ## ATHENA-GITCONFIG-20261113 — Commit the conflict-hygiene repository config [chore] — todo
 
@@ -127,7 +117,7 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: tightening; needs: none; milestone: M-device-least-squares
 - scope: `docs/adr/0004-derived-progress-termination.md`
-- outcome: ADR 0004 is 168 lines (`docs/adr/0004-derived-progress-termination.md`, Context at :13, Verification at :149) against the budget of about 150 lines per ADR; the in-place revisions of 2026-11-16 (CG stall detection, noise-floor premise) and the Verification list grew it. Compact it without dropping the decision, the four rejected alternatives, the evidence or the revision notes; delivery narrative belongs to commits. ADR 0005 is 164 lines at `9741050` and stays outside this item (`ATHENA-ADR-0005-FORM-20261124`).
+- outcome: ADR 0004 is 168 lines (`docs/adr/0004-derived-progress-termination.md`, Context at :13, Verification at :149) against the budget of about 150 lines per ADR; the in-place revisions of 2026-11-16 (CG stall detection, noise-floor premise) and the Verification list grew it. Compact it without dropping the decision, the four rejected alternatives, the evidence or the revision notes; delivery narrative belongs to commits. ADR 0005 is within that budget and stays outside this item.
 - acceptance: `test "$(wc -l < docs/adr/0004-derived-progress-termination.md)" -le 150` exits 0 (exits 1 at the basis, 168 lines); the Context, Decision, Rejected alternatives, Consequences and Verification headings and the four rejected-alternative headings remain; `python scripts/adr-index.py check --directory docs/adr` from an Atlas checkout passes.
 - next step: trim statements Consequences repeats from Decision, then shorten the Verification list to each test's name and oracle; keep every cited source.
 - basis: 68d618e87e42d1b4d9f77e56e2e8e05f7653b7f9
@@ -153,41 +143,11 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
 
 <a id="athena-book-krylov-claim-20261124"></a>
-## ATHENA-BOOK-KRYLOV-CLAIM-20261124 — Qualify the book's Krylov-subspace and Templates claims [docs] — todo
+## ATHENA-BOOK-KRYLOV-CLAIM-20261124 — Correct the BiCGSTAB chapter's Templates section [docs] — todo
 
 - priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `docs/book/README.md`
-- outcome: `docs/book/README.md:58-61` says every method in the book draws its k-th iterate from `x₀ + K_k(A, r₀)`. Deflated CG (table row `:98`) returns `x₀ + y + C(r₀ − A y)` (`deflation/execution.rs:163, 178-193`), which lies in that affine set only when the coarse correction does; LSQR (row `:95`) admits rectangular `A`, for which `A·r₀` is undefined (`r₀ ∈ ℝᵐ`, `m ≠ n`), so `K_k(A, r₀)` does not exist (derived). `:152-155` says Athena's recurrences follow the Templates algorithm statements "cited by section in the chapters below", yet `git grep -n -i templates -- docs/book` finds section citations only in `cg`, `bicgstab`, `gmres` and `convergence_policy`, none in `lsqr.md`; that Templates (1994) states no LSQR or deflated-CG algorithm is recalled, not read. Two further counterexamples (judge-derived, source not read for them): right preconditioning, which the book states throughout (`:113`), iterates in `x₀ + M⁻¹K_k(A M⁻¹, r₀)`, and BiCGSTAB's k-th iterate uses 2k operator applications.
-- acceptance: a truth condition per method, not a wording condition: no sentence of the paragraph asserts `x₀ + K_k(A, r₀)` for LSQR, Deflated CG or a right-preconditioned run, and a method it names is one for which the PR records a `git grep -n` command over `crates/athena-core/src/solver/<method>/` and the lines read from its output that form `x` from `x₀` and vectors in the stated set (a command that prints nothing for the method names no evidence: `axpy` prints nothing for `cg` at the basis), otherwise the sentence is removed; dropping or rewording "every" alone does not satisfy it; the Templates sentence names only methods whose chapters cite a Templates section, each section read from the source text, or is dropped; `mdbook test docs/book` passes.
-- next step: restate the paragraph per table row, then check each Templates section number against the text.
-- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
-
-<a id="athena-readme-chain-wording-20261124"></a>
-## ATHENA-README-CHAIN-WORDING-20261124 — State the chain's guess and allocation behaviour exactly [docs] — todo
-
-- priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `README.md`
-- outcome: `README.md:47` says `solve_with_guess_state` "starts from a caller guess"; the guess is `Option<&Array1<T>>` and `None` starts from zeros (`solver_chain/warm.rs:26, 31-33`). `README.md:175-177` says `LinearSolverChain` "builds the solution vector and, for each iterative tier, a workspace", which reads as exhaustive: a solve that reaches an iterative tier also builds preconditioners (component-block, SIMPLE, multigrid and incomplete LU at `cold.rs:66, 78, 90, 131`; block-diagonal twice at `:103, :110`; SOR at `warm.rs:48`) and a solve the direct tier ends builds only direct-LU factors (`warm.rs:35-37`, `tiers.rs:183-190`); the warm path clones the guess (`warm.rs:31-33`).
-- acceptance: both sentences match those sources: the guess is optional with a zero start, and the allocation sentence lists the preconditioner and factor construction or says only that the chain allocates on every solve.
-- next step: edit the two sentences, then `git grep -n "caller guess" -- README.md docs` to confirm no other copy.
-- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
-
-<a id="athena-adr-0005-form-20261124"></a>
-## ATHENA-ADR-0005-FORM-20261124 — Reconcile ADR 0005 with the ladder and bring it to the ADR form [docs] — todo
-
-- priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `docs/adr/0005-release-scope.md`, `docs/adr/README.md`, `backlog.md` (ladder preamble)
-- outcome: (1) veto 1 (`:82-87`) rejects "a 0.4.0 device block before a 1.0.0 block", while the ladder preamble plans `athena-krylov` 0.5.1, then 0.6.0, before 1.0.0 (`backlog.md:6, 11-12`); the manifest already reads 0.5.0 (ADR 0005 `:14-16`), so "0.4.0" names a released version. I read the veto as rejecting a milestone block and the 0.5.1 and 0.6.0 lines as checkpoints inside the one milestone, so this is a judgment call the ADR must state. (2) The revision note (`:153-157`) cites neither the delivering PR nor evidence (ADR governance). (3) The ADR is 164 lines against about 150.
-- acceptance: veto 1 states how the 0.5.1 and 0.6.0 checkpoints relate to the single milestone, naming the version it rejects correctly; the revision note cites PR 185 (merge `9741050`) and the verification read; `test "$(wc -l < docs/adr/0005-release-scope.md)" -le 150` exits 0 (exits 1 at the basis); the decision, alternatives and evidence remain; `python scripts/adr-index.py check --directory docs/adr` from an Atlas checkout passes.
-- next step: move the 2026-11-24 delivery narrative and the Aequitas revision text to their owners, then rewrite veto 1.
-- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
-
-<a id="athena-changelog-gating-wording-20261124"></a>
-## ATHENA-CHANGELOG-GATING-WORDING-20261124 — Remove "remain required" from released changelog entries [docs] — todo
-
-- priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `CHANGELOG.md`
-- outcome: two bullets of released versions still read as pending gates: `[0.3.1]` (`CHANGELOG.md:120-123`, "final provider ordering, exact-head review and hosted/publication gates remain required") and `[0.3.2]` (`:93-96`, "Athena dependency-delta review and lifecycle gates remain required"); tags `crate-*-v0.3.1` and `crate-*-v0.3.2` exist. The file is hand-edited here: the tree holds no changelog generator configuration and recent commits edit it directly (`git log -- CHANGELOG.md`).
-- acceptance: `git grep -n "remain required" -- CHANGELOG.md` is empty at the head and each bullet states only the shipped change.
-- next step: delete the two gating clauses and keep the shipped-change text.
+- scope: `docs/book/bicgstab.md`
+- outcome: `docs/book/bicgstab.md:118` cites Templates §2.3.7 for the preconditioned algorithm. In the netlib text of <https://www.netlib.org/templates/templates.html> (read 2026-11-24), §2.3.7 is "Conjugate Gradient Squared Method (CGS)" and §2.3.8 is "BiConjugate Gradient Stabilized (BiCGSTAB)", whose Figure 2.10 is the preconditioned method.
+- acceptance: the chapter cites the section that carries the preconditioned BiCGSTAB algorithm: `git grep -n "2\.3\.7" -- docs/book` is empty and `git grep -n "2\.3\.8" -- docs/book/bicgstab.md` prints the citation; `mdbook test docs/book` passes.
+- next step: change §2.3.7 to §2.3.8 in `bicgstab.md:118` and re-read that section's figure.
 - basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
