@@ -33,6 +33,12 @@ All notable changes to Athena are documented in this file.
   before the budget ends the solve no longer reports `MaxIterations` (ADR 0004).
   Migration: treat `Stagnated` like `Breakdown` and `MaxIterations`. Affected:
   CFDrs `cfd-math` `interpret`, which maps `Stagnated` to an error.
+- [patch] Classify exact CG convergence between scheduled residual checks as
+  convergence and report current original-system residuals on curvature and
+  budget termination. Recompute `b - A x` before accepting convergence so
+  recurrence drift cannot produce a false success. Reuse existing vector
+  scratch and prepared resources; each verification operator application is
+  counted in the report.
 
 ### Changed
 
@@ -96,35 +102,25 @@ All notable changes to Athena are documented in this file.
 
 ## [0.3.1] - 2026-10-19
 
+### Fixed
+
+- Deflated CG now eliminates coarse/complement coupling through the Schur
+  operator `A - A U (Uᵀ A U)⁻¹ Uᵀ A`, supports noninvariant bases, preserves
+  the incoming initial guess and original RHS threshold, and reports the
+  recovered iterate's true residual. Cached `A U` images retain one base
+  operator application per deflated application.
+
+- Chebyshev semi-iteration supports equal spectral bounds through its
+  singleton-spectrum Richardson limit. Normalised coefficients remain finite
+  for narrow intervals; every updated iterate is checked before advancing
+  coefficients. Relative tolerance uses the original RHS norm.
+
 ### Changed
 
 - [patch] Admit Eunomia>=0.10,<0.12 and Leto/LetoOps>=0.46,<0.48,preserving current-provider support and all Rust
   implementation/test/feature bytes. Current canonical lock and real typed
   current/future consumer probes verify the bridge; final provider ordering,
   exact-head review and hosted/publication gates remain required.
-
-## [Unreleased]
-
-### Fixed
-
-- [patch] Classify exact CG convergence between scheduled residual checks as
-  convergence and report current original-system residuals on curvature and
-  budget termination. Recompute `b - A x` before accepting convergence so
-  recurrence drift cannot produce a false success. Reuse existing vector
-  scratch and prepared resources; each verification operator application is
-  counted in the report.
-- Deflated CG now eliminates coarse/complement coupling through the Schur
-  operator `A - A U (Uᵀ A U)⁻¹ Uᵀ A`, supports noninvariant bases, preserves
-  the incoming initial guess and original RHS threshold, and reports the
-  recovered iterate's true residual. Cached `A U` images retain one base
-  operator application per deflated application.
-- Chebyshev semi-iteration supports equal spectral bounds through its
-  singleton-spectrum Richardson limit. Normalised coefficients remain finite
-  for narrow intervals; every updated iterate is checked before advancing
-  coefficients. Relative tolerance uses the original RHS norm.
-
-
-### Changed
 
 - Advance the locked Atlas provider graph to Eunomia 0.10.0, Mnemosyne 0.10.0
   (arena 0.7.0), Leto/Leto-ops 0.46.0, and Hephaestus 0.22.1, following the
@@ -135,6 +131,11 @@ All notable changes to Athena are documented in this file.
   of owned retained handles; kernels still compile once in the operations
   bundle. All-feature check, strict Clippy, 136/136 Nextest, doctests,
   Rustdoc, and the ignored allocation suite pass.
+
+## [0.2.0] - 2026-10-05
+
+### Changed
+
 - Refresh the locked Atlas provider graph to Leto `2beb4f17`, Hermes
   `eb1a2f87`, Hephaestus `dc7b72c6`, Eunomia `88c685f2`, and their current
   Mnemosyne, Moirai, and Themis dependencies. The update is dependency-ordered
@@ -163,6 +164,7 @@ All notable changes to Athena are documented in this file.
   covers every non-converged variant. No signature changes; CG, BiCGSTAB, and
   LSQR keep their existing terminations. See
   [ADR 0004](docs/adr/0004-derived-progress-termination.md).
+
 - `SolveReport` is `#[must_use]`. Discarding it is how a non-converged
   termination gets silently accepted, so ignoring one is now a warning.
 
@@ -174,25 +176,38 @@ All notable changes to Athena are documented in this file.
   `sqrt(len) * EPSILON * ||b||`, published with its derivation and its limits
   so a caller writing a custom convergence test can use the same scale rather
   than a tuned tolerance.
+
 - `LetoVectorBlock`, the contiguous host storage backing the Leto
   `VectorBlock`, and an `athena-leto` backend-seam conformance suite that pins
   block contiguity, zero-initialization, non-aliasing between neighbouring
   vectors, and out-of-range rejection.
+
 - `LetoBackendError::BlockExtentOverflow` for a vector block whose
   `count * len` extent exceeds the addressable range.
+
+## [0.1.1] - 2026-08-12
+
+### Added
+
 - Backend-neutral PCG recurrence with GAT-based provider views, reusable
   workspace, validated convergence policy, and allocation-free reports.
+
 - Restarted right-preconditioned GMRES with a const-generic restart width,
   reusable basis workspace, modified Gram--Schmidt Arnoldi construction,
   scaled Givens rotations, and true-residual convergence checks.
+
 - Leto CPU backend, CSR and borrowed dense operators, and Jacobi
   preconditioning for `f32` and `f64`.
+
 - Hephaestus WGPU backend with resident vectors, GPU CSR SpMV and reductions,
   fused PCG kernels, and prepared scale/AXPY kernels for GMRES.
+
 - CPU and WGPU manufactured SPD and nonsymmetric-system examples and
   conformance tests.
+
 - Public construction of non-exhaustive iteration telemetry for external
   convergence orchestrators.
+
 - Prepared Hephaestus dot and L2-norm plans owned by reusable PCG and GMRES
   workspaces, with fixed-allocation validation and provider benchmark evidence.
 
@@ -201,5 +216,6 @@ All notable changes to Athena are documented in this file.
 - Move public CG and restarted GMRES orchestration from Leto to Athena after
   CPU and WGPU conformance. Leto remains the host-array, CSR, SpMV, and
   reduction provider.
+
 - Align Leto, Hephaestus, Aequitas, Hermes, and Eunomia revisions so provider
   numeric types retain one Git source identity.
