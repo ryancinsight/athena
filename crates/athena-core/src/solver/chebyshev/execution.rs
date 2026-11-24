@@ -95,6 +95,11 @@ where
     /// Seed the state: `r₀ ← b − A·x₀` with the Chebyshev coefficients from
     /// the spectral bounds. A residual already within policy completes the
     /// solve without iterating.
+    ///
+    /// Every buffer the first step reads is rewritten here, so a workspace
+    /// reused after any earlier solve starts from the state of a fresh one:
+    /// `residual` and `image` are overwritten, and `step` is overwritten and
+    /// zeroed.
     pub(super) fn seed(&mut self) -> ExecutionResult<B, Stage<B::Scalar>> {
         self.backend
             .copy(
@@ -153,6 +158,24 @@ where
                 threshold,
             )));
         }
+
+        // Step one scales `step` by `τ₁ − 1 = 0` and `0·∞` and `0·NaN` are
+        // NaN, so a non-finite entry left by an earlier solve on this
+        // workspace would survive. Overwrite `step` with the residual, finite
+        // because its norm passed the check above, and scale it to exact
+        // zeros. `residual` and `image` are overwritten before they are read.
+        self.backend
+            .copy(
+                self.backend.view(&self.workspace.residual),
+                self.backend.view_mut(&mut self.workspace.step),
+            )
+            .map_err(SolveError::Backend)?;
+        self.backend
+            .scale(
+                self.backend.view_mut(&mut self.workspace.step),
+                <B::Scalar as NumericElement>::ZERO,
+            )
+            .map_err(SolveError::Backend)?;
 
         let minimum = self.bounds.minimum();
         let maximum = self.bounds.maximum();

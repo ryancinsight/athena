@@ -2,6 +2,16 @@
 
 All notable changes to Athena are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- [patch] `Chebyshev` resets `ChebyshevWorkspace::step` when it seeds a solve.
+  Step one scales that buffer by `τ₁ − 1 = 0`, and `0·∞` and `0·NaN` are NaN,
+  so a workspace reused after a solve that overflowed made the next
+  well-posed solve end `NonFinite`. A reused workspace now gives the same
+  report and iterate as a fresh one.
+
 ## Athena adapters 0.5.0
 
 ### Breaking
