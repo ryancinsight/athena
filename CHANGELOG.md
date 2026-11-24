@@ -16,6 +16,11 @@ All notable changes to Athena are documented in this file.
   `λ = 0.5`. For `λ > 0` the reported residual norms and the
   `Termination::NormalEquations` test use the augmented residual
   `‖[b − A·x; λ·(x − x₀)]‖₂`, no longer `|φ̄|` alone. `λ = 0` is unchanged.
+- [patch] `Chebyshev` resets `ChebyshevWorkspace::step` when it seeds a solve.
+  Step one scales that buffer by `τ₁ − 1 = 0`, and `0·∞` and `0·NaN` are NaN,
+  so a workspace reused after a solve that overflowed made the next
+  well-posed solve end `NonFinite`. A reused workspace now gives the same
+  report and iterate as a fresh one.
 
 ## Athena adapters 0.5.0
 

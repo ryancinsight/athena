@@ -5,8 +5,8 @@
 //! analytic damping bound `1/T_k(μ)`, at `f32` and `f64`.
 
 use athena_core::{
-    Chebyshev, ChebyshevWorkspace, ConvergencePolicy, SpectralBounds, SpectralBoundsError,
-    Termination,
+    Chebyshev, ChebyshevWorkspace, ConvergencePolicy, SolveReport, SpectralBounds,
+    SpectralBoundsError, Termination,
 };
 use athena_leto::{CsrOperator, LetoBackend};
 use eunomia::{FloatElement, NumericElement, RealField};
@@ -46,9 +46,13 @@ where
     <T as NumericElement>::ONE / current
 }
 
-fn solves_the_manufactured_system<T>()
+/// Solve `diag(2, 3, 5)·x = (2, 6, 15)` on the exact interval `[2, 5]` into a
+/// zero initial guess with `workspace`, to an epsilon-scaled threshold.
+fn solve_manufactured_system<T>(
+    workspace: &mut ChebyshevWorkspace<LetoBackend<T>>,
+) -> (Array1<T>, SolveReport<T>)
 where
-    T: RealScalar + RealField + core::fmt::Debug,
+    T: RealScalar + RealField,
 {
     let backend = LetoBackend::<T>::default();
     let operator = CsrOperator::new(spd_matrix()).expect("invariant: matrix is square");
@@ -58,8 +62,6 @@ where
     )
     .expect("invariant: vector shape is exact");
     let mut solution = Array1::zeros([3]);
-    let mut workspace =
-        ChebyshevWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
     let bounds = SpectralBounds::new(T::from_f64(2.0), T::from_f64(5.0))
         .expect("invariant: exact spectral interval is valid");
     // The budget follows the damping bound: reaching an epsilon-scaled
@@ -73,11 +75,22 @@ where
         &operator,
         &right_hand_side,
         &mut solution,
-        &mut workspace,
+        workspace,
         policy,
         bounds,
     )
     .expect("invariant: manufactured solve has valid dimensions");
+    (solution, report)
+}
+
+fn solves_the_manufactured_system<T>()
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let backend = LetoBackend::<T>::default();
+    let mut workspace =
+        ChebyshevWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
+    let (solution, report) = solve_manufactured_system(&mut workspace);
 
     assert_eq!(report.termination, Termination::Converged);
     // Each step is one length-three recurrence plus a residual
@@ -278,4 +291,81 @@ where
 fn chebyshev_handles_narrow_bounds_and_workspace_reuse_for_every_cpu_scalar() {
     checks_narrow_intervals_and_warm_starts::<f32>();
     checks_narrow_intervals_and_warm_starts::<f64>();
+}
+
+/// A solve that overflows leaves non-finite values in the workspace's step
+/// buffer. The next solve on that workspace must not see them.
+///
+/// The spectral interval is the single point `1/(2·MAX)`, so the Richardson
+/// scale `ω = 1/λ` is `2·MAX`, which overflows to `+∞` in the seed. The first
+/// step then computes `step = 0·step + ω·r` with `r = (1, 1, 1)`, so every
+/// step entry is `+∞`, the iterate is `+∞`, and the solve ends `NonFinite`.
+/// Step one of any later solve scales the step buffer by `τ₁ − 1 = 0`, and
+/// `0·∞ = NaN`, so a seed that leaves the buffer alone turns that solve
+/// into `NonFinite` as well; with all other operands finite, a NaN iterate
+/// after the second solve's first step can only come from a non-finite entry
+/// left in the step buffer.
+fn reused_workspace_after_overflow_matches_a_fresh_one<T>()
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let backend = LetoBackend::<T>::default();
+    let mut workspace =
+        ChebyshevWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
+
+    let operator = CsrOperator::new(spd_matrix()).expect("invariant: matrix is square");
+    let ones = Array1::from_shape_vec([3], vec![T::ONE; 3]).expect("invariant: shape is exact");
+    let two = T::ONE + T::ONE;
+    let overflowing_scale = T::ONE / <T as RealField>::max_value() / two;
+    let overflowing_bounds = SpectralBounds::new(overflowing_scale, overflowing_scale)
+        .expect("invariant: the reciprocal of the largest finite value is positive and finite");
+    let policy = ConvergencePolicy::new(<T as RealField>::EPSILON, <T as RealField>::EPSILON, 4)
+        .expect("invariant: tolerance is finite and positive");
+    let mut overflowed = Array1::zeros([3]);
+    let overflow = Chebyshev::<LetoBackend<T>>::solve_into(
+        &backend,
+        &operator,
+        &ones,
+        &mut overflowed,
+        &mut workspace,
+        policy,
+        overflowing_bounds,
+    )
+    .expect("invariant: valid dimensions");
+    assert_eq!(overflow.termination, Termination::NonFinite, "{overflow:?}");
+    assert_eq!(overflow.iterations, 1);
+    assert!(
+        overflowed
+            .as_slice()
+            .expect("invariant: Array1 is contiguous")
+            .iter()
+            .all(|value| !value.is_finite()),
+        "the overflowing step is added to the iterate: {overflowed:?}"
+    );
+
+    let (reused_solution, reused_report) = solve_manufactured_system(&mut workspace);
+    let mut fresh_workspace =
+        ChebyshevWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
+    let (fresh_solution, fresh_report) = solve_manufactured_system(&mut fresh_workspace);
+
+    assert_eq!(reused_report, fresh_report);
+    assert_eq!(reused_report.termination, Termination::Converged);
+    assert_eq!(reused_solution, fresh_solution);
+    let bound = T::from_f64(512.0) * <T as RealField>::EPSILON;
+    let values = reused_solution
+        .as_slice()
+        .expect("invariant: Array1 is contiguous");
+    for (component, expected) in values.iter().zip([1.0, 2.0, 3.0]) {
+        let delta = *component - T::from_f64(expected);
+        assert!(
+            delta.abs() <= bound,
+            "reused-workspace component {component:?} vs {expected}"
+        );
+    }
+}
+
+#[test]
+fn chebyshev_workspace_reuse_after_overflow_matches_a_fresh_workspace() {
+    reused_workspace_after_overflow_matches_a_fresh_one::<f64>();
+    reused_workspace_after_overflow_matches_a_fresh_one::<f32>();
 }
