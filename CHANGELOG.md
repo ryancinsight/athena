@@ -2,6 +2,21 @@
 
 All notable changes to Athena are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- [patch] Damped LSQR (`Lsqr::solve_damped_into` and
+  `solve_damped_with_observer`) eliminates the damping term with its own plane
+  rotation before eliminating the bidiagonal subdiagonal, as Paige and
+  Saunders (1982) §2.1 and the SciPy recurrence do, instead of folding `λ²`
+  into one rotation. The iterate now equals the closed form
+  `(AᵀA + λ²I)⁻¹Aᵀb` within the derived rounding bound; the old rotation
+  converged to a point that differed by about `1e-5` on a 3×2 system at
+  `λ = 0.5`. For `λ > 0` the reported residual norms and the
+  `Termination::NormalEquations` test use the augmented residual
+  `‖[b − A·x; λ·(x − x₀)]‖₂`, no longer `|φ̄|` alone. `λ = 0` is unchanged.
+
 ## Athena adapters 0.5.0
 
 ### Breaking
