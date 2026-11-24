@@ -31,8 +31,8 @@ w_j = A v_j - \beta_j v_{j-1}, \qquad
 v_{j+1} = \frac{w_j - \alpha_j v_j}{\beta_{j+1}} .
 \\]
 
-That is one operator application and three vector terms per step, so only the
-last two \\(v\\) are kept. In exact arithmetic the \\(v_i\\) are orthonormal and
+Each step applies the operator once and keeps only the last two \\(v\\). In
+exact arithmetic the \\(v_i\\) are orthonormal and
 \\(A V_j = V_{j+1} \underline{T}_j\\), where \\(\underline{T}_j\\) is the
 \\((j+1) \times j\\) tridiagonal matrix with \\(\alpha_i\\) on the diagonal and
 \\(\beta_{i+1}\\) on the sub- and superdiagonals. For \\(x = x_0 + V_j y\\) the
@@ -54,8 +54,9 @@ already been rotated by the previous two rotations, which gives
 \delta_j = c_{j-1} \alpha_j - s_{j-1} c_{j-2} \beta_j ,
 \\]
 
-the entries of the triangular factor in rows \\(j-2\\), \\(j-1\\) and \\(j\\).
-Both pending rotations start as the identity (\\(c_0 = c_{-1} = 1\\),
+where \\(\epsilon_j\\) and \\(\lambda_j\\) are entries of the triangular factor in
+rows \\(j-2\\) and \\(j-1\\), and \\(\delta_j\\) is the diagonal entry that the
+new rotation turns into \\(\rho_j\\). Both pending rotations start as the identity (\\(c_0 = c_{-1} = 1\\),
 \\(s_0 = s_{-1} = 0\\)), so the first two columns need no special case. The
 right-hand side rotates alongside:
 
@@ -80,7 +81,8 @@ w_j = \frac{v_j - \lambda_j w_{j-1} - \epsilon_j w_{j-2}}{\rho_j}, \qquad
 x_j = x_{j-1} + \varphi_j w_j , \qquad w_0 = w_{-1} = 0 .
 \\]
 
-No basis is stored: \\(v_j, v_{j-1}\\), the work vector \\(A v_j\\), the three
+A freshly allocated workspace supplies the zero \\(w_0\\) and \\(w_{-1}\\). No
+basis is stored: \\(v_j, v_{j-1}\\), the work vector \\(A v_j\\), the three
 \\(w\\), and the seed residual make seven vectors whatever the iteration count.
 
 ### What the iteration achieves
@@ -93,14 +95,12 @@ Every iterate lies in \\(x_0 + \mathcal{K}_j\\), so its residual is
 \\|r_j\\|_2 \le \min_{q}\, \max_{\lambda \in \sigma(A)} |q(\lambda)| \; \\|r_0\\|_2 .
 \\]
 
-In exact arithmetic, an operator with \\(m\\) distinct eigenvalues is solved in
-at most \\(m\\) steps, because the minimal polynomial has degree \\(m\\). The
-example below has two. When the spectrum straddles the origin, \\(q\\) must be
-small on both sides while equal to one at zero, which is why indefinite
-problems converge more slowly than definite ones of the same width. These
-statements hold for symmetric \\(A\\) in exact arithmetic; in floating point the
-recurrence \\(|\bar\varphi_{j+1}|\\) drifts from the true residual, and Athena
-reports the recurrence value without recomputing \\(b - A x\\).
+In exact arithmetic, a nonsingular operator with \\(m\\) distinct eigenvalues is
+solved in at most \\(m\\) steps, because its minimal polynomial, scaled to equal
+one at zero, gives \\(q(A) = 0\\). The example below has two. These statements
+hold for symmetric \\(A\\) in exact arithmetic; in floating point the recurrence
+\\(|\bar\varphi_{j+1}|\\) drifts from the true residual, and Athena reports the
+recurrence value without recomputing \\(b - A x\\).
 
 ## Chebyshev: no inner products
 
@@ -132,16 +132,16 @@ s_k = \tau_k \omega\, r_{k-1} + (\tau_k - 1)\, s_{k-1}, \qquad
 x_k = x_{k-1} + s_k ,
 \\]
 
-with \\(s_0 = 0\\) and \\(\tau_1 = 1\\). Each step applies the
+where \\(\tau_1 = 1\\) makes the \\(s_0\\) term vanish. Each step applies the
 operator once, to recompute \\(r_k = b - A x_k\\). The only reduction is the
 residual norm used by the convergence test; the recurrence itself takes no
 inner product, so nothing forces a synchronisation across processors.
 
 When \\(\lambda_{\min} = \lambda_{\max} = \lambda\\) the interval is a point and
-\\(A = \lambda I\\): \\(\eta = 0\\), \\(\tau_k = 1\\) and \\(\omega = 1/\lambda\\),
-a Richardson step that is exact in one iteration. Computing \\(\eta\\) as
-\\((1 - \lambda_{\min}/\lambda_{\max}) / (1 + \lambda_{\min}/\lambda_{\max})\\)
-avoids forming \\(\mu\\) at all, so this limit needs no special case.
+\\(A = \lambda I\\): \\(\eta = 0\\), \\(\tau_k = 1\\) and \\(\omega = 1/\lambda\\), a
+Richardson step that is exact in one iteration. Athena computes \\(\eta\\) as
+\\((1 - \lambda_{\min}/\lambda_{\max}) / (1 + \lambda_{\min}/\lambda_{\max})\\),
+so \\(\mu\\) is never formed and this limit needs no special case.
 
 ### Convergence and its conditions
 
@@ -168,9 +168,9 @@ non-positive eigenvalue, \\(|p_k(\lambda)|\\) does not decay and the iteration
 fails to converge. Nothing in the solve checks the interval against the
 operator.
 
-`SpectralBounds::new` validates the numbers only: both bounds finite, the lower
-bound strictly positive, and the upper bound at least the lower. A violation is
-a typed `SpectralBoundsError`, never a silent clamp.
+`SpectralBounds::new` validates the numbers only: both finite, the lower bound
+positive, the upper at least the lower. A violation is a typed
+`SpectralBoundsError`.
 
 ## Deflated CG: removing the slow directions
 
@@ -193,8 +193,8 @@ A = \begin{pmatrix} E & F \\\\ F^{\mathsf T} & G \end{pmatrix}, \qquad
 F = U^{\mathsf T} A W, \quad G = W^{\mathsf T} A W .
 \\]
 
-Eliminating the coarse unknown \\(a\\) from \\(A x = b\\) leaves the Schur
-complement \\(G - F^{\mathsf T} E^{-1} F\\), which is positive definite when
+Eliminating the coarse unknown \\(a\\) from \\(A(U a + W c) = r_0\\) leaves the
+Schur complement \\(G - F^{\mathsf T} E^{-1} F\\), which is positive definite when
 \\(A\\) is. In operator form, with \\(y = W c\\),
 
 \\[
@@ -231,37 +231,30 @@ The subspace must be built from the same operator used for the solve: the
 cached images \\(A U\\) and the factorisation of \\(E\\) belong to that
 operator.
 
-### Reporting
-
-The CG phase measures the Schur residual, which equals \\(b - A x\\) only in
-exact arithmetic. The final report therefore recomputes the true residual
-\\(b - A x\\) and tests it against the threshold of the original right-hand
-side, not the threshold of the transformed one. A converged CG phase whose
-recovered iterate misses that threshold is reported as `Stagnated`, or as
-`MaxIterations` when the CG phase used the whole budget; it is never reported as
-converged.
+The CG phase measures the Schur residual, which equals \\(b - A x\\) in exact
+arithmetic because \\(U^{\mathsf T}(I - A C) = 0\\) puts both in the complement.
+The final report recomputes \\(b - A x\\) and tests it against the threshold of
+the original right-hand side. A converged CG phase whose recovered iterate
+misses that threshold is reported as `Stagnated`, or as `MaxIterations` when
+the CG phase used the whole budget, never as converged.
 
 ## In Athena
 
 ```text
 Minres<B>                zero-sized algorithm marker
 MinresWorkspace<B>       seven vectors and prepared reductions; allocated once
-
 Chebyshev<B>             zero-sized algorithm marker
 ChebyshevWorkspace<B>    residual, step and image; allocated once
 SpectralBounds<T>        the validated interval [λ_min, λ_max]
-
 DeflatedCg<B>            zero-sized algorithm marker
 DeflationSubspace<B>     orthonormal basis U, cached images A U and the
                          factorised coarse matrix E; built once per operator
 CgWorkspace<B>           the CG phase's workspace, shared with plain Cg
 ```
 
-None of the three takes a `Preconditioner`. `Minres` is deliberately
-unpreconditioned: a preconditioner that preserves the method's theory must enter
-as a symmetric positive-definite factorisation \\(M = L L^{\mathsf T}\\), which
-is a different seam from `Preconditioner::apply`, and that seam is not built
-until a consumer needs it.
+None of the three takes a `Preconditioner`. `Minres` waits for a symmetric
+positive-definite factorisation seam \\(M = L L^{\mathsf T}\\), which differs from
+`Preconditioner::apply` and is not built until a consumer needs it.
 
 ### MINRES
 
@@ -271,7 +264,7 @@ once per iteration. It reports `Converged` when \\(|\bar\varphi_{j+1}|\\) meets
 the threshold and `Breakdown` when the Lanczos space closes
 (\\(\beta_{j+1} = 0\\)) or a rotation radius is not positive before the policy
 is met. Its threshold is built from \\(\\|r_0\\|\\) rather than \\(\\|b\\|\\), so
-the two agree only when \\(x_0 = 0\\). The recurrence is backend-generic, but no
+the two agree when \\(x_0 = 0\\). The recurrence is backend-generic, but no
 accelerator test runs it.
 
 ```rust
@@ -312,21 +305,18 @@ allocates, unlike a solve with any of the other six solvers.
 {{#rustdoc_include ../../crates/athena-leto/examples/book_deflated_cg.rs:49:70}}
 ```
 
-Each of the three samples is a complete program in `crates/athena-leto/examples`
-that `mdbook test` compiles and runs; the lines shown are the solve itself.
-
 ## References
 
 - Paige and Saunders (1975), *Solution of sparse indefinite systems of linear
   equations*, SIAM Journal on Numerical Analysis 12(4), 617--629,
-  doi:10.1137/0712047. The Lanczos process with Givens QR that MINRES
-  implements.
+  doi:10.1137/0712047. Read from the bibliographic record only; Athena's
+  source cites it as the origin of the MINRES recurrence, and the derivation
+  above is checked against that source instead.
 - Barrett et al., *Templates for the Solution of Linear Systems: Building
   Blocks for Iterative Methods*, SIAM, 1994, §2.3.2 (MINRES and SYMMLQ) and
   §2.3.9 (Chebyshev Iteration). <https://www.netlib.org/templates/templates.html>.
-  The section titles were read from the table of contents; the algorithm
-  statements in them were not compared with the recurrences above, which are
-  derived from Athena's source.
+  Section titles read from the table of contents; the algorithms in them were
+  not compared with the recurrences above, derived from Athena's source.
 - Nicolaides (1987), *Deflation of conjugate gradients with applications to
   boundary value problems*, SIAM Journal on Numerical Analysis 24(2), 355--365,
   doi:10.1137/0724027, and Saad, Yeung, Erhel and Guyomarc'h (2000), *A

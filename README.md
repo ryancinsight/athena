@@ -174,7 +174,7 @@ calls `allocate`, `allocate_block`, `vec!`, `Vec::new`, `Vec::with_capacity`
 and `to_vec` only in the workspace constructors and the deflation module, and
 the allocation tests cover `Cg`, `Gmres` and `BiCgStab`. `DeflatedCg::solve_into`
 allocates on every solve (see the table), and so does `LinearSolverChain`, which
-builds the solution vector and a workspace for each tier.
+builds the solution vector and, for each iterative tier, a workspace.
 GMRES stores exactly `RESTART + 1` Arnoldi vectors, `RESTART` preconditioned
 vectors, and const-bounded host scalar storage. Those two vector sets are
 `KrylovBackend::VectorBlock` values rather than `Vec<Vector>`, so each backend
@@ -259,11 +259,14 @@ device and have no CPU fallback.
 
 ## Numerical contract
 
-Every solver shares one convergence test:
+Every solver except `Minres` shares one convergence test:
 
 ```text
 ||r||₂ <= max(absolute_tolerance, relative_tolerance * ||b||₂).
 ```
+
+`Minres` scales its relative tolerance by the initial residual norm
+`||b - A x₀||₂` instead of `||b||₂`; the two agree when `x₀ = 0`.
 
 PCG requires a symmetric positive-definite operator and preconditioner.
 Athena reports non-positive curvature, exact recurrence breakdown,

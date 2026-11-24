@@ -49,9 +49,19 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: verification; needs: none; milestone: M-device-least-squares
 - scope: `docs/verification/`, doc comments in `crates/athena-core/src/solver/minres/algorithm.rs` and `chebyshev/algorithm.rs`
-- outcome: two remainders after the README, CHANGELOG, gap-audit, module-doc and book reconciliation. (1) `docs/verification/gmres-rank-recovery.md` (99 lines) records landed work pinned by `crates/athena-leto/tests/gmres_rank_deficient.rs`, whose counterexample `docs/book/gmres.md` states, so the ledger belongs to the commit history. (2) `minres/algorithm.rs:40-42` titles Paige and Saunders (1975) "...linear equations and least squares problems", while the SIAM record reads "Solution of sparse indefinite systems of linear equations" (doi:10.1137/0712047); `chebyshev/algorithm.rs:41` cites Golub and Van Loan section 11.3 with no edition and no source read.
-- acceptance: (1) the file is deleted, no tracked file links it, and `git log --follow -- docs/verification/gmres-rank-recovery.md` still reaches it; (2) the MINRES comment carries the SIAM title and the Chebyshev comment cites Templates section 2.3.9 or a Golub and Van Loan edition and section read from the book, so `git grep -n "section 11.3" -- crates` is empty.
+- outcome: two remainders after the README, CHANGELOG, gap-audit, module-doc and book reconciliation. (1) `docs/verification/gmres-rank-recovery.md` (99 lines) records landed work pinned by `crates/athena-leto/tests/gmres_rank_deficient.rs`, whose counterexample `docs/book/gmres.md` states, so the ledger belongs to the commit history. (2) `minres/algorithm.rs:40-42` titles Paige and Saunders (1975) "...linear equations and least squares problems", while the SIAM record reads "Solution of sparse indefinite systems of linear equations" (doi:10.1137/0712047); `chebyshev/algorithm.rs:41` cites Golub and Van Loan §11.3 with no edition and no source read.
+- acceptance: (1) the file is deleted, no tracked file links it, and `git log --follow -- docs/verification/gmres-rank-recovery.md` still reaches it; (2) the MINRES comment carries the SIAM title and the Chebyshev comment cites Templates §2.3.9 or a Golub and Van Loan edition and section read from the book, so `git grep -n "11.3" -- crates/athena-core/src/solver/chebyshev` is empty.
 - next step: `git rm` the ledger, then `git grep -n "docs/verification"` to confirm no link remains; correct the two comments.
+- basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
+
+<a id="athena-minres-workspace-reset-20261124"></a>
+## ATHENA-MINRES-WORKSPACE-RESET-20261124 — Reset the MINRES update vectors at each solve [fix] — todo
+
+- priority: correctness; needs: none; milestone: M-device-least-squares
+- scope: `crates/athena-core/src/solver/minres/execution.rs`, `crates/athena-leto/tests/minres_contract.rs`
+- outcome: `seed` zeroes `previous_direction` but not `update_previous` or `update_previous_2` (`minres/execution.rs:150-168`; `workspace.rs:45-46` allocates them once). Step one forms `w₁ = (v₁ - λ₁·w₀ - ε₁·w₋₁)/ρ₁` with `λ₁ = β₁` (`execution.rs:205`, both pending rotations the identity), so a second solve on a used workspace reads the last update vectors of the previous solve as `w₀` and `w₋₁`. Derived from the source and not run (hypothesis).
+- acceptance: a `minres_contract.rs` case solves a system, then a second system on the same `MinresWorkspace`, and asserts the second closed form within the first's derived bound: `cargo nextest run -p athena-leto -E 'test(=minres_reused_workspace_matches_fresh_workspace)'`.
+- next step: write that test first and confirm it fails at the base, then zero both vectors in `seed`.
 - basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
 
 <a id="athena-minres-threshold-basis-20261124"></a>
@@ -59,9 +69,9 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: verification; needs: none; milestone: M-device-least-squares
 - scope: `crates/athena-core/src/solver/minres/execution.rs`, `crates/athena-leto/tests/minres_contract.rs`, `README.md`, `docs/book/further_solvers.md`
-- outcome: README "Numerical contract" states one test, `‖r‖₂ <= max(absolute_tolerance, relative_tolerance * ‖b‖₂)`, for every solver. `Cg`, `Gmres`, `BiCgStab`, `Lsqr`, `Chebyshev` and `DeflatedCg` pass `‖b‖` to `ConvergencePolicy::threshold`; `Minres` passes `‖b - A x₀‖` (`minres/execution.rs:126`), so the two differ for a nonzero initial guess.
-- acceptance: with `x₀` chosen so `‖b - A x₀‖ ≪ ‖b‖`, a `minres_contract.rs` case asserts the threshold equals `max(absolute, relative·‖b‖)`, or the README and the chapter state the `‖r₀‖` basis and the case pins it: `cargo nextest run -p athena-leto -E 'test(=minres_threshold_basis_with_nonzero_guess)'`.
-- next step: build the `diag(1, -1)` oracle with `x₀ = (1, -2) + 1e-3·(1, 1)` and read the reported threshold.
+- outcome: `Cg`, `Gmres`, `BiCgStab`, `Lsqr`, `Chebyshev` and `DeflatedCg` pass `‖b‖` to `ConvergencePolicy::threshold`; `Minres` passes `‖b - A x₀‖` (`minres/execution.rs:126`), so the thresholds differ for a nonzero initial guess. README "Numerical contract" and the book chapter now state the exception; whether it is intended is open.
+- acceptance: with `x₀` chosen so `‖b - A x₀‖ ≪ ‖b‖`, a `minres_contract.rs` case pins the threshold to the chosen basis and the README and chapter match it: `cargo nextest run -p athena-leto -E 'test(=minres_threshold_basis_with_nonzero_guess)'`.
+- next step: build the `diag(1, -1)` oracle with a guess near the solution and read the reported threshold.
 - basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
 
 <a id="athena-device-minres-20261113"></a>
