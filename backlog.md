@@ -12,7 +12,7 @@
 - [ ] [minor] **0.6.0 proposed for additive device support.** Exercise the real rectangular operator and its adjoint on a Hephaestus device. Compare the minimizer with the host solution and record the adapter, transfers and solver termination.
 - [ ] [major] **1.0.0-beta.1 → 1.0.0-rc.1 → 1.0.0.** Freeze the supported surface at beta. A packaged Krylov consumer repeats the rectangular solve and the final device least-squares milestone passes. Repeat the applicable exits on the exact RC before stable promotion. Attach exact-revision evidence for the local exits and this member’s [Atlas qualification criteria](https://github.com/ryancinsight/atlas/blob/17b0124a7548ad81e817284afc5cb115c1d1bc78/docs/parity/repositories.json).
 
-Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one milestone is the final block, so it plans 1.0.0, a major above the 0.3.3 manifest version and every crate tag. Each exit fails at the basis commit because a production symbol it needs is absent (`RectangularOperator` has no Hephaestus impl), not because its test file is missing. Release and publication need explicit authority.
+Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one milestone is the final block, so it plans 1.0.0, a major above every manifest version and every crate tag. Each exit fails at the basis commit because a production symbol it needs is absent (`RectangularOperator` has no Hephaestus impl), not because its test file is missing. Release and publication need explicit authority.
 
 <a id="M-device-least-squares"></a>
 ## M-device-least-squares — 1.0.0 — solve overdetermined least-squares systems on a Hephaestus device
@@ -38,21 +38,21 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: verification; needs: none; milestone: M-device-least-squares
 - scope: `crates/athena-leto/src/solver_chain/` (a `#[cfg(test)]` module; no new test binary), `crates/athena-leto/tests/preconditioner_contract.rs`
-- outcome: `LinearSolverChain` and `LinearSolverState` are public and carry no test (`solver_chain/` holds zero `#[test]` items); `cold.rs` tries the direct tier, then GMRES with `ComponentBlock`, SIMPLE, AMG and `BlockDiagonal`, then unpreconditioned GMRES and GMRES+ILU. The preconditioner item covers the block tiers' solves; `IncompleteLu` runs in a Krylov solve only under BiCGSTAB (`preconditioner_contract.rs:192`), so this item adds its GMRES solve and pins the routing, the warm path and the failure variant.
+- outcome: `LinearSolverChain` and `LinearSolverState` are public and carry no test (`solver_chain/` holds zero `#[test]` items); `cold.rs` tries the direct tier, then GMRES with `ComponentBlock`, SIMPLE, AMG and `BlockDiagonal`, then unpreconditioned GMRES, GMRES+ILU and a `BiCgStab` last resort (`cold.rs:143`). The preconditioner item covers the block tiers' solves; `IncompleteLu` runs in a Krylov solve only under BiCGSTAB (`preconditioner_contract.rs:192`), so this item adds its GMRES solve and pins the routing, the warm path and the failure variant.
 - acceptance: a manufactured mixed saddle-point system solves to its closed form at `f32` and `f64` with the default threshold and with `with_direct_threshold(0)`; `solve_with_guess_state` from the exact solution returns it and a changed sparsity pattern rebuilds the cached hierarchy; the chain's error variant is asserted when every tier fails; `IncompleteLu` under GMRES solves a manufactured system to its closed form.
 - open question: the chain reports which tier solved only through the log; whether a typed result should carry it is a 1.0 API decision, recorded in this item's PR.
 - next step: build the manufactured saddle-point matrix once as a shared fixture, assert the default-threshold solve against its closed form, then the `with_direct_threshold(0)` solve.
 - basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
 
 <a id="athena-doc-drift-20261113"></a>
-## ATHENA-DOC-DRIFT-20261113 — Reconcile README, book, changelog and gap audit with the shipped crates [docs] — todo
+## ATHENA-DOC-DRIFT-20261113 — Finish the doc-drift remainders: book derivations, citations [docs] — todo
 
 - priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `README.md`, `docs/book/`, `CHANGELOG.md`, `gap_audit.md`, `docs/verification/`, `crates/athena-hephaestus/src/preconditioner/mod.rs`
-- outcome: README claims four contracts, a 575-line `bicgstab/algorithm.rs` (now 105 lines; `oversized_files` is 0) and omits `Minres`, multigrid, saddle-point preconditioners and the chain; README (lines 115, 285), `docs/book/krylov_backend.md:142` and the hephaestus module docs list `triangular` as a preconditioner though it is a private kernel; README:316 tells contributors `git config core.hooksPath .githooks` while the installed path is the stack hook directory; the book has four solver chapters; `CHANGELOG.md` heads `0.3.2 - Unreleased` although the 0.3.3 tags exist; `gap_audit.md` holds two fixed defects; `docs/verification/` holds two ledgers for landed work.
-- acceptance: each claim matches `lib.rs` and the tests; fixed-defect sections leave `gap_audit.md` except the rank-recovery performance-hold lines ("does not clear Athena's affected graph" paragraph and the Harmonia clause), which `ATHENA-GMRES-PERFORMANCE-HOLD-20261113` removes in its own PR; the ledgers relocate to the commit history; `mdbook test docs/book` passes.
-- next step: rewrite the README solver table from the `athena-core` export list, then the book chapters as each contract and the device least-squares capability land.
-- basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
+- scope: `docs/book/further_solvers.md`, doc comments in `crates/athena-core/src/solver/minres/algorithm.rs` and `chebyshev/algorithm.rs`
+- outcome: two remainders after the README, CHANGELOG, gap-audit and module-doc reconciliation and the deletion of the GMRES rank-recovery ledger. (1) `further_solvers.md` names `Minres`, `Chebyshev` and `DeflatedCg` and states their contracts but derives none: it has no recurrences, no compiled code and no references section. (2) `minres/algorithm.rs:40-42` gives the Paige and Saunders (1975) title unverified, and `chebyshev/algorithm.rs:41` cites Golub and Van Loan section 11.3 with no edition.
+- acceptance: (1) each of the three sections of `further_solvers.md` states its recurrence and carries a compiled `rust` block, the chapter ends in a References section, and `mdbook test docs/book` passes; (2) both comments cite a resolved title, journal and pages, or an edition and section, or drop the locator.
+- next step: derive the MINRES recurrence in `further_solvers.md` with a compiled block, then the Chebyshev and deflated CG sections and the References section; the two source comments are `.rs` edits and take the cargo gates.
+- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
 
 <a id="athena-gitconfig-20261113"></a>
 ## ATHENA-GITCONFIG-20261113 — Commit the conflict-hygiene repository config [chore] — todo
@@ -107,7 +107,7 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: tightening; needs: none; milestone: M-device-least-squares
 - scope: `crates/athena/benches/gmres_poisson.rs`, `gap_audit.md`
-- outcome: PR 126 (`a71cd7c`) landed the rank recovery (`c9ddce7`) and the provider renewal to Leto/LetoOps 0.46.3 and Hephaestus 0.25. `gap_audit.md` records that native provider acceptance "does not clear Athena's affected graph, whole-cohort or absolute application-performance review" and that "the separate Harmonia performance hold persists"; `ATHENA-DOC-DRIFT-20261113` leaves those lines in place, so this item owns and removes them. The fix leaves full-rank arithmetic unchanged, so a regression is not expected (hypothesis).
+- outcome: PR 126 (`a71cd7c`) landed the rank recovery (`c9ddce7`) and the provider renewal to Leto/LetoOps 0.46.3 and Hephaestus 0.25. `gap_audit.md` records that native provider acceptance "does not clear Athena's affected graph, whole-cohort or absolute application-performance review" and that "the separate Harmonia performance hold persists"; the doc-drift reconciliation (`Item: athena-doc-drift-20261113`) left those lines in place under `## GMRES performance hold`, so this item owns and removes them. The fix leaves full-rank arithmetic unchanged, so a regression is not expected (hypothesis).
 - acceptance: a stored `gmres_poisson` comparison of `606b4f9` (the first parent of `a71cd7c`) against `a71cd7c`, which spans the rank recovery and the provider renewal the hold names; main is 41 commits further on (median, confidence interval, machine class, load) on isolated cores or with instruction counters; the Harmonia hold's disposition is read from its owner and recorded in the PR; the hold text leaves `gap_audit.md` with that PR.
 - next step: build `606b4f9` and `a71cd7c` into the shared target, run `gmres_poisson` on isolated cores, and find the Harmonia hold's owner on the Atlas board.
 - basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
@@ -117,7 +117,77 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: tightening; needs: none; milestone: M-device-least-squares
 - scope: `docs/adr/0004-derived-progress-termination.md`
-- outcome: ADR 0004 is 168 lines (`docs/adr/0004-derived-progress-termination.md`, Context at :13, Verification at :149) against the budget of about 150 lines per ADR; the in-place revisions of 2026-11-16 (CG stall detection, noise-floor premise) and the Verification list grew it. Compact it without dropping the decision, the four rejected alternatives, the evidence or the revision notes; delivery narrative belongs to commits. ADR 0005 is 158 lines and stays outside this item.
+- outcome: ADR 0004 is 168 lines (`docs/adr/0004-derived-progress-termination.md`, Context at :13, Verification at :149) against the budget of about 150 lines per ADR; the in-place revisions of 2026-11-16 (CG stall detection, noise-floor premise) and the Verification list grew it. Compact it without dropping the decision, the four rejected alternatives, the evidence or the revision notes; delivery narrative belongs to commits. ADR 0005 is 164 lines at `9741050` and stays outside this item (`ATHENA-ADR-0005-FORM-20261124`).
 - acceptance: `test "$(wc -l < docs/adr/0004-derived-progress-termination.md)" -le 150` exits 0 (exits 1 at the basis, 168 lines); the Context, Decision, Rejected alternatives, Consequences and Verification headings and the four rejected-alternative headings remain; `python scripts/adr-index.py check --directory docs/adr` from an Atlas checkout passes.
 - next step: trim statements Consequences repeats from Decision, then shorten the Verification list to each test's name and oracle; keep every cited source.
 - basis: 68d618e87e42d1b4d9f77e56e2e8e05f7653b7f9
+
+<a id="athena-minres-workspace-reset-20261124"></a>
+## ATHENA-MINRES-WORKSPACE-RESET-20261124 — Reset every MINRES recurrence vector at the seed [fix] — todo
+
+- priority: correctness; needs: none; milestone: M-device-least-squares
+- scope: `crates/athena-core/src/solver/minres/execution.rs`, `crates/athena-leto/tests/minres_contract.rs`
+- outcome: `MinresWorkspace` is documented as reusable (`workspace.rs:3-9`) and `solve_into` takes it by `&mut`, but `seed` zeroes only `previous_direction` (`execution.rs:162-168`); `update_previous` and `update_previous_2` keep the last solve's update vectors. At step one `c₁ = c₂ = 1` and `s₁ = 0`, so `λ₁ = β = ‖r₀‖ ≠ 0` (`execution.rs:174, 205`) and `apply_update` subtracts `λ₁·update_previous` (`execution.rs:349-355`). A second solve then returns a wrong `x` while the estimate `φ̄`, which never reads an update vector, still reports `Converged`. `update_previous_2` enters scaled by `ε₁ = 0` at step one (`execution.rs:204`), and at step two the stale `update_previous` enters again through it scaled by `ε₂ = 0`, so a stale `update_previous_2` corrupts only through non-finite entries: judge-derived from a Python copy of the recurrence, not run on the Rust code (hypothesis), resetting `update_previous` alone gives the right second solve with finite stale entries but `Converged` with `x = (NaN, NaN)` when the stale `update_previous_2` holds NaN.
+- acceptance: `minres_reused_workspace_matches_fresh_workspace` in `minres_contract.rs` solves the `diag(1, -1)` oracle twice on one `MinresWorkspace` with the solution reset to zero, at `f32` and `f64` as the file's other tests do (`..._for_every_cpu_scalar`), asserts the second solution `(1, -2)` within the bound that file derives, and fails at the basis commit (judge-derived from a Python copy of the recurrence, not run on the Rust code: the second solve of `b = (1, 2)` returns `(3.68328157, -3.34164079)` and reports `Converged` at step two, while zeroing both update vectors gives `(1, -2)`); then `seed` resets every recurrence vector, which the test alone does not pin for `update_previous_2` (the fields are `pub(super)`, `workspace.rs:24-26`), so the PR also records a read of `seed` against those three fields: `cargo nextest run -p athena-leto -E 'test(=minres_reused_workspace_matches_fresh_workspace)'`.
+- next step: write the test first and confirm it fails at the basis, then zero `update_previous` and `update_previous_2` beside `previous_direction` in `seed`.
+- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
+
+<a id="athena-device-minres-band-20261124"></a>
+## ATHENA-DEVICE-MINRES-BAND-20261124 — Pin the MINRES band-correction updates on a device [test] — todo
+
+- priority: verification; needs: ATHENA-DEVICE-MINRES-20261113; milestone: M-device-least-squares
+- scope: `crates/athena-hephaestus/tests/solver_correctness.rs`
+- outcome: the device MINRES oracle (athena#186, `ATHENA-DEVICE-MINRES-20261113`) solves `diag(1, -1)`, where `λ₂ = c₁β₂ + s₁α₂ = 0`, `ε₁ = ε₂ = 0` and `λ₁` multiplies a zero vector, so deleting either band-correction axpy of `apply_update` (`execution.rs:349-362`) moves `x` by O(ε) and the test survives. `main` has no device MINRES test until that item lands, hence the `needs:` edge. The host tridiagonal (`minres_contract.rs:136-156`) does not close the gap alone: a Python transcription of the recurrence gives `ε₃ ≈ 0.249` there but `λ₂ = 0` and `λ₃ ≈ 1e-16`, so deleting the λ axpy changes `x` by under 1e-15 (derived; not run on the Rust code).
+- acceptance: a 3×3 device instance with `λⱼ ≠ 0` against a nonzero update vector and `ε₃ ≠ 0`, with an integer manufactured solution, solves within a bound derived from its operation count (transcription candidate: `[[1, 1, 0], [1, -2, 1], [0, 1, -2]]`, `b = (3, 0, -4)`, `x* = (1, 2, 3)`; judge-derived from a Python copy of the recurrence, not run on the Rust code: `λ₂ = -1.198` multiplies `w₁` (norm 0.58), `ε₃ = 1.359`; deleting the λ axpy shifts `x` by 1.867 and the ε axpy by 1.478, against 8.9e-16 intact); deleting the λ axpy and, separately, the ε axpy makes the test fail, each deletion run and recorded in the PR.
+- next step: after athena#186 lands, add the instance beside its MINRES test and run the two deletions.
+- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
+
+<a id="athena-minres-host-bounds-20261124"></a>
+## ATHENA-MINRES-HOST-BOUNDS-20261124 — Derive the host MINRES tolerances from an operation count [test] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `crates/athena-leto/tests/minres_contract.rs`
+- outcome: the bounds `256·EPSILON` (`:99-102`) and `512·EPSILON` (`:190-194`) rest on "fewer than 48" and "fewer than 72" rounded operations, a "factor-of-five" and "factor-of-three margin" and an amplification claim, with no tally. A tally from `execution.rs` shows the rotation scalars, `φ` and `φ̄`, and the update recurrence alone (`:204-206`, `:223-224`, `:343-375`) take 20 rounded operations per step on two-element vectors (1 + 4 + 4 + 2 + 9, each axpy element as one rounding, a lower bound), 40 over two steps, before the Lanczos step, the Givens scalars and the seed, so "48" does not count the operations that form `x`. The athena#186 review counted 98 for the 2×2 oracle (63 once operations exact on that instance are dropped); only the 20 per step above are confirmed here. Whether the constants still hold is open (hypothesis). The device bound of athena#186 is re-derived in that PR.
+- acceptance: each constant is derived from an itemized, source-cited count of the rounded operations forming `x`, each host operation at relative error at most `ε/2` (`RealField::EPSILON` is `f32::EPSILON` and `f64::EPSILON`, eunomia `crates/eunomia/src/impls/field.rs:19,46`), propagated through the recurrence by running-error analysis, with the derivation in the constant's doc; `cargo nextest run -p athena-leto -E 'test(~minres)'` passes at `f32` and `f64`.
+- next step: list the rounded operations of the two-step and three-step runs from `execution.rs`, then bound the error of `x` through the rotation scalars.
+- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
+
+<a id="athena-book-krylov-claim-20261124"></a>
+## ATHENA-BOOK-KRYLOV-CLAIM-20261124 — Qualify the book's Krylov-subspace and Templates claims [docs] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `docs/book/README.md`
+- outcome: `docs/book/README.md:58-61` says every method in the book draws its k-th iterate from `x₀ + K_k(A, r₀)`. Deflated CG (table row `:98`) returns `x₀ + y + C(r₀ − A y)` (`deflation/execution.rs:163, 178-193`), which lies in that affine set only when the coarse correction does; LSQR (row `:95`) admits rectangular `A`, for which `A·r₀` is undefined (`r₀ ∈ ℝᵐ`, `m ≠ n`), so `K_k(A, r₀)` does not exist (derived). `:152-155` says Athena's recurrences follow the Templates algorithm statements "cited by section in the chapters below", yet `git grep -n -i templates -- docs/book` finds section citations only in `cg`, `bicgstab`, `gmres` and `convergence_policy`, none in `lsqr.md`; that Templates (1994) states no LSQR or deflated-CG algorithm is recalled, not read. Two further counterexamples (judge-derived, source not read for them): right preconditioning, which the book states throughout (`:113`), iterates in `x₀ + M⁻¹K_k(A M⁻¹, r₀)`, and BiCGSTAB's k-th iterate uses 2k operator applications.
+- acceptance: a truth condition per method, not a wording condition: no sentence of the paragraph asserts `x₀ + K_k(A, r₀)` for LSQR, Deflated CG or a right-preconditioned run, and a method it names is one for which the PR records a `git grep -n` command over `crates/athena-core/src/solver/<method>/` and the lines read from its output that form `x` from `x₀` and vectors in the stated set (a command that prints nothing for the method names no evidence: `axpy` prints nothing for `cg` at the basis), otherwise the sentence is removed; dropping or rewording "every" alone does not satisfy it; the Templates sentence names only methods whose chapters cite a Templates section, each section read from the source text, or is dropped; `mdbook test docs/book` passes.
+- next step: restate the paragraph per table row, then check each Templates section number against the text.
+- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
+
+<a id="athena-readme-chain-wording-20261124"></a>
+## ATHENA-README-CHAIN-WORDING-20261124 — State the chain's guess and allocation behaviour exactly [docs] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `README.md`
+- outcome: `README.md:47` says `solve_with_guess_state` "starts from a caller guess"; the guess is `Option<&Array1<T>>` and `None` starts from zeros (`solver_chain/warm.rs:26, 31-33`). `README.md:175-177` says `LinearSolverChain` "builds the solution vector and, for each iterative tier, a workspace", which reads as exhaustive: a solve that reaches an iterative tier also builds preconditioners (component-block, SIMPLE, multigrid and incomplete LU at `cold.rs:66, 78, 90, 131`; block-diagonal twice at `:103, :110`; SOR at `warm.rs:48`) and a solve the direct tier ends builds only direct-LU factors (`warm.rs:35-37`, `tiers.rs:183-190`); the warm path clones the guess (`warm.rs:31-33`).
+- acceptance: both sentences match those sources: the guess is optional with a zero start, and the allocation sentence lists the preconditioner and factor construction or says only that the chain allocates on every solve.
+- next step: edit the two sentences, then `git grep -n "caller guess" -- README.md docs` to confirm no other copy.
+- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
+
+<a id="athena-adr-0005-form-20261124"></a>
+## ATHENA-ADR-0005-FORM-20261124 — Reconcile ADR 0005 with the ladder and bring it to the ADR form [docs] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `docs/adr/0005-release-scope.md`, `docs/adr/README.md`, `backlog.md` (ladder preamble)
+- outcome: (1) veto 1 (`:82-87`) rejects "a 0.4.0 device block before a 1.0.0 block", while the ladder preamble plans `athena-krylov` 0.5.1, then 0.6.0, before 1.0.0 (`backlog.md:6, 11-12`); the manifest already reads 0.5.0 (ADR 0005 `:14-16`), so "0.4.0" names a released version. I read the veto as rejecting a milestone block and the 0.5.1 and 0.6.0 lines as checkpoints inside the one milestone, so this is a judgment call the ADR must state. (2) The revision note (`:153-157`) cites neither the delivering PR nor evidence (ADR governance). (3) The ADR is 164 lines against about 150.
+- acceptance: veto 1 states how the 0.5.1 and 0.6.0 checkpoints relate to the single milestone, naming the version it rejects correctly; the revision note cites PR 185 (merge `9741050`) and the verification read; `test "$(wc -l < docs/adr/0005-release-scope.md)" -le 150` exits 0 (exits 1 at the basis); the decision, alternatives and evidence remain; `python scripts/adr-index.py check --directory docs/adr` from an Atlas checkout passes.
+- next step: move the 2026-11-24 delivery narrative and the Aequitas revision text to their owners, then rewrite veto 1.
+- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
+
+<a id="athena-changelog-gating-wording-20261124"></a>
+## ATHENA-CHANGELOG-GATING-WORDING-20261124 — Remove "remain required" from released changelog entries [docs] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `CHANGELOG.md`
+- outcome: two bullets of released versions still read as pending gates: `[0.3.1]` (`CHANGELOG.md:120-123`, "final provider ordering, exact-head review and hosted/publication gates remain required") and `[0.3.2]` (`:93-96`, "Athena dependency-delta review and lifecycle gates remain required"); tags `crate-*-v0.3.1` and `crate-*-v0.3.2` exist. The file is hand-edited here: the tree holds no changelog generator configuration and recent commits edit it directly (`git log -- CHANGELOG.md`).
+- acceptance: `git grep -n "remain required" -- CHANGELOG.md` is empty at the head and each bullet states only the shipped change.
+- next step: delete the two gating clauses and keep the shipped-change text.
+- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2

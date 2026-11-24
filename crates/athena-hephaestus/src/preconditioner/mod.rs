@@ -7,16 +7,17 @@
 //! an accelerator executes at full bandwidth, so the whole preconditioned
 //! recurrence stays on the device.
 //!
-//! # Why the triangular family is absent
+//! # Why the substitution-based preconditioners are absent
 //!
-//! The CPU backend additionally ships incomplete LU, a triangular solve, and
-//! successive over-relaxation. All three apply by forward and backward
-//! substitution: element `i` of the result depends on elements `0..i`, so the
+//! The CPU backend additionally ships incomplete LU, which applies by forward
+//! then backward substitution, and successive over-relaxation, which applies by
+//! one forward substitution. In each sweep an element of the result depends on
+//! the elements the sweep has already produced, so the
 //! sweep is inherently sequential in the matrix dimension. Dispatching that
 //! recurrence per element would run one device thread against a launch per row,
 //! which is slower than the unpreconditioned iteration it is meant to
 //! accelerate. Shipping the naive port would therefore hand callers a
-//! preconditioner that costs more than it saves. Admitting the family here
+//! preconditioner that costs more than it saves. Admitting either here
 //! requires a parallel formulation — level-scheduled substitution or an
 //! iterative approximate triangular solve — which is a distinct design with its
 //! own convergence contract, not a port of the CPU code.

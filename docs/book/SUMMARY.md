@@ -10,5 +10,6 @@
 - [4. BiCGSTAB](bicgstab.md)
 - [5. GMRES](gmres.md)
 - [6. LSQR](lsqr.md)
+- [7. MINRES, Chebyshev and Deflated CG](further_solvers.md)
 # Part III — The Atlas Stack
-- [7. Position in the Stack](stack_position.md)
+- [8. Position in the Stack](stack_position.md)

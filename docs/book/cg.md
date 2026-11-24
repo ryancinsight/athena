@@ -3,7 +3,7 @@
 CG is the method to use when \\(A\\) is symmetric positive definite, and it is
 worth understanding first because it is the one case where everything works
 out: the iterate is optimal, the work per step is constant, and the convergence
-rate has a clean bound. The other three methods in this book are all attempts
+rate has a clean bound. The BiCGSTAB, GMRES and LSQR chapters are all attempts
 to keep some of that when symmetry is lost.
 
 ## The energy norm

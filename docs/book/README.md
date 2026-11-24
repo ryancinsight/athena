@@ -5,7 +5,7 @@
 This book is written for someone meeting Krylov methods for the first time. It
 builds the mathematics before the API: Part I covers what it means for an
 iterative solve to be finished and what a solver needs from the machine it runs
-on, Part II derives the four solver families Athena ships and says which
+on, Part II covers the seven solvers Athena ships and says which
 problem each one is for, and Part III places the crate in the Atlas stack.
 
 ## Why iterate at all
@@ -93,6 +93,9 @@ find it cheaply:
 | GMRES | any nonsingular \\(A\\) | minimises \\(\\|b - A x\\|_2\\) | grows: \\(k\\) vectors at step \\(k\\) |
 | BiCGSTAB | any nonsingular \\(A\\) | satisfies a two-sided condition | fixed, but no minimisation |
 | LSQR | any \\(A\\), including rectangular | minimises \\(\\|b - A x\\|_2\\) over all \\(x\\) | fixed |
+| MINRES | symmetric \\(A\\), possibly indefinite | minimises \\(\\|b - A x\\|_2\\) over the Lanczos space | fixed: seven vectors |
+| Chebyshev | SPD \\(A\\) with spectral bounds | damps the error uniformly on the supplied interval | fixed: three vectors, no inner products |
+| Deflated CG | SPD \\(A\\) with a deflation basis | runs CG on the basis complement | fixed |
 
 CG gets both an optimal iterate and constant work because symmetry collapses
 the orthogonalisation to three terms — that is the content of the short
@@ -125,7 +128,8 @@ The two extremes bracket the trade: \\(M = I\\) costs nothing and changes
 nothing, \\(M = A\\) converges in one step and is the original problem. Useful
 preconditioners live in between, and Athena ships several in the
 [Krylov Backend](krylov_backend.md) chapter's provider crate: Jacobi (the
-diagonal), incomplete LU, and successive over-relaxation.
+diagonal), incomplete LU, successive over-relaxation, algebraic multigrid and
+the saddle-point block preconditioners.
 
 ## What the code looks like
 
