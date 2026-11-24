@@ -10,6 +10,10 @@ All notable changes to Athena are documented in this file.
   initial or iterative convergence. A candidate containing NaN or infinity
   now returns `Termination::NonFinite`, even when the residual meets tolerance.
 
+- [patch] LSQR scales both plane rotations before forming their radii. A
+  finite damping whose square overflows can now produce a converged iterate
+  when the radii themselves fit in the working precision.
+
 - [patch] Damped LSQR (`Lsqr::solve_damped_into` and
   `solve_damped_with_observer`) eliminates the damping term with its own plane
   rotation before eliminating the bidiagonal subdiagonal, as Paige and

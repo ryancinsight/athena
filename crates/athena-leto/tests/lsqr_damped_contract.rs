@@ -440,3 +440,43 @@ fn damped_solution_and_residual_match_closed_form() {
     damped_solution_and_residual_match_closed_form_at::<f64>();
     damped_solution_and_residual_match_closed_form_at::<f32>();
 }
+
+fn check_overflowing_damping<T: RealScalar + RealField>(lambda: f64, subnormal_spacing: f64) {
+    let operator = dense_operator::<T>(&[&[1.0, 0.0], &[1.0, 1.0], &[1.0, 2.0]]);
+    let rhs = vector::<T>(&[1.0, 0.0, 2.0]);
+    let (solution, report) = solve_with_damping(&operator, &rhs, 16, lambda);
+    assert!(report.termination.converged(), "λ={lambda:e}: {report:?}");
+    assert_eq!(report.iterations, 1);
+
+    // Factor λ² out of the normal matrix [[3 + λ², 3], [3, 5 + λ²]].
+    // t may round to zero in f64, where both exact entries round to zero too.
+    let lambda = eunomia::NumericElement::to_f64(T::from_f64(lambda));
+    let t = 1.0 / lambda / lambda;
+    let determinant = 1.0 + t * (8.0 + 6.0 * t);
+    let numerators = [3.0 + 3.0 * t, 4.0 + 3.0 * t];
+    for (i, numerator) in numerators.into_iter().enumerate() {
+        let oracle = (numerator / determinant) / lambda / lambda;
+        let observed = eunomia::NumericElement::to_f64(solution[i]);
+        // The initial two norms, scalings and three-term transpose
+        // product cost <32 eps on these positive data. The two rotations
+        // and RHS multiplications cost <16 more. Even 48 eps times 5/λ²
+        // is <2.1 spacings for both nonzero oracles. The step phi/rho, the
+        // final direction product and the oracle's final division each add
+        // at most half a spacing. Four spacings suffice. At λ=1e200 require zero.
+        assert!(
+            (observed - oracle).abs() <= 4.0 * subnormal_spacing,
+            "λ={lambda:e}, x[{i}]={observed:e}, expected {oracle:e}"
+        );
+    }
+
+    let (_, infinite) = solve_with_damping(&operator, &rhs, 16, f64::INFINITY);
+    assert_eq!(infinite.termination, athena_core::Termination::Breakdown);
+    assert_eq!(infinite.iterations, 1);
+}
+
+#[test]
+fn damped_solve_survives_a_damping_whose_square_overflows() {
+    check_overflowing_damping::<f32>(1.0e20, f64::from(f32::from_bits(1)));
+    check_overflowing_damping::<f64>(2.0e155, f64::from_bits(1));
+    check_overflowing_damping::<f64>(1.0e200, 0.0);
+}
