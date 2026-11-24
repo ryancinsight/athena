@@ -171,9 +171,10 @@ where
 /// the two to agree.
 ///
 /// A fresh workspace executes the identical operation sequence on identical
-/// inputs, so the reused solve must match it bit for bit (evaluation order
-/// is the same, so no reduction-order tolerance applies) and end after the
-/// same number of steps, on the closed form within the oracle bound.
+/// inputs, so the reused solution must equal it under IEEE value equality
+/// (`-0 == +0`, NaN equals nothing; evaluation order is the same, so no
+/// reduction-order tolerance applies), with the same termination and step
+/// count, and must lie on the closed form within the oracle bound.
 fn assert_oracle_matches_fresh_workspace<T>(
     backend: LetoBackend<T>,
     workspace: &mut MinresWorkspace<LetoBackend<T>>,
@@ -309,13 +310,16 @@ where
     .expect("invariant: manufactured CSR parts are valid")
 }
 
-fn solves_the_tridiagonal_system<T>()
+/// One solve of the three-unknown oracle from `x₀ = 0` on the given
+/// workspace.
+fn solve_tridiagonal_oracle<T>(
+    backend: LetoBackend<T>,
+    workspace: &mut MinresWorkspace<LetoBackend<T>>,
+) -> (Array1<T>, SolveReport<T>)
 where
     T: RealScalar + RealField + core::fmt::Debug,
 {
-    let backend = LetoBackend::<T>::default();
-    let matrix = indefinite_tridiagonal();
-    let operator = CsrOperator::new(matrix).expect("invariant: matrix is square");
+    let operator = CsrOperator::new(indefinite_tridiagonal()).expect("invariant: matrix is square");
     // Manufactured solution (1, 2, 3): b = A·x* = (4, 0, 8).
     let right_hand_side = Array1::from_shape_vec(
         [3],
@@ -323,21 +327,26 @@ where
     )
     .expect("invariant: vector shape is exact");
     let mut solution = Array1::zeros([3]);
-    let mut workspace =
-        MinresWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
     let policy = ConvergencePolicy::new(<T as RealField>::EPSILON, <T as RealField>::EPSILON, 4)
         .expect("invariant: tolerance is finite and positive");
-
     let report = Minres::<LetoBackend<T>>::solve_into(
         &backend,
         &operator,
         &right_hand_side,
         &mut solution,
-        &mut workspace,
+        workspace,
         policy,
     )
     .expect("invariant: manufactured solve has valid dimensions");
+    (solution, report)
+}
 
+/// Assert the manufactured solution `(1, 2, 3)` and the Lanczos completion
+/// bound of the three-unknown oracle.
+fn assert_tridiagonal_closed_form<T>(solution: &Array1<T>, report: &SolveReport<T>)
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
     assert_eq!(report.termination, Termination::Converged);
     // Three distinct eigenvalues complete the Krylov space at step three.
     assert!(report.iterations <= 3, "Lanczos completion bound");
@@ -358,10 +367,101 @@ where
     }
 }
 
+fn solves_the_tridiagonal_system<T>()
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let backend = LetoBackend::<T>::default();
+    let mut workspace =
+        MinresWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
+    let (solution, report) = solve_tridiagonal_oracle(backend, &mut workspace);
+    assert_tridiagonal_closed_form(&solution, &report);
+}
+
 #[test]
 fn minres_solves_a_three_step_indefinite_system_for_every_cpu_scalar() {
     solves_the_tridiagonal_system::<f32>();
     solves_the_tridiagonal_system::<f64>();
+}
+
+/// Poisoning operator `[[a, b, 0], [b, d, f], [0, f, 1]]` with `a`, `b`, `d`,
+/// `f` powers of two.
+///
+/// Solved for `b = e₁` it rotates with `ρ₁ ≈ b` and `s₁ ≈ 1`, so `w₁ ≈ 1/b`
+/// and `λ₂ = c₁c₂β₂ + s₁α₂ ≈ d`. The step-two numerator `λ₂·w₁ ≈ d/b`
+/// overflows when its exponent exceeds the scalar's: `2⁶⁰⁰·2⁵⁰⁰ = 2¹¹⁰⁰ >
+/// 2¹⁰²⁴` at `f64`, `2⁸⁰·2⁶⁰ = 2¹⁴⁰ > 2¹²⁸` at `f32`. `w₂` is then infinite,
+/// step three (`β₃ = f`, `β₄ = 0`) copies it into `wⱼ₋₂`, and the solve ends
+/// with a non-finite `x[0]` and a non-finite `update_previous_2`.
+fn overflowing_second_update_matrix<T>(exponents: [i32; 4]) -> CsrMatrix<T>
+where
+    T: RealScalar + FloatElement,
+{
+    let [a, b, d, f] = exponents.map(|exponent| T::from_f64(2.0_f64.powi(exponent)));
+    CsrMatrix::from_parts(
+        vec![a, b, b, d, f, f, T::from_f64(1.0)],
+        vec![0, 1, 0, 1, 2, 1, 2],
+        vec![0, 2, 5, 7],
+        3,
+        3,
+    )
+    .expect("invariant: manufactured CSR parts are valid")
+}
+
+/// A first solve whose step-two update overflows and which then runs a third
+/// step leaves `wⱼ₋₂` non-finite. A finite stale `wⱼ₋₂` is annihilated by
+/// `ε₁ = 0`, but `−ε₁·NaN` is NaN, so the next solve must not inherit it.
+fn workspace_reused_after_overflowing_second_update_matches_fresh_workspace<T>(exponents: [i32; 4])
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let backend = LetoBackend::<T>::default();
+    let mut workspace =
+        MinresWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
+    let operator = CsrOperator::new(overflowing_second_update_matrix::<T>(exponents))
+        .expect("invariant: matrix is square");
+    let right_hand_side = Array1::from_shape_vec(
+        [3],
+        vec![T::from_f64(1.0), T::from_f64(0.0), T::from_f64(0.0)],
+    )
+    .expect("invariant: vector shape is exact");
+    let mut poisoned = Array1::zeros([3]);
+    let policy = ConvergencePolicy::new(<T as RealField>::EPSILON, <T as RealField>::EPSILON, 3)
+        .expect("invariant: tolerance is finite and positive");
+    let report = Minres::<LetoBackend<T>>::solve_into(
+        &backend,
+        &operator,
+        &right_hand_side,
+        &mut poisoned,
+        &mut workspace,
+        policy,
+    )
+    .expect("invariant: manufactured solve has valid dimensions");
+    assert_eq!(report.iterations, 3, "the step that moves w₂ into wⱼ₋₂");
+    assert!(
+        !poisoned
+            .as_slice()
+            .expect("invariant: Array1 is contiguous")[0]
+            .is_finite(),
+        "precondition: the overflowing update reaches x: {poisoned:?}"
+    );
+
+    let (reused, reused_report) = solve_tridiagonal_oracle(backend, &mut workspace);
+    assert_tridiagonal_closed_form(&reused, &reused_report);
+    let mut fresh = MinresWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
+    let (reference, reference_report) = solve_tridiagonal_oracle(backend, &mut fresh);
+    assert_eq!(reused_report.iterations, reference_report.iterations);
+    assert_eq!(reused.as_slice(), reference.as_slice());
+}
+
+#[test]
+fn minres_workspace_reused_after_overflowing_second_update_matches_fresh_workspace() {
+    workspace_reused_after_overflowing_second_update_matches_fresh_workspace::<f32>([
+        -120, -60, 80, 20,
+    ]);
+    workspace_reused_after_overflowing_second_update_matches_fresh_workspace::<f64>([
+        -1000, -500, 600, 100,
+    ]);
 }
 
 #[test]

@@ -100,10 +100,13 @@ where
     /// first Lanczos coefficient and the seed of the residual carrier.
     ///
     /// Every buffer the first step reads is rewritten or zeroed here, so a
-    /// workspace reused after any earlier solve starts from the state of a
-    /// fresh one: `seed_residual`, `direction` and `image` are overwritten,
-    /// `previous_direction`, `update_previous` and `update_previous_2` are
-    /// overwritten and zeroed, and `update` is overwritten before it is read.
+    /// workspace reused after any earlier solve gives the same result as a
+    /// fresh one under IEEE value equality: `seed_residual`, `direction` and
+    /// `image` are overwritten, `previous_direction`, `update_previous` and
+    /// `update_previous_2` are overwritten and zeroed, and `update` is
+    /// overwritten before it is read. The zeroing multiplies the seed
+    /// residual by `+0`, so entries beneath a negative residual entry are
+    /// `-0` where a fresh workspace holds `+0`; the two compare equal.
     pub(super) fn seed(
         &mut self,
         right_hand_side: &B::Vector,

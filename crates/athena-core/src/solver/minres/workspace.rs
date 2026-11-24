@@ -10,7 +10,7 @@ use crate::KrylovBackend;
 ///
 /// Every solve reseeds the recurrence state, so one workspace serves any
 /// number of solves of the same length; a reused workspace yields the same
-/// result as a fresh one.
+/// result as a fresh one under IEEE value equality (`-0` equals `+0`).
 pub struct MinresWorkspace<B: KrylovBackend> {
     /// Seed residual `r₀ = b − A·x₀`, normalised into the first Lanczos
     /// direction. The buffer is not needed after step 1; it is retained as
