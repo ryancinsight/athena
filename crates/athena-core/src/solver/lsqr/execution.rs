@@ -11,6 +11,7 @@ use crate::{
 };
 
 use super::super::dimension::validate_dimensions;
+use super::super::rotation::givens_with_radius;
 
 type ExecutionResult<B, T> = Result<T, SolveError<<B as KrylovBackend>::Error>>;
 
@@ -222,12 +223,11 @@ where
         let rho_hat = if self.damping == zero {
             state.rho_bar
         } else {
-            let rho_hat = (state.rho_bar * state.rho_bar + self.damping * self.damping).sqrt();
-            if !rho_hat.is_finite() || rho_hat == zero {
+            let Ok((damping_cosine, damping_sine, rho_hat)) =
+                givens_with_radius(state.rho_bar, self.damping)
+            else {
                 return Ok(Step::Complete(state.report(Termination::Breakdown)));
-            }
-            let damping_cosine = state.rho_bar / rho_hat;
-            let damping_sine = self.damping / rho_hat;
+            };
             let psi = damping_sine * state.phi_bar;
             state.phi_bar = damping_cosine * state.phi_bar;
             state.damping_residual_sq += psi * psi;
@@ -235,12 +235,12 @@ where
         };
 
         // Second rotation: eliminate the subdiagonal `β` against `ρ̂`.
-        let rho = (rho_hat * rho_hat + beta * beta).sqrt();
-        if !rho.is_finite() || rho == zero {
+        let Ok((cosine, sine, rho)) = givens_with_radius(rho_hat, beta) else {
+            return Ok(Step::Complete(state.report(Termination::Breakdown)));
+        };
+        if rho == zero {
             return Ok(Step::Complete(state.report(Termination::Breakdown)));
         }
-        let cosine = rho_hat / rho;
-        let sine = beta / rho;
         let theta = sine * alpha;
         state.rho_bar = -cosine * alpha;
         let phi = cosine * state.phi_bar;
