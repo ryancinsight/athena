@@ -38,20 +38,20 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: verification; needs: none; milestone: M-device-least-squares
 - scope: `crates/athena-leto/src/solver_chain/` (a `#[cfg(test)]` module; no new test binary), `crates/athena-leto/tests/preconditioner_contract.rs`
-- outcome: `LinearSolverChain` and `LinearSolverState` are public and carry no test (`solver_chain/` holds zero `#[test]` items); `cold.rs` tries the direct tier, then GMRES with `ComponentBlock`, SIMPLE, AMG and `BlockDiagonal`, then unpreconditioned GMRES and GMRES+ILU. The preconditioner item covers the block tiers' solves; `IncompleteLu` runs in a Krylov solve only under BiCGSTAB (`preconditioner_contract.rs:192`), so this item adds its GMRES solve and pins the routing, the warm path and the failure variant.
+- outcome: `LinearSolverChain` and `LinearSolverState` are public and carry no test (`solver_chain/` holds zero `#[test]` items); `cold.rs` tries the direct tier, then GMRES with `ComponentBlock`, SIMPLE, AMG and `BlockDiagonal`, then unpreconditioned GMRES, GMRES+ILU and a `BiCgStab` last resort (`cold.rs:143`). The preconditioner item covers the block tiers' solves; `IncompleteLu` runs in a Krylov solve only under BiCGSTAB (`preconditioner_contract.rs:192`), so this item adds its GMRES solve and pins the routing, the warm path and the failure variant.
 - acceptance: a manufactured mixed saddle-point system solves to its closed form at `f32` and `f64` with the default threshold and with `with_direct_threshold(0)`; `solve_with_guess_state` from the exact solution returns it and a changed sparsity pattern rebuilds the cached hierarchy; the chain's error variant is asserted when every tier fails; `IncompleteLu` under GMRES solves a manufactured system to its closed form.
 - open question: the chain reports which tier solved only through the log; whether a typed result should carry it is a 1.0 API decision, recorded in this item's PR.
 - next step: build the manufactured saddle-point matrix once as a shared fixture, assert the default-threshold solve against its closed form, then the `with_direct_threshold(0)` solve.
 - basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
 
 <a id="athena-doc-drift-20261113"></a>
-## ATHENA-DOC-DRIFT-20261113 — Relocate the GMRES rank-recovery ledger to history [docs] — todo
+## ATHENA-DOC-DRIFT-20261113 — Finish the doc-drift remainders: ledger, book derivations, citations [docs] — todo
 
 - priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `docs/verification/`
-- outcome: `docs/verification/gmres-rank-recovery.md` (99 lines) records landed work: the recovery is pinned by `crates/athena-leto/tests/gmres_rank_deficient.rs`, whose counterexample `docs/book/gmres.md` states, so the ledger belongs to the commit history.
-- acceptance: the file is deleted and no tracked file links it; `git log --follow -- docs/verification/gmres-rank-recovery.md` still reaches it.
-- next step: `git rm` the file, then run `git grep -n "docs/verification"` to confirm no link remains.
+- scope: `docs/verification/`, `docs/book/further_solvers.md`, doc comments in `crates/athena-core/src/solver/minres/algorithm.rs` and `chebyshev/algorithm.rs`
+- outcome: three remainders after the README, CHANGELOG, gap-audit and module-doc reconciliation. (1) `docs/verification/gmres-rank-recovery.md` (99 lines) records landed work pinned by `crates/athena-leto/tests/gmres_rank_deficient.rs`, whose counterexample `docs/book/gmres.md` states, so the ledger belongs to the commit history. (2) `further_solvers.md` names `Minres`, `Chebyshev` and `DeflatedCg` but derives none; the stacked PR `docs/athena-book-further-solvers` adds recurrences, compiled code and references. (3) `minres/algorithm.rs:40-42` gives the Paige and Saunders (1975) title unverified, and `chebyshev/algorithm.rs:41` cites Golub and Van Loan section 11.3 with no edition.
+- acceptance: (1) the file is deleted, no tracked file links it, and `git log --follow -- docs/verification/gmres-rank-recovery.md` still reaches it; (2) `mdbook test docs/book` passes with a compiled `rust` block in each of the three sections of `further_solvers.md`; (3) both comments cite a resolved title, journal and pages, or an edition and section, or drop the locator.
+- next step: `git rm` the ledger, then `git grep -n "docs/verification"` to confirm no link remains.
 - basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
 
 <a id="athena-device-minres-20261113"></a>

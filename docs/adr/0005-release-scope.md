@@ -11,9 +11,9 @@ Hephaestus ([Atlas ADR 0022](https://github.com/ryancinsight/atlas/blob/main/doc
 [Atlas ADR 0062](https://github.com/ryancinsight/atlas/blob/main/docs/adr/0062-iterative-solver-and-preconditioner-ownership.md)).
 The workspace ships four crates: `athena-core`, `athena-leto`,
 `athena-hephaestus` and the `athena-krylov` facade (library name `athena`).
-Manifest and tags agree at 0.3.3: `crate-athena-core-v0.3.3`,
-`crate-athena-leto-v0.3.3`, `crate-athena-hephaestus-v0.3.3` and
-`crate-athena-krylov-v0.3.3`, all dated 2026-10-22.
+Manifests read 0.4.0 for `athena-core` and 0.5.0 for the other three; the
+latest tags `athena-core-v0.4.0` (2026-11-19), `athena-leto-v0.5.0`,
+`athena-hephaestus-v0.5.0` and `athena-krylov-v0.5.0` (2026-11-20) agree.
 
 At the basis the repository had never had a milestone ladder. Its README named
 four solver contracts, while `athena-core` exports seven recurrences and the
@@ -32,10 +32,10 @@ contract; such an item gates no exit.
 
 | Crate | Delivered | In scope for 1.0 | Non-goal for 1.0 |
 |---|---|---|---|
-| athena-core | `KrylovBackend` seam with GAT views and `VectorBlock`; `LinearOperator`, `RectangularOperator`, `Preconditioner`, `Identity`; `ConvergencePolicy`, `residual_noise_floor`, `Termination` with `Stagnated` and `Diverged` (ADR 0004); allocation-free reports and observers; `Cg`, `Gmres` (restarted, right-preconditioned, flexible-preconditioner property, rank-deficient recovery), `BiCgStab`, `Lsqr` (plain and damped), `Minres`, `Chebyshev`, `DeflatedCg`; `Cg` recomputes `b - A x` before accepting convergence and at its curvature and budget exits (`ATHENA-CG-TERMINAL-RESIDUAL-20261103`); README and book chapters for all seven solvers | None | Nonlinear solver policy; QMR, TFQMR, IDR, LSMR and Krylov recycling; Arnoldi and Lanczos eigenvalue machinery; complex scalars |
+| athena-core | `KrylovBackend` seam with GAT views and `VectorBlock`; `LinearOperator`, `RectangularOperator`, `Preconditioner`, `Identity`; `ConvergencePolicy`, `residual_noise_floor`, `Termination` with `Stagnated` and `Diverged` (ADR 0004); allocation-free reports and observers; `Cg`, `Gmres` (restarted, right-preconditioned, flexible-preconditioner property, rank-deficient recovery), `BiCgStab`, `Lsqr` (plain and damped), `Minres`, `Chebyshev`, `DeflatedCg`; `Cg` recomputes `b - A x` before accepting convergence and at its curvature and budget exits (`ATHENA-CG-TERMINAL-RESIDUAL-20261103`); README rows for all seven solvers; a book chapter that names `Minres`, `Chebyshev` and `DeflatedCg` and states their contracts | Derivations, recurrences, runnable code and references for that chapter (`ATHENA-DOC-DRIFT-20261113`) | Nonlinear solver policy; QMR, TFQMR, IDR, LSMR and Krylov recycling; Arnoldi and Lanczos eigenvalue machinery; complex scalars |
 | athena-leto | `LetoBackend` and `LetoVectorBlock`; runtime-restart `KrylovWorkspace`; `CsrOperator`, `BorrowedCsrOperator`, `BorrowedDenseOperator`, `PoissonStencilOperator`, `RectangularCsrOperator`; `Jacobi`, `IncompleteLu` and `SuccessiveOverRelaxation` preconditioners; `BlockDiagonalPreconditioner`, `ComponentBlockPreconditioner` and `SimplePreconditioner` (7 unit tests); `AlgebraicMultigrid` (2 unit tests) and its component API: five smoothers, five coarsening functions with `analyze_coarsening_quality`, the classical and direct interpolation builders, the restriction builders and both validators, `restrict_matrix` and `restrict_vector` (28 unit tests) | Solve-level contracts for `AlgebraicMultigrid`, the three saddle-point preconditioners and the two functions no test names, `hmis_coarsening` and `create_standard_interpolation` (`ATHENA-PRECONDITIONER-CONTRACT-20261113`) and for `LinearSolverChain`, which has no test (`ATHENA-SOLVER-CHAIN-CONTRACT-20261113`); a book chapter for the preconditioners, multigrid and chain | Coarsening over unstructured meshes beyond the shipped `*_coarsening` strategies |
 | athena-hephaestus | `HephaestusBackend` over `DenseVectorOps`; prepared dot and norm; `CsrOperator` over `SparseOperatorOps`; device `Jacobi`; `Cg`, `Gmres`, `BiCgStab`, `DeflatedCg` and `Chebyshev` on device | `Lsqr` on device through a device `RectangularOperator` (the milestone exit); a device oracle for `Minres`, whose recurrence is backend-generic (`ATHENA-DEVICE-MINRES-20261113`) | Device incomplete-LU, SOR, multigrid and saddle-point preconditioners; a device stencil operator; device scalars other than `f32` |
-| athena-krylov | Re-export of `athena-core`; features `cpu` (default) and `accelerator`; examples `poisson_cpu`, `nonsymmetric_cpu`, `poisson_accelerator`, `nonsymmetric_accelerator`; benches `cg_poisson`, `gmres_poisson`, `kernels`, `stencil_vs_csr`; a seven-solver book | One self-checking example for the milestone (`least_squares_accelerator`), which solves with `Lsqr` through the device `RectangularOperator` and asserts the closed-form least-squares solution | A crate per device (ADR 0034); runtime backend detection; a CPU fallback behind an accelerator example |
+| athena-krylov | Re-export of `athena-core`; features `cpu` (default) and `accelerator`; examples `poisson_cpu`, `nonsymmetric_cpu`, `poisson_accelerator`, `nonsymmetric_accelerator`; benches `cg_poisson`, `gmres_poisson`, `kernels`, `stencil_vs_csr`; a book with a chapter on each solver, three of them without derivations (in scope) | One self-checking example for the milestone (`least_squares_accelerator`), which solves with `Lsqr` through the device `RectangularOperator` and asserts the closed-form least-squares solution | A crate per device (ADR 0034); runtime backend detection; a CPU fallback behind an accelerator example |
 
 `triangular` is a private kernel of `IncompleteLu` and `SuccessiveOverRelaxation`,
 not a preconditioner.
@@ -70,9 +70,9 @@ contracts gate the release without being exits.
 
 ## Version basis
 
-The milestone is the final block, so it plans 1.0.0, a major above the 0.3.3
-manifest version and every crate tag. Crates version together and release per
-crate tag (`crate-<package>-v<version>`); release needs explicit authority.
+The milestone is the final block, so it plans 1.0.0, a major above every
+manifest version and every crate tag. Crates carry separate versions and release
+per crate tag (`<package>-v<version>`); release needs explicit authority.
 
 ## Veto points
 
@@ -150,11 +150,11 @@ The `solver_chain` module has zero `#[test]` items. No Atlas conformance
 detector reads `include.path` or `core.hooksPath` and athena tracks no
 `.gitconfig` (`ATHENA-GITCONFIG-20261113`).
 
-## Revision 2026-11-23
+## Revision 2026-11-24
 
-`ATHENA-DOC-DRIFT-20261113` delivered the README, the book chapter for
-`Minres`, `Chebyshev` and `DeflatedCg`, and the removal of `triangular` from
-the preconditioner lists, so the capability table moves them to Delivered.
+`ATHENA-DOC-DRIFT-20261113` delivered README rows, a book chapter naming
+`Minres`, `Chebyshev` and `DeflatedCg` (derivations in scope), the `triangular`
+correction, and the 0.4.0 and 0.5.0 manifest and tag reading in two sections.
 
 ## Aequitas 0.5 provider revision
 
