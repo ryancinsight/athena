@@ -3,6 +3,10 @@
 - Status: Accepted
 - Date: 2026-11-13
 - Class: [arch] [patch]
+- Revised 2026-11-24: veto 1 relates the 0.5.1 and proposed 0.6.0 checkpoints
+  to the one milestone and drops the released 0.4.0; the Delivered columns and
+  the manifest and tag reading follow athena#185 (merge `9741050`), re-read
+  against the manifests and tags on `main` (athena#192).
 
 ## Context
 
@@ -15,10 +19,7 @@ Manifests read 0.4.0 for `athena-core` and 0.5.0 for the other three; the
 latest tags `athena-core-v0.4.0` (2026-11-19), `athena-leto-v0.5.0`,
 `athena-hephaestus-v0.5.0` and `athena-krylov-v0.5.0` (2026-11-20) agree.
 
-At the basis the repository had never had a milestone ladder. Its README named
-four solver contracts, while `athena-core` exports seven recurrences and the
-`athena-leto` crate ships multigrid, saddle-point preconditioners and a tiered
-solver chain that no README line or book chapter described. This ADR fixes
+At the basis the repository had never had a milestone ladder. This ADR fixes
 what 1.0 contains from the crate export lists, the tests and the ADRs; the
 ladder at the head of `backlog.md` orders the work.
 
@@ -40,59 +41,60 @@ contract; such an item gates no exit.
 `triangular` is a private kernel of `IncompleteLu` and `SuccessiveOverRelaxation`,
 not a preconditioner.
 
-Sources for the non-goals: README Roadmap 2 (nonlinear policy waits for a
-second residual and Jacobian consumer); Atlas ADR 0062 Non-goals (eigenvalue
-machinery) and its 2026-10-12 revision, which closes Phase 2 with MINRES,
-FGMRES, Chebyshev and two-level deflated CG, so recycling (named in the
-Phase 2 decision text) and QMR, TFQMR, IDR and LSMR are not delivered and no
-consumer or exit requires them; the book's stack chapter (the scalar is
-`eunomia::RealField`; no `Backend::detect()`); Atlas ADR 0034 (one accelerator
-backend over Hephaestus); Atlas ADR 0062 Phase 3 as narrowed by its 2026-10-11
-revision (unstructured coarsening waits for a mesh-hierarchy owner or a second
-consumer).
+Sources for the non-goals: README Roadmap 2 (nonlinear policy waits for a second
+residual and Jacobian consumer); Atlas ADR 0062 Non-goals (eigenvalue machinery)
+and its 2026-10-12 revision, which closes Phase 2 with MINRES, FGMRES, Chebyshev
+and two-level deflated CG, so recycling (named in the Phase 2 decision text) and
+QMR, TFQMR, IDR and LSMR are not delivered and no consumer or exit requires
+them; the book's stack chapter (the scalar is `eunomia::RealField`; no
+`Backend::detect()`); Atlas ADR 0034 (one accelerator backend over Hephaestus);
+Atlas ADR 0062 Phase 3 as narrowed by its 2026-10-11 revision (unstructured
+coarsening waits for a mesh-hierarchy owner or a second consumer).
 
 ## Ladder
 
-One milestone, the final block: `M-device-least-squares` (1.0.0), solve
-overdetermined least-squares systems on a Hephaestus device.
+One milestone, the final block: `M-device-least-squares`, solve overdetermined
+least-squares systems on a Hephaestus device. It plans 1.0.0, a major above
+every manifest version and every crate tag. Crates carry separate versions and
+release per crate tag (`<package>-v<version>`); release needs explicit
+authority.
 
 Device `Lsqr` is the one capability this scope names that is absent at the
-basis: README:26-28 records `RectangularOperator` as Leto-only,
-`git grep RectangularOperator` finds no impl under `crates/athena-hephaestus/src`
+basis: README:35-36 records `RectangularOperator` as Leto-only, `git grep
+RectangularOperator` finds no impl under `crates/athena-hephaestus/src`
 (control: `crates/athena-leto/src/operator/rectangular_csr.rs`), and
-`CsrOperator::from_parts` rejects `rows != columns` (`operator.rs:53`). Each
-exit fails at the basis for lack of production code, not of a test file: the
-example must solve with `Lsqr` through that operator, since host-formed normal
-equations under device `Cg` would pass at base. Correctness, verification and
-tightening items join the milestone and gate no exit; its standing conditions
-require no open `correctness` or `verification` item, so the solve-level
-contracts gate the release without being exits.
-
-## Version basis
-
-The milestone is the final block, so it plans 1.0.0, a major above every
-manifest version and every crate tag. Crates carry separate versions and release
-per crate tag (`<package>-v<version>`); release needs explicit authority.
+`CsrOperator::from_parts` rejects `rows != columns`
+(`crates/athena-hephaestus/src/operator.rs:53`). Each exit fails at the basis
+for lack of production code, not of a test file: the example must solve with
+`Lsqr` through that operator, since host-formed normal equations under device
+`Cg` would pass at base. Correctness, verification and tightening items join the
+milestone and gate no exit; its standing conditions require no open
+`correctness` or `verification` item, so the solve-level contracts gate the
+release without being exits.
 
 ## Veto points
 
 Choices no source determines, taken as the recommended option. Each states the
 rejected alternative and the evidence that overturns the choice.
 
-1. One milestone, released as 1.0.0. Rejected: a leading preconditioned-solves
-   milestone (its exits test AMG and the chain, which ship at base, ADR 0062
-   revision 2026-10-11) and a closing stable-suite milestone (a quality
-   state); a 0.4.0 device block before a 1.0.0 block that would hold no
-   feature absent at the basis. Overturned by: a second absent capability that
-   a consumer requires adds a block before 1.0.0.
+1. One milestone, released as 1.0.0; the 0.5.1 patch and proposed 0.6.0 minor
+   (`backlog.md:6,11-12`) are release checkpoints inside it, not blocks: they
+   add no exit and the milestone closes on its two exits and standing conditions
+   alone. Rejected: a leading preconditioned-solves milestone (its exits test
+   AMG and the chain, which ship at base, ADR 0062 revision 2026-10-11); a
+   closing stable-suite milestone (a quality state); a device block below 1.0.0
+   (the proposed 0.6.0), which would hold device `Lsqr`, the one capability
+   absent at the basis, or shipped capability. Overturned by: a second absent
+   capability that a consumer requires adds a block before 1.0.0.
 2. Consumer migration is not a milestone gate. Rejected: gating 1.0 on CFDrs
    and Kwavers conversions, which makes Athena wait on two repositories it
    does not own. Overturned by: a conversion that names a missing Athena
    capability (`ATLAS-CFDRS-ATHENA-MIGRATION-001` names `chain.rs` and
    multigrid as its next step), which then becomes an item or a block.
-3. `Lsqr` on device is in scope. Grounds: README:25-28 states the backend-neutral
-   contract and names this pair as the one that does not ship; no consumer
-   requirement was found in the README roadmap or the Atlas items read.
+3. `Lsqr` on device is in scope. Grounds: README:27-30 states the
+   backend-neutral contract and README:35-36 names this pair as the one that
+   does not ship; no consumer requirement was found in the README roadmap or
+   the Atlas items read.
    Rejected: a non-goal with CPU-only `Lsqr`. Design open:
    Hephaestus `SparseOperatorOps` has `upload_csr` and `apply` but no
    transposed apply, so `Aᵀ` is a second uploaded CSR (twice the device
@@ -137,9 +139,6 @@ rejected alternative and the evidence that overturns the choice.
 
 - Every open item carries `milestone: M-device-least-squares`; a feature item
   names its exit.
-- `ATHENA-CG-TERMINAL-RESIDUAL-20261103`, a `correctness` item, is delivered
-  (revised 2026-11-15) and no longer holds the standing condition "no open
-  correctness item" false.
 
 ## Verification
 
@@ -149,16 +148,3 @@ test and example lists, the release tags, and Atlas ADRs 0022, 0034 and 0062.
 The `solver_chain` module has zero `#[test]` items. No Atlas conformance
 detector reads `include.path` or `core.hooksPath` and athena tracks no
 `.gitconfig` (`ATHENA-GITCONFIG-20261113`).
-
-## Revision 2026-11-24
-
-`ATHENA-DOC-DRIFT-20261113` delivered README rows, a book chapter naming
-`Minres`, `Chebyshev` and `DeflatedCg` (derivations in scope), the `triangular`
-correction, and the 0.4.0 and 0.5.0 manifest and tag reading in two sections.
-
-## Aequitas 0.5 provider revision
-
-The Athena 0.5 adapters adopt Leto 0.52 and Hephaestus 0.30.
-Athena Core stays at 0.4.0 and retains its Eunomia solver contracts. The existing
-CPU and accelerator numerical verification remains the release gate.
-Consumers select one array identity and update related providers together.
