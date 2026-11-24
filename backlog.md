@@ -45,13 +45,23 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
 
 <a id="athena-doc-drift-20261113"></a>
-## ATHENA-DOC-DRIFT-20261113 — Finish the doc-drift remainders: ledger, book derivations, citations [docs] — todo
+## ATHENA-DOC-DRIFT-20261113 — Finish the doc-drift remainders: ledger and source citations [docs] — todo
 
 - priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `docs/verification/`, `docs/book/further_solvers.md`, doc comments in `crates/athena-core/src/solver/minres/algorithm.rs` and `chebyshev/algorithm.rs`
-- outcome: three remainders after the README, CHANGELOG, gap-audit and module-doc reconciliation. (1) `docs/verification/gmres-rank-recovery.md` (99 lines) records landed work pinned by `crates/athena-leto/tests/gmres_rank_deficient.rs`, whose counterexample `docs/book/gmres.md` states, so the ledger belongs to the commit history. (2) `further_solvers.md` names `Minres`, `Chebyshev` and `DeflatedCg` but derives none; the stacked PR `docs/athena-book-further-solvers` adds recurrences, compiled code and references. (3) `minres/algorithm.rs:40-42` gives the Paige and Saunders (1975) title unverified, and `chebyshev/algorithm.rs:41` cites Golub and Van Loan section 11.3 with no edition.
-- acceptance: (1) the file is deleted, no tracked file links it, and `git log --follow -- docs/verification/gmres-rank-recovery.md` still reaches it; (2) `mdbook test docs/book` passes with a compiled `rust` block in each of the three sections of `further_solvers.md`; (3) both comments cite a resolved title, journal and pages, or an edition and section, or drop the locator.
-- next step: `git rm` the ledger, then `git grep -n "docs/verification"` to confirm no link remains.
+- scope: `docs/verification/`, doc comments in `crates/athena-core/src/solver/minres/algorithm.rs` and `chebyshev/algorithm.rs`
+- outcome: two remainders after the README, CHANGELOG, gap-audit, module-doc and book reconciliation. (1) `docs/verification/gmres-rank-recovery.md` (99 lines) records landed work pinned by `crates/athena-leto/tests/gmres_rank_deficient.rs`, whose counterexample `docs/book/gmres.md` states, so the ledger belongs to the commit history. (2) `minres/algorithm.rs:40-42` titles Paige and Saunders (1975) "...linear equations and least squares problems", while the SIAM record reads "Solution of sparse indefinite systems of linear equations" (doi:10.1137/0712047); `chebyshev/algorithm.rs:41` cites Golub and Van Loan section 11.3 with no edition and no source read.
+- acceptance: (1) the file is deleted, no tracked file links it, and `git log --follow -- docs/verification/gmres-rank-recovery.md` still reaches it; (2) the MINRES comment carries the SIAM title and the Chebyshev comment cites Templates section 2.3.9 or a Golub and Van Loan edition and section read from the book, so `git grep -n "section 11.3" -- crates` is empty.
+- next step: `git rm` the ledger, then `git grep -n "docs/verification"` to confirm no link remains; correct the two comments.
+- basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
+
+<a id="athena-minres-threshold-basis-20261124"></a>
+## ATHENA-MINRES-THRESHOLD-BASIS-20261124 — Decide the residual-threshold basis of MINRES [test] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `crates/athena-core/src/solver/minres/execution.rs`, `crates/athena-leto/tests/minres_contract.rs`, `README.md`, `docs/book/further_solvers.md`
+- outcome: README "Numerical contract" states one test, `‖r‖₂ <= max(absolute_tolerance, relative_tolerance * ‖b‖₂)`, for every solver. `Cg`, `Gmres`, `BiCgStab`, `Lsqr`, `Chebyshev` and `DeflatedCg` pass `‖b‖` to `ConvergencePolicy::threshold`; `Minres` passes `‖b - A x₀‖` (`minres/execution.rs:126`), so the two differ for a nonzero initial guess.
+- acceptance: with `x₀` chosen so `‖b - A x₀‖ ≪ ‖b‖`, a `minres_contract.rs` case asserts the threshold equals `max(absolute, relative·‖b‖)`, or the README and the chapter state the `‖r₀‖` basis and the case pins it: `cargo nextest run -p athena-leto -E 'test(=minres_threshold_basis_with_nonzero_guess)'`.
+- next step: build the `diag(1, -1)` oracle with `x₀ = (1, -2) + 1e-3·(1, 1)` and read the reported threshold.
 - basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
 
 <a id="athena-device-minres-20261113"></a>
