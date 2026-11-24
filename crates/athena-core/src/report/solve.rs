@@ -12,7 +12,7 @@ pub enum Termination {
     Breakdown,
     /// CG encountered non-positive curvature, violating its SPD contract.
     NonPositiveCurvature,
-    /// A scalar residual or recurrence coefficient became non-finite.
+    /// A residual, recurrence coefficient, or checked solution entry was non-finite.
     NonFinite,
     /// The normal-equation residual met the tolerance. An inconsistent
     /// least-squares system keeps a residual bounded away from zero, so this
