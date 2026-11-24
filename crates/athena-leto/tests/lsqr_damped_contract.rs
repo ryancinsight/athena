@@ -1,9 +1,11 @@
 //! Value-semantic CPU conformance for damped (Tikhonov-regularised) LSQR.
 //!
-//! The damped problem is `min ‖A·x − b‖₂ + λ·‖x‖₂`, which the algorithm solves
-//! exactly as `min ‖[A; λI]·x − [b; 0]‖₂`. The recurrence is the same
-//! bidiagonalisation as the unregularised case with one extra `λ²` term in
-//! the Givens rotation at every step (Paige & Saunders 1982, §4, eqn 4.4).
+//! The damped problem is `min ‖A·x − b‖₂² + λ²·‖x‖₂²` (for a zero initial
+//! guess), which the algorithm solves exactly as
+//! `min ‖[A; λI]·x − [b; 0]‖₂` (Paige & Saunders 1982, §2.1 eq. 2.4). Each
+//! step eliminates the `λ` row with its own plane rotation before the
+//! rotation that eliminates the bidiagonal subdiagonal (eq. 2.7; recurrence
+//! as in `SciPy` 1.18.0 `scipy/sparse/linalg/_isolve/lsqr.py:443-463`).
 //!
 //! The contract being checked:
 //!
@@ -285,4 +287,156 @@ fn damped_solve_works_in_f32() {
         bound
     );
     assert!(report.converged(), "got {:?}", report.termination);
+}
+
+/// Floating-point rounding units one Golub–Kahan step may add to the iterate's
+/// relative error, before amplification by the conditioning of the damped
+/// normal matrix.
+///
+/// One step applies each of `A` and `Aᵀ` once (dot products of length at most
+/// `rows = 3`, each bounded by `γ₃ = 3ε/(1 − 3ε)`, Higham, *Accuracy and
+/// Stability of Numerical Algorithms*, 2nd ed., Lemma 3.1 and §3.1), forms two
+/// norms and scalings, and applies two plane rotations and the updates of `x`
+/// and `w`, each a few rounding errors on the dependency chain. Eight units
+/// bound the sum of those perturbations to the bidiagonal entries.
+const STEP_ROUNDING_UNITS: f64 = 8.0;
+
+/// Closed-form solution of `(AᵀA + λ²I)·x = Aᵀb`, with the conditioning and
+/// augmented residual norm of that solution.
+struct DampedOracle {
+    solution: [f64; 2],
+    /// `κ₂(AᵀA + λ²I)`, the amplification of rounding in the damped
+    /// least-squares solution.
+    condition: f64,
+    /// `‖[b − A·x; λ·x]‖₂`, the augmented residual norm at `x`.
+    augmented_residual: f64,
+}
+
+/// Every operand of the normal equations below is a small multiple of a
+/// quarter, so `AᵀA + λ²I`, `Aᵀb` and the determinant are exact in `f64` for
+/// the damping values used, and each solution entry is one correctly rounded
+/// quotient.
+fn damped_oracle(rows: &[&[f64]], right_hand_side: &[f64], lambda: f64) -> DampedOracle {
+    let mut normal = [[0.0_f64; 2]; 2];
+    let mut moment = [0.0_f64; 2];
+    for (row, &target) in rows.iter().zip(right_hand_side) {
+        for (i, (moment_entry, normal_row)) in moment.iter_mut().zip(&mut normal).enumerate() {
+            *moment_entry += row[i] * target;
+            for (j, entry) in normal_row.iter_mut().enumerate() {
+                *entry += row[i] * row[j];
+            }
+        }
+    }
+    normal[0][0] += lambda * lambda;
+    normal[1][1] += lambda * lambda;
+    let determinant = normal[0][0] * normal[1][1] - normal[0][1] * normal[1][0];
+    let solution = [
+        (moment[0] * normal[1][1] - normal[0][1] * moment[1]) / determinant,
+        (normal[0][0] * moment[1] - normal[1][0] * moment[0]) / determinant,
+    ];
+    let half_trace = 0.5 * (normal[0][0] + normal[1][1]);
+    let spread = (half_trace * half_trace - determinant).sqrt();
+    let mut residual_sq = lambda * lambda * (solution[0] * solution[0] + solution[1] * solution[1]);
+    for (row, &target) in rows.iter().zip(right_hand_side) {
+        let misfit = target - row[0] * solution[0] - row[1] * solution[1];
+        residual_sq += misfit * misfit;
+    }
+    DampedOracle {
+        solution,
+        condition: (half_trace + spread) / (half_trace - spread),
+        augmented_residual: residual_sq.sqrt(),
+    }
+}
+
+/// Golub–Kahan bidiagonalisation of a full-column-rank `A` with `n` columns
+/// spans the whole Krylov space of `AᵀA + λ²I` after `n` steps, so with both
+/// tolerances zero the solve performs exactly `n` iterations and its iterate
+/// is the damped least-squares solution up to rounding.
+fn solve_in_column_count_steps<T>(
+    operator: &RectangularCsrOperator<T>,
+    right_hand_side: &Array1<T>,
+    damping: f64,
+) -> (Array1<T>, athena_core::SolveReport<T>)
+where
+    T: RealScalar + RealField,
+{
+    let backend = LetoBackend::<T>::default();
+    let mut solution = Array1::zeros([operator.columns()]);
+    let mut workspace = LsqrWorkspace::new(&backend, operator.rows(), operator.columns())
+        .expect("invariant: host allocation succeeds");
+    let policy = ConvergencePolicy::new(
+        <T as eunomia::NumericElement>::ZERO,
+        <T as eunomia::NumericElement>::ZERO,
+        operator.columns(),
+    )
+    .expect("invariant: zero tolerances are finite and non-negative");
+    let report = Lsqr::<LetoBackend<T>>::solve_damped_into(
+        &backend,
+        operator,
+        right_hand_side,
+        &mut solution,
+        &mut workspace,
+        policy,
+        T::from_f64(damping),
+    )
+    .expect("invariant: valid dimensions");
+    (solution, report)
+}
+
+fn damped_solution_and_residual_match_closed_form_at<T>()
+where
+    T: RealScalar + RealField,
+{
+    // Least-squares line fit through (0, 1), (1, 0), (2, 2): three rows, two
+    // columns, full column rank, inconsistent.
+    let rows: &[&[f64]] = &[&[1.0, 0.0], &[1.0, 1.0], &[1.0, 2.0]];
+    let targets = [1.0, 0.0, 2.0];
+    let operator = dense_operator::<T>(rows);
+    let right_hand_side = vector::<T>(&targets);
+    let epsilon = eunomia::NumericElement::to_f64(<T as RealField>::EPSILON);
+    let target_norm = targets.iter().map(|t| t * t).sum::<f64>().sqrt();
+
+    for lambda in [0.0, 0.5, 1.0] {
+        let oracle = damped_oracle(rows, &targets, lambda);
+        let (solution, report) = solve_in_column_count_steps(&operator, &right_hand_side, lambda);
+        assert_eq!(
+            report.iterations, 2,
+            "λ = {lambda}: {:?}",
+            report.termination
+        );
+        let steps = f64::from(u32::try_from(report.iterations).expect("invariant: two steps"));
+        let growth = STEP_ROUNDING_UNITS * steps * oracle.condition * epsilon;
+        let solution_norm = oracle.solution[0].hypot(oracle.solution[1]);
+
+        for (index, &expected) in oracle.solution.iter().enumerate() {
+            let observed = eunomia::NumericElement::to_f64(solution[index]);
+            let bound = growth * solution_norm;
+            assert!(
+                (observed - expected).abs() <= bound,
+                "λ = {lambda}, x[{index}]: observed {observed:e}, closed form {expected:e},                  error {:e}, bound {bound:e}",
+                (observed - expected).abs(),
+            );
+        }
+
+        // The reported residual of a damped solve is the augmented residual
+        // `‖[b − A·x; λ·x]‖₂ = √(φ̄² + Σψ²)`.
+        let reported = eunomia::NumericElement::to_f64(report.final_residual_norm);
+        let bound = growth * target_norm;
+        assert!(
+            (reported - oracle.augmented_residual).abs() <= bound,
+            "λ = {lambda}: reported residual {reported:e}, augmented closed form {:e}, bound {bound:e}",
+            oracle.augmented_residual,
+        );
+    }
+}
+
+/// The damped iterate and its reported residual equal the closed form of the
+/// regularised normal equations, for `λ` in `{0, ½, 1}`, at every shipped
+/// scalar precision. Error bound: `STEP_ROUNDING_UNITS · k · κ(AᵀA + λ²I) · ε`
+/// relative to `‖x*‖₂` (solution) or `‖b‖₂` (residual), with `k` the observed
+/// iteration count and `ε` the working-precision machine epsilon.
+#[test]
+fn damped_solution_and_residual_match_closed_form() {
+    damped_solution_and_residual_match_closed_form_at::<f64>();
+    damped_solution_and_residual_match_closed_form_at::<f32>();
 }
