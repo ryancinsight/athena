@@ -13,7 +13,7 @@ solver recurrences:
 | `Lsqr` | rectangular least squares | `RectangularOperator` | 5 vectors (2 × `rows`, 3 × `columns`) |
 | `Minres` | symmetric, possibly indefinite | `LinearOperator` | 7 vectors |
 | `Chebyshev` | symmetric positive-definite, with spectral bounds | `LinearOperator` | 3 vectors |
-| `DeflatedCg` | symmetric positive-definite, with a deflation basis | `LinearOperator` | 4 vectors, 2 scratch vectors per solve, and the basis with its images |
+| `DeflatedCg` | symmetric positive-definite, with a deflation basis | `LinearOperator` | 4 workspace vectors; per solve, 6 vectors and 3 basis-width scalar arrays (2 vectors and no arrays when the initial residual already meets the policy); and the basis and its images |
 
 `Cg`, `Gmres` and `BiCgStab` accept a `Preconditioner`; `Lsqr`, `Minres`,
 `Chebyshev` and `DeflatedCg` take none. `Minres` is deliberately unpreconditioned
@@ -39,12 +39,17 @@ The CPU backend ships these preconditioners: `Jacobi`, `IncompleteLu`,
 `SuccessiveOverRelaxation`, `AlgebraicMultigrid` with its smoother, coarsening,
 interpolation and restriction components, and the saddle-point
 `BlockDiagonalPreconditioner`, `ComponentBlockPreconditioner` and
-`SimplePreconditioner`. `LinearSolverChain` solves a system by trying a direct
-sparse LU, then GMRES tiers under those block, multigrid and incomplete-LU
-preconditioners, then unpreconditioned `BiCgStab`; it returns the first tier
-that succeeds and a `LetoBackendError` when every tier fails.
-`LinearSolverState` caches the multigrid hierarchy for warm solves. The accelerator backend ships
-`Jacobi` only.
+`SimplePreconditioner`. `LinearSolverChain::solve` tries a direct sparse LU for
+systems of fewer than `direct_threshold` unknowns (default 2,048); GMRES under
+the component-block, SIMPLE, multigrid and block-diagonal preconditioners;
+unpreconditioned GMRES, only when the block-diagonal preconditioner could not
+be built; GMRES under incomplete LU; and unpreconditioned `BiCgStab`.
+`solve_with_guess_state` starts from a caller guess, tries GMRES under SOR
+before a cached multigrid tier, and orders the remaining tiers differently.
+Both return the first tier that succeeds and a `LetoBackendError` when every
+tier fails. `LinearSolverState` caches the multigrid transfer operators and
+the component-block symbolic factors for warm solves. The accelerator backend
+ships `Jacobi` only.
 
 Athena is independently versioned and consumed by the
 [Atlas multiphysics stack](https://github.com/ryancinsight/atlas). The
@@ -140,7 +145,7 @@ crates/
 └── athena-hephaestus/
     └── src/
         ├── backend.rs         # device-neutral DenseVectorOps binding
-        ├── operator.rs        # Hephaestus GpuCsrMatrix adapter
+        ├── operator.rs        # CsrOperator<S, M> over SparseOperatorOps
         └── preconditioner/    # device Jacobi
 ```
 
@@ -163,7 +168,13 @@ monomorphizes each recurrence at the backend
 and restart-width boundary; no trait object or per-element backend branch
 exists.
 
-The CPU implementation performs no allocation after workspace construction.
+The `Cg`, `Gmres`, `BiCgStab`, `Lsqr`, `Minres` and `Chebyshev` recurrences
+allocate nothing after workspace construction: `crates/athena-core/src/solver`
+calls `allocate`, `allocate_block`, `vec!`, `Vec::new`, `Vec::with_capacity`
+and `to_vec` only in the workspace constructors and the deflation module, and
+the allocation tests cover `Cg`, `Gmres` and `BiCgStab`. `DeflatedCg::solve_into`
+allocates on every solve (see the table), and so does `LinearSolverChain`, which
+builds the solution vector and a workspace for each tier.
 GMRES stores exactly `RESTART + 1` Arnoldi vectors, `RESTART` preconditioned
 vectors, and const-bounded host scalar storage. Those two vector sets are
 `KrylovBackend::VectorBlock` values rather than `Vec<Vector>`, so each backend
@@ -357,8 +368,10 @@ python scripts/atlas-lock-form.py install-hooks
 
 It points each member's `core.hooksPath` at shared source-bound hook shims. The
 `pre-push` hook refuses a `Cargo.lock` that does not resolve under `--locked`,
-using the stack's own `lockfile.py --check` (the check CI's lockfile job runs)
-and never this repository's copy. It matters most inside the Atlas stack: the
+using the stack's own `lockfile.py --check` and never this repository's copy.
+CI's lockfile job calls the Atlas `lockfile-guard.yml` workflow at the commit
+`.github/workflows/ci.yml` pins, which runs this repository's
+`scripts/lockfile.py --check`. The check matters most inside the Atlas stack: the
 stack's `[patch]` overlay makes cargo resolve first-party dependencies to
 local paths and write a `Cargo.lock` with every `source = "git+..."` line
 stripped. That lock resolves fine under the overlay and fails every
