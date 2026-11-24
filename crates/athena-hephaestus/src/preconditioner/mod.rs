@@ -9,9 +9,10 @@
 //!
 //! # Why the substitution-based preconditioners are absent
 //!
-//! The CPU backend additionally ships incomplete LU and successive
-//! over-relaxation. Both apply by forward and backward substitution: element
-//! `i` of the result depends on elements `0..i`, so the
+//! The CPU backend additionally ships incomplete LU, which applies by forward
+//! then backward substitution, and successive over-relaxation, which applies by
+//! one forward substitution. In each sweep an element of the result depends on
+//! the elements the sweep has already produced, so the
 //! sweep is inherently sequential in the matrix dimension. Dispatching that
 //! recurrence per element would run one device thread against a launch per row,
 //! which is slower than the unpreconditioned iteration it is meant to
