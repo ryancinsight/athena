@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/ryancinsight/athena/actions/workflows/ci.yml/badge.svg)](https://github.com/ryancinsight/athena/actions/workflows/ci.yml)
 
-Athena is Atlas's iterative-solver provider. It ships four complete vertical
-contracts:
+Athena is Atlas's iterative-solver provider. `athena-core` exports seven
+solver recurrences:
 
 | Solver | System | Operator contract | Storage per solve |
 | --- | --- | --- | --- |
@@ -11,6 +11,13 @@ contracts:
 | `Gmres<_, RESTART>` | general nonsymmetric | `LinearOperator` | `2·RESTART + 3` vectors |
 | `BiCgStab` | general nonsymmetric | `LinearOperator` | 7 vectors |
 | `Lsqr` | rectangular least squares | `RectangularOperator` | 5 vectors (2 × `rows`, 3 × `columns`) |
+| `Minres` | symmetric, possibly indefinite | `LinearOperator` | 7 vectors |
+| `Chebyshev` | symmetric positive-definite, with spectral bounds | `LinearOperator` | 3 vectors |
+| `DeflatedCg` | symmetric positive-definite, with a deflation basis | `LinearOperator` | 4 vectors, 2 scratch vectors per solve, and the basis with its images |
+
+`Cg`, `Gmres` and `BiCgStab` accept a `Preconditioner`; `Lsqr`, `Minres`,
+`Chebyshev` and `DeflatedCg` take none. `Minres` is deliberately unpreconditioned
+until a consumer needs the symmetric-positive-definite factor seam it requires.
 
 Preconditioned conjugate gradient (PCG) and restarted GMRES are the
 symmetric and general square recurrences. `BiCGSTAB` solves the same general
@@ -23,9 +30,21 @@ operators by Golub–Kahan bidiagonalisation, never forming `AᵀA` and so never
 squaring the condition number.
 
 Leto CPU and Hephaestus accelerator execution share one backend-neutral
-recurrence per solver family. PCG, GMRES, and `BiCGSTAB` run on both; LSQR
-runs on any backend, but `RectangularOperator` is implemented for Leto only,
-so its shipped execution is CPU.
+recurrence per solver family. The accelerator suites run `Cg`, `Gmres`,
+`BiCgStab`, `DeflatedCg` and `Chebyshev`; no accelerator test runs `Minres`.
+`Lsqr` runs on any backend, but `RectangularOperator` is implemented for Leto
+only, so its shipped execution is CPU.
+
+The CPU backend ships these preconditioners: `Jacobi`, `IncompleteLu`,
+`SuccessiveOverRelaxation`, `AlgebraicMultigrid` with its smoother, coarsening,
+interpolation and restriction components, and the saddle-point
+`BlockDiagonalPreconditioner`, `ComponentBlockPreconditioner` and
+`SimplePreconditioner`. `LinearSolverChain` solves a system by trying a direct
+sparse LU, then GMRES tiers under those block, multigrid and incomplete-LU
+preconditioners, then unpreconditioned `BiCgStab`; it returns the first tier
+that succeeds and a `LetoBackendError` when every tier fails.
+`LinearSolverState` caches the multigrid hierarchy for warm solves. The accelerator backend ships
+`Jacobi` only.
 
 Athena is independently versioned and consumed by the
 [Atlas multiphysics stack](https://github.com/ryancinsight/atlas). The
@@ -71,8 +90,8 @@ Athena owns:
 - matrix-free square-operator, rectangular-operator, and preconditioner
   contracts;
 - validated absolute-plus-relative convergence policy;
-- PCG, restarted GMRES, `BiCGSTAB`, and LSQR recurrences, numerical
-  termination, and scalar telemetry;
+- PCG, restarted GMRES, `BiCGSTAB`, LSQR, MINRES, Chebyshev, and deflated-CG
+  recurrences, numerical termination, and scalar telemetry;
 - reusable, allocation-stable solver workspaces;
 - Leto and Hephaestus implementations of the solver-specific vector
   recurrences.
@@ -106,23 +125,28 @@ crates/
 │       └── solver/
 │           ├── bicgstab/      # generic BiCGSTAB recurrence and workspace
 │           ├── cg/            # generic PCG recurrence and workspace
+│           ├── chebyshev/     # Chebyshev semi-iteration and spectral bounds
+│           ├── deflation/     # two-level deflated CG and its basis
 │           ├── gmres/         # generic restarted GMRES recurrence/workspace
-│           └── lsqr/          # generic LSQR recurrence and workspace
+│           ├── lsqr/          # generic LSQR recurrence and workspace
+│           └── minres/        # generic MINRES recurrence and workspace
 ├── athena-leto/
 │   └── src/
 │       ├── backend/           # Array1, zero-copy views, contiguous blocks
-│       ├── operator/          # square/rectangular CSR and CowStorage dense
-│       └── preconditioner/    # Jacobi, incomplete LU, triangular, SOR
+│       ├── krylov.rs          # runtime-restart GMRES workspace
+│       ├── operator/          # CSR, rectangular CSR, dense, Poisson stencil
+│       ├── preconditioner/    # Jacobi, incomplete LU, SOR, multigrid, saddle-point
+│       └── solver_chain/      # tiered direct-then-GMRES fallback chain
 └── athena-hephaestus/
     └── src/
         ├── backend.rs         # device-neutral DenseVectorOps binding
-        └── operator.rs        # Hephaestus GpuCsrMatrix adapter
+        ├── operator.rs        # Hephaestus GpuCsrMatrix adapter
+        └── preconditioner/    # device Jacobi
 ```
 
-Every `lib.rs` and `mod.rs` is a manifest and operation families live in leaf
-modules. One file exceeds the repository's 500-line target:
-`athena-core/src/solver/bicgstab/algorithm.rs`, at 575 lines. It is recorded
-as debt rather than claimed clean, and it is the only exception.
+Operation families live in leaf modules. No source file under `crates/` exceeds
+the repository's 500-line target; the largest is
+`athena-core/src/solver/bicgstab/execution.rs`, at 487 lines.
 
 The `athena` facade enables the Leto CPU backend by default through the `cpu`
 feature; the `accelerator` feature adds Hephaestus execution. `athena-core` is
@@ -133,8 +157,9 @@ solver traits do not acquire Leto or Hephaestus dependencies.
 `KrylovBackend` uses generic associated view types so the core recurrence
 borrows Leto `ArrayView1`/`ArrayViewMut1` on CPU and typed device-buffer
 references on an accelerator. `Cg<B>`, `Gmres<B, const RESTART: usize>`,
-`BiCgStab<B>`, `Lsqr<B>`, `Identity`, and `LetoBackend<T>` are zero-sized
-policy markers. Static dispatch monomorphizes each recurrence at the backend
+`BiCgStab<B>`, `Lsqr<B>`, `Minres<B>`, `Chebyshev<B>`, `DeflatedCg<B>`,
+`Identity`, and `LetoBackend<T>` are zero-sized policy markers. Static dispatch
+monomorphizes each recurrence at the backend
 and restart-width boundary; no trait object or per-element backend branch
 exists.
 
@@ -289,14 +314,15 @@ cargo deny check
 The CPU contract suite is generic over every shipped CPU scalar (`f32` and
 `f64`) and checks manufactured SPD, nonsymmetric, consistent overdetermined,
 inconsistent, and underdetermined solutions; identity, Jacobi, incomplete-LU,
-triangular, and SOR preconditioning; forced multi-cycle restart; borrowed
+and SOR preconditioning; forced multi-cycle restart; borrowed
 dense storage; adjoint application against the dense product; observer
 semantics; termination values; dimension errors; allocation stability for CG,
 GMRES, and `BiCGSTAB`; contiguity, zero-initialization, and non-aliasing of
 the vector blocks; and zero-sized markers. The accelerator suite runs the
 manufactured SPD and nonsymmetric systems through real Hephaestus allocation,
 CSR upload, SpMV, reductions, and Athena kernels with CG, GMRES, and
-`BiCGSTAB`, then downloads each final solution once. A local machine without
+`BiCGSTAB`, then downloads each final solution once; separate device
+regressions run `DeflatedCg` and `Chebyshev`. A local machine without
 an adapter records the unavailable lane; CI treats adapter acquisition failure
 as an infrastructure failure.
 
@@ -307,7 +333,10 @@ thread and is independent under both `cargo nextest run` and the threaded
 
 ## Roadmap
 
-The next dependency-ordered increments are:
+The 1.0.0 milestone, solving overdetermined least-squares systems with `Lsqr`
+on a Hephaestus device, is scoped in
+[ADR 0005](docs/adr/0005-release-scope.md). The next dependency-ordered
+increments beyond it are:
 
 1. Extract consumer-owned CG/GMRES recurrences from CFDrs and Kwavers and
    migrate their operator/preconditioner implementations to Athena.
@@ -316,21 +345,26 @@ The next dependency-ordered increments are:
 
 ### Pre-push hook
 
-
-Install the hooks once per clone:
+`.githooks/` holds the Atlas member gates (`pre-commit`, `pre-push`,
+`rescue-push`). They are copies of one stack-owned source that
+`scripts/atlas-lock-form.py sync-hooks` deploys, so change them in the Atlas
+repository, never here. Git applies no tracked hook on its own; from the Atlas
+stack root, run once per clone:
 
 ```sh
-git config core.hooksPath .githooks
+python scripts/atlas-lock-form.py install-hooks
 ```
 
-Git never applies tracked hooks on its own, so this is a one-time step per
-clone. The `pre-push` hook runs `scripts/lockfile.py --check`, which is the
-same check CI runs. It matters most when working inside the Atlas stack: the
+It points each member's `core.hooksPath` at shared source-bound hook shims. The
+`pre-push` hook refuses a `Cargo.lock` that does not resolve under `--locked`,
+using the stack's own `lockfile.py --check` (the check CI's lockfile job runs)
+and never this repository's copy. It matters most inside the Atlas stack: the
 stack's `[patch]` overlay makes cargo resolve first-party dependencies to
 local paths and write a `Cargo.lock` with every `source = "git+..."` line
 stripped. That lock resolves fine under the overlay and fails every
 `--locked` job in CI, so without the hook the corruption is invisible until a
 runner reports it. Repair with `python3 scripts/lockfile.py --regenerate`.
+
 ## License
 
 Licensed under either the MIT License or Apache License 2.0.

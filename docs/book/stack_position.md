@@ -1,4 +1,4 @@
-# 7. Position in the Stack
+# 8. Position in the Stack
 
 Athena is one repository in the [Atlas](https://github.com/ryancinsight/atlas)
 multiphysics stack. This chapter says what it owns, what it deliberately does

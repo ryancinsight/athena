@@ -27,8 +27,12 @@ All notable changes to Athena are documented in this file.
 - Verify standalone registry lockfiles by matching source-less packages to
   declared Athena workspace members. The staged check reads the index,
   and the full check resolves the lockfile outside the Atlas overlay.
-
-## [0.3.2] - Unreleased
+- [major] CG reports `Termination::Stagnated`, not `Breakdown`, when `‖b − Ax‖`
+  exceeds its converged recurrence residual by more than the threshold, and
+  stops there instead of iterating until a dot product underflows; a stall found
+  before the budget ends the solve no longer reports `MaxIterations` (ADR 0004).
+  Migration: treat `Stagnated` like `Breakdown` and `MaxIterations`. Affected:
+  CFDrs `cfd-math` `interpret`, which maps `Stagnated` to an error.
 
 ### Changed
 
@@ -50,26 +54,24 @@ All notable changes to Athena are documented in this file.
   Athena neither implements nor calls, and Athena re-exports no Moirai or
   Eunomia type, so the public Athena surface is unchanged.
 
+## [0.3.3] - 2026-10-22
+
+### Changed
+
 - [patch] Advance the Leto/Hermes/Eunomia pins to the merged
   trait-hierarchy tips. No API or numerical change; the advanced
   Leto is the baseline for the recorded
   `ATHENA-FUSED-UPDATE-20261020` diagnosis.
-
-### Changed
 
 - [patch] Redundant `RealField + FloatElement` bounds collapse to
   `RealField` across `athena-core` and `athena-leto` (source and tests);
   `RealField: FloatElement` already, so every signature accepts and
   promises exactly what it did. Orphaned `FloatElement` imports removed.
 
+## [0.3.2] - 2026-10-20
+
 ### Fixed
 
-- [major] CG reports `Termination::Stagnated`, not `Breakdown`, when `‖b − Ax‖`
-  exceeds its converged recurrence residual by more than the threshold, and
-  stops there instead of iterating until a dot product underflows; a stall found
-  before the budget ends the solve no longer reports `MaxIterations` (ADR 0004).
-  Migration: treat `Stagnated` like `Breakdown` and `MaxIterations`. Affected:
-  CFDrs `cfd-math` `interpret`, which maps `Stagnated` to an error.
 - [patch] Recover rank-deficient GMRES reduced least squares with column
   pivoting instead of discarding coefficients in an unpivoted factor.
   Return a basic correction; minimum coefficient/physical solution norm is
@@ -92,7 +94,7 @@ All notable changes to Athena are documented in this file.
   Preserve Mnemosyne memory0.10.1/arena0.7.1 and synchronized internal0.3.2
   minima. No Rust implementation/test/policy bytes change in this renewal.
 
-## [0.3.1] - Unreleased
+## [0.3.1] - 2026-10-19
 
 ### Changed
 

@@ -139,8 +139,8 @@ reallocations, and zero deallocations.
 traits and the recurrences. Two crates implement the seam:
 
 - **`athena-leto`** — the CPU backend, over Leto arrays. Supplies CSR and dense
-  operators, square and rectangular, and Jacobi, incomplete LU, triangular, and
-  SOR preconditioners.
+  operators, square and rectangular, and Jacobi, incomplete LU, SOR,
+  multigrid, and saddle-point preconditioners.
 - **`athena-hephaestus`** — the GPU backend, over Hephaestus device buffers.
   Basis vectors stay resident on the device; only reduction scalars cross back,
   which is what makes the convergence test the synchronisation boundary.

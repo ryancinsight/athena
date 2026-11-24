@@ -45,14 +45,14 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
 
 <a id="athena-doc-drift-20261113"></a>
-## ATHENA-DOC-DRIFT-20261113 — Reconcile README, book, changelog and gap audit with the shipped crates [docs] — todo
+## ATHENA-DOC-DRIFT-20261113 — Relocate the GMRES rank-recovery ledger to history [docs] — todo
 
 - priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `README.md`, `docs/book/`, `CHANGELOG.md`, `gap_audit.md`, `docs/verification/`, `crates/athena-hephaestus/src/preconditioner/mod.rs`
-- outcome: README claims four contracts, a 575-line `bicgstab/algorithm.rs` (now 105 lines; `oversized_files` is 0) and omits `Minres`, multigrid, saddle-point preconditioners and the chain; README (lines 115, 285), `docs/book/krylov_backend.md:142` and the hephaestus module docs list `triangular` as a preconditioner though it is a private kernel; README:316 tells contributors `git config core.hooksPath .githooks` while the installed path is the stack hook directory; the book has four solver chapters; `CHANGELOG.md` heads `0.3.2 - Unreleased` although the 0.3.3 tags exist; `gap_audit.md` holds two fixed defects; `docs/verification/` holds two ledgers for landed work.
-- acceptance: each claim matches `lib.rs` and the tests; fixed-defect sections leave `gap_audit.md` except the rank-recovery performance-hold lines ("does not clear Athena's affected graph" paragraph and the Harmonia clause), which `ATHENA-GMRES-PERFORMANCE-HOLD-20261113` removes in its own PR; the ledgers relocate to the commit history; `mdbook test docs/book` passes.
-- next step: rewrite the README solver table from the `athena-core` export list, then the book chapters as each contract and the device least-squares capability land.
-- basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
+- scope: `docs/verification/`
+- outcome: `docs/verification/gmres-rank-recovery.md` (99 lines) records landed work: the recovery is pinned by `crates/athena-leto/tests/gmres_rank_deficient.rs`, whose counterexample `docs/book/gmres.md` states, so the ledger belongs to the commit history.
+- acceptance: the file is deleted and no tracked file links it; `git log --follow -- docs/verification/gmres-rank-recovery.md` still reaches it.
+- next step: `git rm` the file, then run `git grep -n "docs/verification"` to confirm no link remains.
+- basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
 
 <a id="athena-device-minres-20261113"></a>
 ## ATHENA-DEVICE-MINRES-20261113 — Pin MINRES on a Hephaestus device to its oracle [test] — todo
@@ -117,7 +117,7 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: tightening; needs: none; milestone: M-device-least-squares
 - scope: `crates/athena/benches/gmres_poisson.rs`, `gap_audit.md`
-- outcome: PR 126 (`a71cd7c`) landed the rank recovery (`c9ddce7`) and the provider renewal to Leto/LetoOps 0.46.3 and Hephaestus 0.25. `gap_audit.md` records that native provider acceptance "does not clear Athena's affected graph, whole-cohort or absolute application-performance review" and that "the separate Harmonia performance hold persists"; `ATHENA-DOC-DRIFT-20261113` leaves those lines in place, so this item owns and removes them. The fix leaves full-rank arithmetic unchanged, so a regression is not expected (hypothesis).
+- outcome: PR 126 (`a71cd7c`) landed the rank recovery (`c9ddce7`) and the provider renewal to Leto/LetoOps 0.46.3 and Hephaestus 0.25. `gap_audit.md` records that native provider acceptance "does not clear Athena's affected graph, whole-cohort or absolute application-performance review" and that "the separate Harmonia performance hold persists"; the doc-drift reconciliation (`Item: athena-doc-drift-20261113`) left those lines in place under `## GMRES performance hold`, so this item owns and removes them. The fix leaves full-rank arithmetic unchanged, so a regression is not expected (hypothesis).
 - acceptance: a stored `gmres_poisson` comparison of `606b4f9` (the first parent of `a71cd7c`) against `a71cd7c`, which spans the rank recovery and the provider renewal the hold names; main is 41 commits further on (median, confidence interval, machine class, load) on isolated cores or with instruction counters; the Harmonia hold's disposition is read from its owner and recorded in the PR; the hold text leaves `gap_audit.md` with that PR.
 - next step: build `606b4f9` and `a71cd7c` into the shared target, run `gmres_poisson` on isolated cores, and find the Harmonia hold's owner on the Atlas board.
 - basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
