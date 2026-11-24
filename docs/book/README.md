@@ -55,10 +55,27 @@ Their span after \\(k\\) products is the **Krylov subspace**
 \mathcal{K}_k(A, r_0) = \operatorname{span}\\{ r_0, A r_0, \dots, A^{k-1} r_0 \\}.
 \\]
 
-Every method in this book draws its \\(k\\)-th iterate from the affine set
-\\(x_0 + \mathcal{K}_k(A, r_0)\\). That is not a restriction the methods impose
-on themselves; it is everything reachable with \\(k\\) applications of the
-operator.
+Run without a preconditioner, CG, GMRES (within one restart cycle) and
+Chebyshev iteration draw their \\(k\\)-th iterate from the affine set
+\\(x_0 + \mathcal{K}_k(A, r_0)\\). That is not a restriction these methods
+impose on themselves; it is everything reachable with \\(k\\) applications of
+the operator. BiCGSTAB, LSQR and Deflated CG do not:
+
+- BiCGSTAB's recurrence applies the operator twice per step, so, run without a
+  preconditioner, its \\(k\\)-th iterate lies in
+  \\(x_0 + \mathcal{K}_{2k}(A, r_0)\\).
+- LSQR accepts a rectangular \\(A\\), for which \\(A r_0\\) is undefined, so it
+  builds its subspace from \\(A^{\mathsf T} r_0\\) and \\(A^{\mathsf T} A\\):
+  the \\(k\\)-th iterate lies in
+  \\(x_0 + \mathcal{K}_k(A^{\mathsf T} A, A^{\mathsf T} r_0)\\).
+- Deflated CG adds a coarse correction taken from the span of the deflation
+  basis, which the affine set does not contain in general.
+
+A preconditioner changes the space as well. CG applies \\(M^{-1}\\) to the
+residual, so its iterate lies in
+\\(x_0 + \mathcal{K}_k(M^{-1}A, M^{-1}r_0)\\); right-preconditioned GMRES,
+within one restart cycle, lies in
+\\(x_0 + M^{-1}\mathcal{K}_k(A M^{-1}, r_0)\\).
 
 Two facts make the subspace a good place to look. First, it grows to contain
 the answer: by the Cayley--Hamilton theorem \\(A^{-1}\\) is a polynomial in
@@ -84,7 +101,7 @@ bounds in the CG chapter, why clustering the spectrum is exactly what a
 preconditioner is for, and why the stagnation in the GMRES chapter is possible
 at all.
 
-The methods differ in *which* element of the subspace they pick and how they
+The methods differ in *which* element of their subspace they pick and how they
 find it cheaply:
 
 | Method | Requires | Picks the iterate that | Cost per step |
@@ -92,7 +109,7 @@ find it cheaply:
 | CG | symmetric positive definite \\(A\\) | minimises \\(\\|x - x_\star\\|_A\\) | fixed: three vectors |
 | GMRES | any nonsingular \\(A\\) | minimises \\(\\|b - A x\\|_2\\) | grows: \\(k\\) vectors at step \\(k\\) |
 | BiCGSTAB | any nonsingular \\(A\\) | satisfies a two-sided condition | fixed, but no minimisation |
-| LSQR | any \\(A\\), including rectangular | minimises \\(\\|b - A x\\|_2\\) over all \\(x\\) | fixed |
+| LSQR | any \\(A\\), including rectangular | minimises \\(\\|b - A x\\|_2\\) over its own Krylov subspace | fixed |
 | MINRES | symmetric \\(A\\), possibly indefinite | minimises \\(\\|b - A x\\|_2\\) over the Lanczos space | fixed: seven vectors |
 | Chebyshev | SPD \\(A\\) with spectral bounds | damps the error uniformly on the supplied interval | fixed: three vectors, no inner products |
 | Deflated CG | SPD \\(A\\) with a deflation basis | runs CG on the basis complement | fixed |
@@ -151,8 +168,8 @@ cover the whole book:
   2003. The standard graduate text; freely available from the author.
 - Richard Barrett et al., *Templates for the Solution of Linear Systems:
   Building Blocks for Iterative Methods*, SIAM, 1994.
-  <https://www.netlib.org/templates/templates.html>. Athena's recurrences
-  follow its algorithm statements, cited by section in the chapters below.
+  <https://www.netlib.org/templates/templates.html>. The CG, GMRES and
+  convergence-policy chapters cite its sections 2.3.1, 2.3.4 and 4.2.
 - Nicholas J. Higham, *Accuracy and Stability of Numerical Algorithms*, 2nd
   ed., SIAM, 2002. The source of the rounding-error bounds the convergence
   chapter derives its thresholds from.
