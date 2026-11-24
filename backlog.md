@@ -172,16 +172,6 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - next step: restate the paragraph per table row, then check each Templates section number against the text.
 - basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
 
-<a id="athena-readme-chain-wording-20261124"></a>
-## ATHENA-README-CHAIN-WORDING-20261124 — State the chain's guess and allocation behaviour exactly [docs] — todo
-
-- priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `README.md`
-- outcome: `README.md:47` says `solve_with_guess_state` "starts from a caller guess"; the guess is `Option<&Array1<T>>` and `None` starts from zeros (`solver_chain/warm.rs:26, 31-33`). `README.md:175-177` says `LinearSolverChain` "builds the solution vector and, for each iterative tier, a workspace", which reads as exhaustive: a solve that reaches an iterative tier also builds preconditioners (component-block, SIMPLE, multigrid and incomplete LU at `cold.rs:66, 78, 90, 131`; block-diagonal twice at `:103, :110`; SOR at `warm.rs:48`) and a solve the direct tier ends builds only direct-LU factors (`warm.rs:35-37`, `tiers.rs:183-190`); the warm path clones the guess (`warm.rs:31-33`).
-- acceptance: both sentences match those sources: the guess is optional with a zero start, and the allocation sentence lists the preconditioner and factor construction or says only that the chain allocates on every solve.
-- next step: edit the two sentences, then `git grep -n "caller guess" -- README.md docs` to confirm no other copy.
-- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
-
 <a id="athena-adr-0005-form-20261124"></a>
 ## ATHENA-ADR-0005-FORM-20261124 — Reconcile ADR 0005 with the ladder and bring it to the ADR form [docs] — todo
 
