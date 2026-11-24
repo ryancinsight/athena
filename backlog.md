@@ -132,16 +132,6 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - next step: trim statements Consequences repeats from Decision, then shorten the Verification list to each test's name and oracle; keep every cited source.
 - basis: 68d618e87e42d1b4d9f77e56e2e8e05f7653b7f9
 
-<a id="athena-minres-workspace-reset-20261124"></a>
-## ATHENA-MINRES-WORKSPACE-RESET-20261124 — Reset every MINRES recurrence vector at the seed [fix] — todo
-
-- priority: correctness; needs: none; milestone: M-device-least-squares
-- scope: `crates/athena-core/src/solver/minres/execution.rs`, `crates/athena-leto/tests/minres_contract.rs`
-- outcome: `MinresWorkspace` is documented as reusable (`workspace.rs:3-9`) and `solve_into` takes it by `&mut`, but `seed` zeroes only `previous_direction` (`execution.rs:162-168`); `update_previous` and `update_previous_2` keep the last solve's update vectors. At step one `c₁ = c₂ = 1` and `s₁ = 0`, so `λ₁ = β = ‖r₀‖ ≠ 0` (`execution.rs:174, 205`) and `apply_update` subtracts `λ₁·update_previous` (`execution.rs:349-355`). A second solve then returns a wrong `x` while the estimate `φ̄`, which never reads an update vector, still reports `Converged`. `update_previous_2` enters scaled by `ε₁ = 0` at step one (`execution.rs:204`), and at step two the stale `update_previous` enters again through it scaled by `ε₂ = 0`, so a stale `update_previous_2` corrupts only through non-finite entries: judge-derived from a Python copy of the recurrence, not run on the Rust code (hypothesis), resetting `update_previous` alone gives the right second solve with finite stale entries but `Converged` with `x = (NaN, NaN)` when the stale `update_previous_2` holds NaN.
-- acceptance: `minres_reused_workspace_matches_fresh_workspace` in `minres_contract.rs` solves the `diag(1, -1)` oracle twice on one `MinresWorkspace` with the solution reset to zero, at `f32` and `f64` as the file's other tests do (`..._for_every_cpu_scalar`), asserts the second solution `(1, -2)` within the bound that file derives, and fails at the basis commit (judge-derived from a Python copy of the recurrence, not run on the Rust code: the second solve of `b = (1, 2)` returns `(3.68328157, -3.34164079)` and reports `Converged` at step two, while zeroing both update vectors gives `(1, -2)`); then `seed` resets every recurrence vector, which the test alone does not pin for `update_previous_2` (the fields are `pub(super)`, `workspace.rs:24-26`), so the PR also records a read of `seed` against those three fields: `cargo nextest run -p athena-leto -E 'test(=minres_reused_workspace_matches_fresh_workspace)'`.
-- next step: write the test first and confirm it fails at the basis, then zero `update_previous` and `update_previous_2` beside `previous_direction` in `seed`.
-- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
-
 <a id="athena-device-minres-band-20261124"></a>
 ## ATHENA-DEVICE-MINRES-BAND-20261124 — Pin the MINRES band-correction updates on a device [test] — todo
 

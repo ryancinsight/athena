@@ -2,6 +2,15 @@
 
 All notable changes to Athena are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- [patch] MINRES zeroes every recurrence vector (`previous_direction`,
+  `update_previous`, `update_previous_2`) when a solve starts. A second
+  solve on one `MinresWorkspace` previously subtracted the first solve's
+  update vector and returned a wrong solution while reporting `Converged`.
+
 ## Athena adapters 0.5.0
 
 ### Breaking

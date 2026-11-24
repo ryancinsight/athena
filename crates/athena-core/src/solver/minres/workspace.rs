@@ -7,6 +7,10 @@ use crate::KrylovBackend;
 /// allocation-free: the Lanczos basis enters the solution through the
 /// two-term update-vector recurrence, so seven length-`n` buffers are the
 /// whole footprint — no `n`-by-`m` basis is ever stored.
+///
+/// Every solve reseeds the recurrence state, so one workspace serves any
+/// number of solves of the same length; a reused workspace yields the same
+/// result as a fresh one.
 pub struct MinresWorkspace<B: KrylovBackend> {
     /// Seed residual `r₀ = b − A·x₀`, normalised into the first Lanczos
     /// direction. The buffer is not needed after step 1; it is retained as
