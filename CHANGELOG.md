@@ -21,6 +21,10 @@ All notable changes to Athena are documented in this file.
   so a workspace reused after a solve that overflowed made the next
   well-posed solve end `NonFinite`. A reused workspace now gives the same
   report and iterate as a fresh one.
+- [patch] MINRES zeroes every recurrence vector (`previous_direction`,
+  `update_previous`, `update_previous_2`) when a solve starts. A second
+  solve on one `MinresWorkspace` previously subtracted the first solve's
+  update vector and returned a wrong solution while reporting `Converged`.
 
 ## Athena adapters 0.5.0
 

@@ -98,6 +98,15 @@ where
 
     /// Seed the recurrence: `v₁ = (b − A·x₀)/‖b − A·x₀‖`, the norm as the
     /// first Lanczos coefficient and the seed of the residual carrier.
+    ///
+    /// Every buffer the first step reads is rewritten or zeroed here, so a
+    /// workspace reused after any earlier solve gives the same result as a
+    /// fresh one under IEEE value equality: `seed_residual`, `direction` and
+    /// `image` are overwritten, `previous_direction`, `update_previous` and
+    /// `update_previous_2` are overwritten and zeroed, and `update` is
+    /// overwritten before it is read. The zeroing multiplies the seed
+    /// residual by `+0`, so entries beneath a negative residual entry are
+    /// `-0` where a fresh workspace holds `+0`; the two compare equal.
     pub(super) fn seed(
         &mut self,
         right_hand_side: &B::Vector,
@@ -159,13 +168,31 @@ where
                 <B::Scalar as NumericElement>::ONE / initial_residual,
             )
             .map_err(SolveError::Backend)?;
-        self.backend
-            .scale(
-                self.backend
-                    .view_mut(&mut self.workspace.previous_direction),
-                <B::Scalar as NumericElement>::ZERO,
-            )
-            .map_err(SolveError::Backend)?;
+        // Zero every recurrence vector that step one reads: `vⱼ₋₁` and the
+        // update vectors `wⱼ₋₁`, `wⱼ₋₂`. Step one scales `wⱼ₋₁` by
+        // `λ₁ = β ≠ 0`, so a reused workspace would otherwise subtract the
+        // previous solve's update vector from the new one. Scaling by zero
+        // keeps NaN and turns an infinite entry into NaN, so each vector is
+        // first overwritten with the seed residual, finite because its norm
+        // passed the check above, and then scaled to exact zeros.
+        for vector in [
+            &mut self.workspace.previous_direction,
+            &mut self.workspace.update_previous,
+            &mut self.workspace.update_previous_2,
+        ] {
+            self.backend
+                .copy(
+                    self.backend.view(&self.workspace.seed_residual),
+                    self.backend.view_mut(vector),
+                )
+                .map_err(SolveError::Backend)?;
+            self.backend
+                .scale(
+                    self.backend.view_mut(vector),
+                    <B::Scalar as NumericElement>::ZERO,
+                )
+                .map_err(SolveError::Backend)?;
+        }
 
         Ok(Stage::Continue(MinresState {
             initial_residual,

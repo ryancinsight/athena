@@ -7,12 +7,16 @@
 //! test is negative), at `f32` and `f64`.
 
 use athena_core::{
-    Cg, CgWorkspace, ConvergencePolicy, Identity, Minres, MinresWorkspace, SolveError, Termination,
+    Cg, CgWorkspace, ConvergencePolicy, Identity, Minres, MinresWorkspace, SolveError, SolveReport,
+    Termination,
 };
 use athena_leto::{CsrOperator, LetoBackend};
 use eunomia::{FloatElement, RealField};
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
+
+#[path = "minres_contract/workspace_reuse.rs"]
+mod workspace_reuse;
 
 /// The ADR 0062 oracle operator: `diag(1, −1)`, symmetric indefinite with
 /// eigenvalues of mixed sign and condition number one.
@@ -67,6 +71,18 @@ where
     );
 }
 
+/// Error bound for one MINRES solve of the `diag(1, −1)` oracle.
+///
+/// Two Lanczos steps over length-two vectors perform fewer than 48 rounded
+/// scalar operations with unit amplification (κ(A) = 1); 256 machine
+/// epsilons is a factor-of-five margin over that first-order count.
+fn indefinite_oracle_bound<T>() -> T
+where
+    T: RealField,
+{
+    T::from_f64(256.0) * <T as RealField>::EPSILON
+}
+
 fn solves_the_indefinite_oracle<T>()
 where
     T: RealScalar + RealField + core::fmt::Debug,
@@ -96,11 +112,7 @@ where
     .expect("invariant: manufactured solve has valid dimensions");
 
     assert_eq!(report.termination, Termination::Converged);
-    // Two Lanczos steps over length-two vectors perform fewer than 48 rounded
-    // scalar operations with unit amplification (κ(A) = 1); 256 machine
-    // epsilons is a factor-of-five margin over that first-order count.
-    let bound = T::from_f64(256.0) * <T as RealField>::EPSILON;
-    assert_closed_form(&solution, bound);
+    assert_closed_form(&solution, indefinite_oracle_bound());
 
     // CG must fail on this operator: its first denominator is the Rayleigh
     // quotient of the residual direction, dᵀ·A·d = 1 − 4 = −3 < 0, reported
@@ -155,13 +167,16 @@ where
     .expect("invariant: manufactured CSR parts are valid")
 }
 
-fn solves_the_tridiagonal_system<T>()
+/// One solve of the three-unknown oracle from `x₀ = 0` on the given
+/// workspace.
+fn solve_tridiagonal_oracle<T>(
+    backend: LetoBackend<T>,
+    workspace: &mut MinresWorkspace<LetoBackend<T>>,
+) -> (Array1<T>, SolveReport<T>)
 where
     T: RealScalar + RealField + core::fmt::Debug,
 {
-    let backend = LetoBackend::<T>::default();
-    let matrix = indefinite_tridiagonal();
-    let operator = CsrOperator::new(matrix).expect("invariant: matrix is square");
+    let operator = CsrOperator::new(indefinite_tridiagonal()).expect("invariant: matrix is square");
     // Manufactured solution (1, 2, 3): b = A·x* = (4, 0, 8).
     let right_hand_side = Array1::from_shape_vec(
         [3],
@@ -169,21 +184,26 @@ where
     )
     .expect("invariant: vector shape is exact");
     let mut solution = Array1::zeros([3]);
-    let mut workspace =
-        MinresWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
     let policy = ConvergencePolicy::new(<T as RealField>::EPSILON, <T as RealField>::EPSILON, 4)
         .expect("invariant: tolerance is finite and positive");
-
     let report = Minres::<LetoBackend<T>>::solve_into(
         &backend,
         &operator,
         &right_hand_side,
         &mut solution,
-        &mut workspace,
+        workspace,
         policy,
     )
     .expect("invariant: manufactured solve has valid dimensions");
+    (solution, report)
+}
 
+/// Assert the manufactured solution `(1, 2, 3)` and the Lanczos completion
+/// bound of the three-unknown oracle.
+fn assert_tridiagonal_closed_form<T>(solution: &Array1<T>, report: &SolveReport<T>)
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
     assert_eq!(report.termination, Termination::Converged);
     // Three distinct eigenvalues complete the Krylov space at step three.
     assert!(report.iterations <= 3, "Lanczos completion bound");
@@ -204,10 +224,43 @@ where
     }
 }
 
+fn solves_the_tridiagonal_system<T>()
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let backend = LetoBackend::<T>::default();
+    let mut workspace =
+        MinresWorkspace::new(&backend, 3).expect("invariant: host allocation succeeds");
+    let (solution, report) = solve_tridiagonal_oracle(backend, &mut workspace);
+    assert_tridiagonal_closed_form(&solution, &report);
+}
+
 #[test]
 fn minres_solves_a_three_step_indefinite_system_for_every_cpu_scalar() {
     solves_the_tridiagonal_system::<f32>();
     solves_the_tridiagonal_system::<f64>();
+}
+
+#[test]
+fn minres_reused_workspace_matches_fresh_workspace() {
+    workspace_reuse::reused_workspace_matches_fresh_workspace::<f32>();
+    workspace_reuse::reused_workspace_matches_fresh_workspace::<f64>();
+}
+
+#[test]
+fn minres_workspace_reused_after_non_finite_solve_matches_fresh_workspace() {
+    workspace_reuse::workspace_reused_after_non_finite_solve_matches_fresh_workspace::<f32>();
+    workspace_reuse::workspace_reused_after_non_finite_solve_matches_fresh_workspace::<f64>();
+}
+
+#[test]
+fn minres_workspace_reused_after_overflowing_second_update_matches_fresh_workspace() {
+    workspace_reuse::workspace_reused_after_overflowing_second_update_matches_fresh_workspace::<f32>(
+        [-120, -60, 80, 20],
+    );
+    workspace_reuse::workspace_reused_after_overflowing_second_update_matches_fresh_workspace::<f64>(
+        [-1000, -500, 600, 100],
+    );
 }
 
 #[test]
