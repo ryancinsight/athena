@@ -45,14 +45,14 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
 
 <a id="athena-doc-drift-20261113"></a>
-## ATHENA-DOC-DRIFT-20261113 — Finish the doc-drift remainders: ledger, book derivations, citations [docs] — todo
+## ATHENA-DOC-DRIFT-20261113 — Finish the doc-drift remainders: book derivations, citations [docs] — todo
 
 - priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `docs/verification/`, `docs/book/further_solvers.md`, doc comments in `crates/athena-core/src/solver/minres/algorithm.rs` and `chebyshev/algorithm.rs`
-- outcome: three remainders after the README, CHANGELOG, gap-audit and module-doc reconciliation. (1) `docs/verification/gmres-rank-recovery.md` (99 lines) records landed work pinned by `crates/athena-leto/tests/gmres_rank_deficient.rs`, whose counterexample `docs/book/gmres.md` states, so the ledger belongs to the commit history. (2) `further_solvers.md` names `Minres`, `Chebyshev` and `DeflatedCg` and states their contracts but derives none: it has no recurrences, no compiled code and no references section. (3) `minres/algorithm.rs:40-42` gives the Paige and Saunders (1975) title unverified, and `chebyshev/algorithm.rs:41` cites Golub and Van Loan section 11.3 with no edition.
-- acceptance: (1) the file is deleted, no tracked file links it, and `git log --follow -- docs/verification/gmres-rank-recovery.md` still reaches it; (2) each of the three sections of `further_solvers.md` states its recurrence and carries a compiled `rust` block, the chapter ends in a References section, and `mdbook test docs/book` passes; (3) both comments cite a resolved title, journal and pages, or an edition and section, or drop the locator.
-- next step: `git rm` the ledger, then `git grep -n "docs/verification"` to confirm no link remains.
-- basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
+- scope: `docs/book/further_solvers.md`, doc comments in `crates/athena-core/src/solver/minres/algorithm.rs` and `chebyshev/algorithm.rs`
+- outcome: two remainders after the README, CHANGELOG, gap-audit and module-doc reconciliation and the deletion of the GMRES rank-recovery ledger. (1) `further_solvers.md` names `Minres`, `Chebyshev` and `DeflatedCg` and states their contracts but derives none: it has no recurrences, no compiled code and no references section. (2) `minres/algorithm.rs:40-42` gives the Paige and Saunders (1975) title unverified, and `chebyshev/algorithm.rs:41` cites Golub and Van Loan section 11.3 with no edition.
+- acceptance: (1) each of the three sections of `further_solvers.md` states its recurrence and carries a compiled `rust` block, the chapter ends in a References section, and `mdbook test docs/book` passes; (2) both comments cite a resolved title, journal and pages, or an edition and section, or drop the locator.
+- next step: derive the MINRES recurrence in `further_solvers.md` with a compiled block, then the Chebyshev and deflated CG sections and the References section; the two source comments are `.rs` edits and take the cargo gates.
+- basis: 9741050161a53f882f9ca8e4e8cfbb303579a9e2
 
 <a id="athena-device-minres-20261113"></a>
 ## ATHENA-DEVICE-MINRES-20261113 — Pin MINRES on a Hephaestus device to its oracle [test] — todo
