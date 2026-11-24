@@ -140,27 +140,67 @@ fn chebyshev_reports_the_exact_singleton_spectrum_solution_on_device() {
     assert_eq!(report.final_residual_norm.to_bits(), 0.0_f32.to_bits());
 }
 
-/// Absolute error bound, in machine epsilons of `f32`, for the MINRES solution
-/// components and its final residual estimate.
+/// Bound, in machine epsilons of `f32`, on the error of each MINRES solution
+/// component for `diag(1, -1)`, `b = (1, 2)`, `x₀ = 0`.
 ///
-/// Two Lanczos steps over length-two vectors perform fewer than 48 rounded
-/// scalar operations (`crates/athena-leto/tests/minres_contract.rs`), each
-/// amplified by at most `κ(diag(1, −1)) = 1`, so the first-order error is
-/// below `48 ε`. The device recurrence performs no more operations: the
-/// two-element dot and squared-norm reductions have one addition, so the
-/// sequential host order and any device workgroup tree evaluate the same two
-/// products and one sum, and the axpy kernels fuse `factor * source +
-/// destination` into one rounding in place of two. The bound `256 ε` is the
-/// host contract's factor-of-five margin over that count (`240 ε`, rounded
-/// up), which also covers a per-operation device error of up to five
-/// epsilons. No source read for this derivation states the device square-root
-/// and division accuracy, so that per-operation allowance is an assumption: a
-/// result beyond the bound reports a device accuracy outside it, and the
-/// bound is never widened to absorb it.
-const ORACLE_BOUND_EPSILONS: u16 = 256;
+/// First-order propagation over the rounded operations `k` that form `x`:
+/// `|Δxᵢ| ≤ Σₖ |∂xᵢ/∂δₖ| τₖ`, with `δₖ` the relative rounding error of
+/// operation `k` and `τₖ` its tolerance (`ε` is `f32::EPSILON`):
+///
+/// - host `+ - * / √`: `ε/2` (Rust `f32` docs: `roundTiesToEven`; `sqrt` is
+///   the rounded infinite-precision result; `eunomia` 0.12.1 enables `std` in
+///   this dependency graph, so its `sqrt` is `f32::sqrt`);
+/// - device `+ - *` and `fma`: `ε`. WGSL §15.7.4.1 calls these "correctly
+///   rounded", which admits either neighbour of the exact result;
+///   §15.7.5 and the note in §17.5.32 admit an unfused multiply then add,
+///   so each `fma` counts as two;
+/// - device `sqrt`: `4.5 ε`. WGSL §15.7.4.1 lists `sqrt` as inherited from
+///   `1.0 / inverseSqrt(x)`, `inverseSqrt` as 2 ULP and `x / y` as 2.5 ULP,
+///   and `ULP(y) ≤ ε|y|`.
+///
+/// WGSL sections are those of <https://www.w3.org/TR/WGSL/>
+/// (`#concrete-float-accuracy`, `#reassociation-and-fusion`).
+///
+/// Exact, so unlisted: the CSR rows `0 + (±1)·v` (hephaestus-wgpu 0.30.0
+/// `application/sparse/spmv.rs:93-97`); `b - A·0`; `1² + 2² = 5`; `1·g` and
+/// `2·g` in the seed scale; every product with a zero start vector; the zero
+/// band entries of the first two rotated columns; `λ₁ = ‖r₀‖`; `β/β = 1` in
+/// the first rotation. In the second rotation the remainder `β₃` is `O(ε)`,
+/// so `1 + (β₃/ρ)²` rounds to 1 (`β₃/ρ < 2⁻¹²`, see the residual bound),
+/// giving `cos = -1`, `ρ₂ = |ᾱ₂|`, `φ₂ = -φ̄₁` exactly, and `β₃` reaches `x`
+/// only at second order. The device dot of two elements is two products and
+/// one sum (the lanes past `len` hold the identity,
+/// `application/linalg/map_reduction/shader.rs:32-43`), the host order.
+///
+/// 55 operations form `x`. Three have zero first-order sensitivity because
+/// `λ₂ = 0` (the sum forming it and the two products `λ₂·w₁`); 52 remain:
+/// seed 2, first Lanczos step 11, first rotation 11, first update 4, shift 3,
+/// second Lanczos step 7, second rotation 6, second update 8. With
+/// `α₁ = -3/5`, `β₂ = 4/5`, `ρ₂ = 1`, `φ₂ = 4√5/5`, their sensitivities sum to
+/// `38.01 ε` for `x₀` (`15.1` device `sqrt`, `14.8` device, `8.1` host) and
+/// `72.35 ε` for `x₁` (`40.3 + 20.4 + 11.6`).
+/// Second-order terms are below `10⁻³ ε` (`(72 ε)²`), so `⌈72.35⌉ = 73`.
+const ORACLE_BOUND_EPSILONS: u16 = 73;
+
+/// Bound, in machine epsilons, on the true residual `‖b - A x‖₂` and on the
+/// reported residual estimate `|φ̄₃|`.
+///
+/// The true residual is at most `hypot(38.01, 72.35) ε = 81.73 ε`. The
+/// estimate is `|s₂ φ̄₂|` with `φ̄₂ = 4√5/5` and `s₂ = β₃/ρ₂`, where `β₃` is
+/// the norm of the second Lanczos remainder; the same propagation bounds its
+/// components by `15.09 ε` and `34.10 ε`, so `β₃ ≤ 37.29 ε` and the estimate
+/// is at most `1.789 · 37.29 ε = 66.7 ε`. Both are nonnegative and below
+/// `82 ε`, so they differ by at most `82 ε`. The estimate also lies below the
+/// convergence threshold `73 ε · ‖b‖ = 163 ε`, so the second step converges,
+/// while the first step's estimate `4√5/5` exceeds it.
+const ORACLE_RESIDUAL_BOUND_EPSILONS: u16 = 82;
 
 fn oracle_bound() -> f32 {
     f32::from(ORACLE_BOUND_EPSILONS) * f32::EPSILON
+}
+
+fn oracle_residual_bound() -> f64 {
+    f64::from(ORACLE_RESIDUAL_BOUND_EPSILONS) * f64::from(f32::EPSILON)
 }
 
 #[test]
@@ -180,9 +220,12 @@ fn minres_solves_the_indefinite_oracle_on_device() {
     .expect("invariant: manufactured CSR parts are valid");
     // `x = (1, -2)` gives `b = (1, 2)`; the Krylov space of `b` is complete
     // after two Lanczos steps because `A` has two distinct eigenvalues.
-    let rhs = backend.device().upload(&[1.0, 2.0]).expect("upload");
-    let mut solution = backend.allocate(2).expect("allocation");
-    let mut workspace = MinresWorkspace::new(&backend, 2).expect("workspace");
+    let rhs = backend
+        .device()
+        .upload(&[1.0, 2.0])
+        .expect("invariant: upload");
+    let mut solution = backend.allocate(2).expect("invariant: allocation");
+    let mut workspace = MinresWorkspace::new(&backend, 2).expect("invariant: workspace");
     let bound = oracle_bound();
     let policy = ConvergencePolicy::new(bound, bound, 3).expect("invariant: valid policy");
     let report = Minres::<Backend>::solve_into(
@@ -198,7 +241,7 @@ fn minres_solves_the_indefinite_oracle_on_device() {
     backend
         .device()
         .download(&solution, &mut host)
-        .expect("readback");
+        .expect("invariant: readback");
 
     assert!((host[0] - 1.0).abs() <= bound, "x0 = {}", host[0]);
     assert!((host[1] + 2.0).abs() <= bound, "x1 = {}", host[1]);
@@ -214,4 +257,33 @@ fn minres_solves_the_indefinite_oracle_on_device() {
     assert_eq!(report.iterations, 2);
     assert_eq!(report.operator_applications, 3);
     assert!(report.final_residual_norm <= report.threshold);
+    // `b - A x = (-r0, -r1)`, so the true residual norm of the read-back
+    // iterate is `hypot(r0, r1)`; the estimate must agree within the bound.
+    let true_residual = r0.hypot(r1);
+    let residual_bound = oracle_residual_bound();
+    assert!(
+        true_residual <= residual_bound,
+        "true residual {true_residual}"
+    );
+    let estimate = f64::from(report.final_residual_norm);
+    assert!(
+        (estimate - true_residual).abs() <= residual_bound,
+        "estimate {estimate} against true residual {true_residual}"
+    );
+
+    // The oracle's discriminating half: `Cg` meets `dᵀAd = 1 - 4 = -3` on its
+    // first direction `d = b` and stops.
+    let mut cg_solution = backend.allocate(2).expect("invariant: allocation");
+    let mut cg_workspace = CgWorkspace::new(&backend, 2).expect("invariant: workspace");
+    let cg_report = Cg::<Backend>::solve_into(
+        &backend,
+        &operator,
+        &Identity,
+        &rhs,
+        &mut cg_solution,
+        &mut cg_workspace,
+        policy,
+    )
+    .expect("invariant: valid dimensions and real device operations");
+    assert_eq!(cg_report.termination, Termination::NonPositiveCurvature);
 }
