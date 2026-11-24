@@ -115,7 +115,8 @@ solution vector, and a reusable workspace whose warm solves allocate nothing.
 - van der Vorst (1992), *Bi-CGSTAB: a fast and smoothly converging variant of
   Bi-CG for the solution of nonsymmetric linear systems*, SIAM J. Sci. Stat.
   Comput. 13(2), 631--644.
-- Barrett et al., *Templates*, §2.3.7, for the preconditioned algorithm.
+- Barrett et al., *Templates*, §2.3.8 (Figure 2.10), for the preconditioned
+  algorithm.
   <https://www.netlib.org/templates/templates.html>
 - Saad, *Iterative Methods for Sparse Linear Systems*, 2nd ed., §7.4, for the
   BiCG family and its breakdown conditions.

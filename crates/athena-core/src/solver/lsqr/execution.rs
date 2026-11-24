@@ -125,14 +125,11 @@ where
             )
             .map_err(SolveError::Backend)?;
 
-        // The initial `rho_bar` carries the diagonal entry from the previous
-        // step. For step 1 there is no previous step; the undamped recurrence
-        // initialises `rho_bar = alpha`. Damping enters only via the `+λ²`
-        // in the Givens rotation at every step (see `step`); the initial
-        // `rho_bar` is unchanged, because the rotation's `ρ` is the
-        // accumulated diagonal element of the augmented bidiagonal factor and
-        // the very first rotation's diagonal is just `α`. This matches the
-        // reference Hansen 1998 damped-LSQR recurrence.
+        // `rho_bar` and `phi_bar` start at `alpha` and `beta`, the first
+        // entries of the bidiagonal factor and of `||r0|| e1`. Damping acts
+        // only through the extra rotation at the head of every `step`, which
+        // also accumulates the damping residual `psi`; nothing is
+        // pre-rotated here.
         Ok(Stage::Continue(LsqrState {
             initial_residual: beta,
             residual: beta,
@@ -140,6 +137,7 @@ where
             alpha,
             phi_bar: beta,
             rho_bar: alpha,
+            damping_residual_sq: <B::Scalar as NumericElement>::ZERO,
             iterations: 0,
             operator_applications: 2,
         }))
@@ -202,7 +200,6 @@ where
     fn step(&mut self, state: &mut LsqrState<B::Scalar>) -> ExecutionResult<B, Step<B::Scalar>> {
         let one = <B::Scalar as NumericElement>::ONE;
         let zero = <B::Scalar as NumericElement>::ZERO;
-        let damping_sq = self.damping * self.damping;
 
         let Some(beta) = self.advance_left(state)? else {
             return Ok(Step::Complete(state.report(Termination::NonFinite)));
@@ -212,19 +209,37 @@ where
         };
         state.iterations += 1;
 
-        // Plane rotation eliminating the subdiagonal of the bidiagonal factor.
-        // The unregularised recurrence carries `ρ = √(ρ_bar² + β²)`. For
-        // Tikhonov damping, the augmented system `[A; λI]·x ≈ [b; 0]`
-        // contributes an extra `λ²` to the diagonal at every step (Paige &
-        // Saunders 1982, eqn 4.4): the rotation's `ρ` is therefore
-        // `√(ρ_bar² + β² + λ²)`. The trigonometric identities that follow
-        // are unchanged because `cosine`, `sine`, `θ`, `φ` only depend on
-        // `ρ` and `ρ_bar`.
-        let rho = (state.rho_bar * state.rho_bar + beta * beta + damping_sq).sqrt();
+        // Paige & Saunders 1982, §2.1 eqs 2.4 and 2.7: the damped problem is
+        // the least-squares problem for `[B_k; λI]·y ≈ [β₁e₁; 0]`. Each step
+        // first eliminates the `λ` row against `ρ̄` with one plane rotation,
+        // `ρ̂ = √(ρ̄² + λ²)`, `c₁ = ρ̄/ρ̂`, `s₁ = λ/ρ̂`, which turns `φ̄` into
+        // `c₁φ̄` and leaves `ψ = s₁φ̄` as a component of the augmented
+        // residual that no later step changes. A second rotation then
+        // eliminates `β` against `ρ̂`. A single rotation with
+        // `√(ρ̄² + β² + λ²)` mixes the `λ` row into the `β` row and is not
+        // an orthogonal elimination of either. Recurrence as in SciPy
+        // 1.18.0 `scipy/sparse/linalg/_isolve/lsqr.py:443-463`.
+        let rho_hat = if self.damping == zero {
+            state.rho_bar
+        } else {
+            let rho_hat = (state.rho_bar * state.rho_bar + self.damping * self.damping).sqrt();
+            if !rho_hat.is_finite() || rho_hat == zero {
+                return Ok(Step::Complete(state.report(Termination::Breakdown)));
+            }
+            let damping_cosine = state.rho_bar / rho_hat;
+            let damping_sine = self.damping / rho_hat;
+            let psi = damping_sine * state.phi_bar;
+            state.phi_bar = damping_cosine * state.phi_bar;
+            state.damping_residual_sq += psi * psi;
+            rho_hat
+        };
+
+        // Second rotation: eliminate the subdiagonal `β` against `ρ̂`.
+        let rho = (rho_hat * rho_hat + beta * beta).sqrt();
         if !rho.is_finite() || rho == zero {
             return Ok(Step::Complete(state.report(Termination::Breakdown)));
         }
-        let cosine = state.rho_bar / rho;
+        let cosine = rho_hat / rho;
         let sine = beta / rho;
         let theta = sine * alpha;
         state.rho_bar = -cosine * alpha;
@@ -254,10 +269,12 @@ where
             )
             .map_err(SolveError::Backend)?;
 
-        // `phi_bar` is the residual norm of the current iterate, and
-        // `phi_bar * alpha * |cosine|` is the norm of `Aᵀr`, both available
-        // from the rotation without extra operator applications.
-        state.residual = state.phi_bar.abs();
+        // The augmented residual `[b − A·x; −λ·x]` has norm
+        // `√(φ̄² + Σψ²)` (equal to `|φ̄|` undamped), and
+        // `|φ̄|·α·|cosine|` is the norm of `Āᵀr̄ = Aᵀr − λ²x`, both
+        // available from the rotations without extra operator applications
+        // (SciPy `lsqr.py:496-499`: `rnorm`, `arnorm = α|τ|`).
+        state.residual = (state.phi_bar * state.phi_bar + state.damping_residual_sq).sqrt();
         let normal_residual = state.phi_bar.abs() * alpha * cosine.abs();
         if !state.residual.is_finite() || !normal_residual.is_finite() {
             return Ok(Step::Complete(state.report(Termination::NonFinite)));
@@ -411,6 +428,9 @@ struct LsqrState<T> {
     alpha: T,
     phi_bar: T,
     rho_bar: T,
+    /// `Σψ²`: squared norm of the augmented-residual components that the
+    /// damping rotations have already fixed.
+    damping_residual_sq: T,
     iterations: usize,
     operator_applications: usize,
 }
