@@ -101,23 +101,32 @@ impl<B: KrylovBackend> Lsqr<B> {
         )
     }
 
-    /// Solve `min ‖A·x − b‖₂ + λ·‖x‖₂` (Tikhonov-regularised least squares)
-    /// into caller-owned `solution`.
+    /// Solve `min ‖A·x − b‖₂² + λ²·‖x − x₀‖₂²` (Tikhonov-regularised least
+    /// squares) into caller-owned `solution`, where `x₀` is the initial
+    /// content of `solution`.
     ///
     /// `λ ≥ 0` is the regularisation weight. `λ = 0` recovers the unregularised
     /// least-squares problem; positive `λ` stabilises the iterate against
     /// measurement noise and small singular values, at the cost of a bias
-    /// toward zero. The damped problem is solved exactly as
-    /// `min ‖ [A; λI]·x − [b; 0] ‖₂`, so the recurrence is the same
-    /// bidiagonalisation with one extra `λ²` term in the diagonal update at
-    /// every step (Paige & Saunders 1982, §4, eqn 4.4).
+    /// toward `x₀`. The minimiser satisfies `(AᵀA + λ²I)·(x − x₀) = Aᵀ(b − A·x₀)`.
     ///
-    /// # Panics
+    /// The damped problem is the ordinary least-squares problem for the
+    /// augmented system `[A; λI]·x ≈ [b; 0]` (Paige & Saunders 1982, §2.1,
+    /// eq. 2.4). Every step of the bidiagonal recurrence applies two plane
+    /// rotations to the projected problem `[B_k; λI]·y ≈ [β₁e₁; 0]` (eq.
+    /// 2.7). The first eliminates the `λ` row against `ρ̄`:
+    /// `ρ̂ = √(ρ̄² + λ²)`, `c₁ = ρ̄/ρ̂`, `s₁ = λ/ρ̂`, `ψ = s₁φ̄`, `φ̄ ← c₁φ̄`.
+    /// The second eliminates the subdiagonal `β`: `ρ = √(ρ̂² + β²)`,
+    /// `c = ρ̂/ρ`, `s = β/ρ`, `θ = sα`, `ρ̄ ← −cα`, `φ = cφ̄`, `φ̄ ← sφ̄`. The
+    /// recurrence is the one in `SciPy` 1.18.0
+    /// `scipy/sparse/linalg/_isolve/lsqr.py:443-463`.
     ///
-    /// `damping` must be finite and non-negative; callers are expected to
-    /// validate. The algorithm does not panic on these — it propagates a
-    /// [`crate::Termination::NonFinite`] or runs as if `λ = 0` — but the test suite
-    /// asserts the input discipline.
+    /// For `λ > 0` the reported residual norms are those of the augmented
+    /// system, `‖[b − A·x; λ·(x − x₀)]‖₂ = √(φ̄² + Σψ²)`, not `‖b − A·x‖₂`.
+    ///
+    /// A non-finite `damping` ends the solve with
+    /// [`crate::Termination::Breakdown`]; a negative one acts as its absolute
+    /// value because only `λ²` enters the minimiser.
     ///
     /// # Errors
     ///

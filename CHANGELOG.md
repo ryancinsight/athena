@@ -2,6 +2,38 @@
 
 All notable changes to Athena are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- [patch] MINRES checks that every solution entry is finite before reporting
+  initial or iterative convergence. A candidate containing NaN or infinity
+  now returns `Termination::NonFinite`, even when the residual meets tolerance.
+
+- [patch] LSQR scales both plane rotations before forming their radii. A
+  finite damping whose square overflows can now produce a converged iterate
+  when the radii themselves fit in the working precision.
+
+- [patch] Damped LSQR (`Lsqr::solve_damped_into` and
+  `solve_damped_with_observer`) eliminates the damping term with its own plane
+  rotation before eliminating the bidiagonal subdiagonal, as Paige and
+  Saunders (1982) §2.1 and the SciPy recurrence do, instead of folding `λ²`
+  into one rotation. The iterate now equals the closed form
+  `(AᵀA + λ²I)⁻¹Aᵀb` within the derived rounding bound; the old rotation
+  converged to a point that differed by about `1e-5` on a 3×2 system at
+  `λ = 0.5`. For `λ > 0` the reported residual norms and the
+  `Termination::NormalEquations` test use the augmented residual
+  `‖[b − A·x; λ·(x − x₀)]‖₂`, no longer `|φ̄|` alone. `λ = 0` is unchanged.
+- [patch] `Chebyshev` resets `ChebyshevWorkspace::step` when it seeds a solve.
+  Step one scales that buffer by `τ₁ − 1 = 0`, and `0·∞` and `0·NaN` are NaN,
+  so a workspace reused after a solve that overflowed made the next
+  well-posed solve end `NonFinite`. A reused workspace now gives the same
+  report and iterate as a fresh one.
+- [patch] MINRES zeroes every recurrence vector (`previous_direction`,
+  `update_previous`, `update_previous_2`) when a solve starts. A second
+  solve on one `MinresWorkspace` previously subtracted the first solve's
+  update vector and returned a wrong solution while reporting `Converged`.
+
 ## Athena adapters 0.5.0
 
 ### Breaking
@@ -93,7 +125,6 @@ All notable changes to Athena are documented in this file.
 - Require Leto/LetoOps >=0.46.3,<0.48 to exclude the 0.46.2 finite-range
   regression. The canonical lock selects merged/published Leto #376 at
   5051cd9; native 0.46.3 registry source and fresh consumers are verified.
-  Athena dependency-delta review and lifecycle gates remain required.
 - Admit Hephaestus >=0.22.2,<0.26 and test its current 0.25 public default.
   The consumed core/WGPU crate files are byte-identical across 0.24/0.25;
   #506 adds embedding ports outside Athena's dependency surface.
@@ -119,8 +150,7 @@ All notable changes to Athena are documented in this file.
 
 - [patch] Admit Eunomia>=0.10,<0.12 and Leto/LetoOps>=0.46,<0.48,preserving current-provider support and all Rust
   implementation/test/feature bytes. Current canonical lock and real typed
-  current/future consumer probes verify the bridge; final provider ordering,
-  exact-head review and hosted/publication gates remain required.
+  current/future consumer probes verify the bridge.
 
 - Advance the locked Atlas provider graph to Eunomia 0.10.0, Mnemosyne 0.10.0
   (arena 0.7.0), Leto/Leto-ops 0.46.0, and Hephaestus 0.22.1, following the

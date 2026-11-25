@@ -7,11 +7,13 @@ use crate::KrylovBackend;
 /// allocation-free: the Lanczos basis enters the solution through the
 /// two-term update-vector recurrence, so seven length-`n` buffers are the
 /// whole footprint — no `n`-by-`m` basis is ever stored.
+///
+/// Every solve reseeds the recurrence state, so one workspace serves any
+/// number of solves of the same length; a reused workspace yields the same
+/// result as a fresh one under IEEE value equality (`-0` equals `+0`).
 pub struct MinresWorkspace<B: KrylovBackend> {
-    /// Seed residual `r₀ = b − A·x₀`, normalised into the first Lanczos
-    /// direction. The buffer is not needed after step 1; it is retained as
-    /// the dedicated first direction because the update vectors `w₁`, `w₂`,
-    /// `w₃` rotate through their roles and must not alias it.
+    /// Seed residual `r₀ = b − A·x₀`. After seeding, a candidate
+    /// convergence reuses this allocation and its prepared norm for `x − x`.
     pub(super) seed_residual: B::Vector,
     /// Current Lanczos direction `vⱼ`.
     pub(super) direction: B::Vector,

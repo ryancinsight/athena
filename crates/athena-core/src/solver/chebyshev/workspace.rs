@@ -6,6 +6,10 @@ use crate::KrylovBackend;
 /// The recurrence is three-term in the step and needs one residual, one
 /// step, and one operator image; no basis is stored and no reductions
 /// beyond the residual norm are required.
+///
+/// Every solve reseeds the recurrence state, so one workspace serves any
+/// number of solves of the same length; a reused workspace yields the same
+/// result as a fresh one, including after a solve that overflowed.
 pub struct ChebyshevWorkspace<B: KrylovBackend> {
     pub(super) residual: B::Vector,
     pub(super) step: B::Vector,

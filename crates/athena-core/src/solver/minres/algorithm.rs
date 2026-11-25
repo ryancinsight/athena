@@ -34,6 +34,12 @@ use crate::SolveError;
 /// rotations are norm-preserving), and the run reports [`crate::Termination::Breakdown`]
 /// when the recurrence loses rank before the policy is met — a zero next
 /// Lanczos coefficient, or a zero QR diagonal.
+/// Before accepting an initial or iterative convergence result, MINRES checks
+/// every component of the candidate solution. A NaN or infinity changes the
+/// termination to [`crate::Termination::NonFinite`]. The residual field
+/// retains the value that triggered the check. Intermediate iterations
+/// use the scalar recurrence, so a budget or breakdown exit can still
+/// contain a non-finite iterate.
 ///
 /// # Reference
 ///
@@ -99,10 +105,13 @@ impl<B: KrylovBackend> Minres<B> {
             observer,
         };
         execution.validate_dimensions(right_hand_side)?;
-        let state = match execution.seed(right_hand_side)? {
-            Stage::Complete(report) => return Ok(report),
-            Stage::Continue(state) => state,
+        let mut report = match execution.seed(right_hand_side)? {
+            Stage::Complete(report) => report,
+            Stage::Continue(state) => execution.iterate(state)?,
         };
-        execution.iterate(state)
+        if report.converged() && !execution.solution_is_finite()? {
+            report.termination = crate::Termination::NonFinite;
+        }
+        Ok(report)
     }
 }

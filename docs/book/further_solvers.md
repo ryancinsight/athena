@@ -127,15 +127,14 @@ Evaluating \\(T_k(\mu)\\) directly overflows for narrow intervals, where
 
 \\[
 v_1 = 1, \quad v_{k+1} = 2 - \frac{\eta^2}{v_k}, \qquad
-\tau_k = \frac{2}{v_k}, \qquad
+\tau_1 = 1, \quad \tau_{k+1} = \frac{2}{v_{k+1}}, \qquad
 s_k = \tau_k \omega\, r_{k-1} + (\tau_k - 1)\, s_{k-1}, \qquad
 x_k = x_{k-1} + s_k ,
 \\]
 
 where \\(\tau_1 = 1\\) makes the \\(s_0\\) term vanish. Each step applies the
 operator once, to recompute \\(r_k = b - A x_k\\). The only reduction is the
-residual norm used by the convergence test; the recurrence itself takes no
-inner product, so nothing forces a synchronisation across processors.
+residual norm used by the convergence test; the step coefficients require no additional reduction.
 
 When \\(\lambda_{\min} = \lambda_{\max} = \lambda\\) the interval is a point and
 \\(A = \lambda I\\): \\(\eta = 0\\), \\(\tau_k = 1\\) and \\(\omega = 1/\lambda\\), a
@@ -189,7 +188,7 @@ Let \\(E = U^{\mathsf T} A U\\), \\(C = U E^{-1} U^{\mathsf T}\\),
 of \\(U\\), so that
 
 \\[
-A = \begin{pmatrix} E & F \\\\ F^{\mathsf T} & G \end{pmatrix}, \qquad
+[U\;W]^{\mathsf T} A [U\;W] = \begin{pmatrix} E & F \\\\ F^{\mathsf T} & G \end{pmatrix}, \qquad
 F = U^{\mathsf T} A W, \quad G = W^{\mathsf T} A W .
 \\]
 
@@ -219,7 +218,7 @@ Athena runs CG on \\(Q (A - A C A) Q\\) with right-hand side
 ### Convergence and its conditions
 
 If \\(U\\) spans an exact invariant subspace of \\(k\\) eigenvectors of an SPD
-operator, then \\(F = W^{\mathsf T} A U = 0\\) and the Schur complement is
+operator, then \\(F = U^{\mathsf T} A W = 0\\) and the Schur complement is
 \\(G\\), whose spectrum is the remaining \\(n - k\\) eigenvalues. CG on it
 terminates in at most \\(n - k\\) iterations in exact arithmetic. The example
 below deflates the two smallest eigenvalues of a five-by-five system and CG
@@ -264,8 +263,11 @@ once per iteration. It reports `Converged` when \\(|\bar\varphi_{j+1}|\\) meets
 the threshold and `Breakdown` when the Lanczos space closes
 (\\(\beta_{j+1} = 0\\)) or a rotation radius is not positive before the policy
 is met. Its threshold is built from \\(\\|r_0\\|\\) rather than \\(\\|b\\|\\), so
-the two agree when \\(x_0 = 0\\). The recurrence is backend-generic, but no
-accelerator test runs it.
+the two agree when \\(x_0 = 0\\). Before returning `Converged` or
+`InitialResidual`, MINRES checks every solution component. A nonfinite
+component changes the termination to `NonFinite` and preserves the reported
+residual. Device tests exercise both the indefinite solve and this component
+check in `athena-hephaestus/tests/solver_correctness.rs`.
 
 ```rust
 {{#rustdoc_include ../../crates/athena-leto/examples/book_minres.rs:36:51}}

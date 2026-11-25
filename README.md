@@ -31,7 +31,7 @@ squaring the condition number.
 
 Leto CPU and Hephaestus accelerator execution share one backend-neutral
 recurrence per solver family. The accelerator suites run `Cg`, `Gmres`,
-`BiCgStab`, `DeflatedCg` and `Chebyshev`; no accelerator test runs `Minres`.
+`BiCgStab`, `DeflatedCg`, `Chebyshev` and `Minres`.
 `Lsqr` runs on any backend, but `RectangularOperator` is implemented for Leto
 only, so its shipped execution is CPU.
 
@@ -44,8 +44,9 @@ systems of fewer than `direct_threshold` unknowns (default 2,048); GMRES under
 the component-block, SIMPLE, multigrid and block-diagonal preconditioners;
 unpreconditioned GMRES, only when the block-diagonal preconditioner could not
 be built; GMRES under incomplete LU; and unpreconditioned `BiCgStab`.
-`solve_with_guess_state` starts from a caller guess, tries GMRES under SOR
-before a cached multigrid tier, and orders the remaining tiers differently.
+`solve_with_guess_state` starts from the caller's optional guess (from zeros
+when it is `None`), tries GMRES under SOR before a cached multigrid tier, and
+orders the remaining tiers differently.
 Both return the first tier that succeeds and a `LetoBackendError` when every
 tier fails. `LinearSolverState` caches the multigrid transfer operators and
 the component-block symbolic factors for warm solves. The accelerator backend
@@ -173,8 +174,13 @@ allocate nothing after workspace construction: `crates/athena-core/src/solver`
 calls `allocate`, `allocate_block`, `vec!`, `Vec::new`, `Vec::with_capacity`
 and `to_vec` only in the workspace constructors and the deflation module, and
 the allocation tests cover `Cg`, `Gmres` and `BiCgStab`. `DeflatedCg::solve_into`
-allocates on every solve (see the table), and so does `LinearSolverChain`, which
-builds the solution vector and, for each iterative tier, a workspace.
+allocates on every solve (see the table), and so does `LinearSolverChain`: each
+solve builds the solution vector, and `solve_with_guess_state` clones a given
+guess into it. A solve the direct tier ends runs one sparse LU solve, with a
+dense retry for small systems, and builds no iterative-tier preconditioner or
+workspace. Otherwise each iterative tier a solve attempts constructs its
+preconditioner (the unpreconditioned and `BiCgStab` tiers use `Identity` and
+build none) and, once that succeeds, a workspace.
 GMRES stores exactly `RESTART + 1` Arnoldi vectors, `RESTART` preconditioned
 vectors, and const-bounded host scalar storage. Those two vector sets are
 `KrylovBackend::VectorBlock` values rather than `Vec<Vector>`, so each backend
@@ -336,7 +342,7 @@ the vector blocks; and zero-sized markers. The accelerator suite runs the
 manufactured SPD and nonsymmetric systems through real Hephaestus allocation,
 CSR upload, SpMV, reductions, and Athena kernels with CG, GMRES, and
 `BiCGSTAB`, then downloads each final solution once; separate device
-regressions run `DeflatedCg` and `Chebyshev`. A local machine without
+regressions run `DeflatedCg`, `Chebyshev` and `Minres`. A local machine without
 an adapter records the unavailable lane; CI treats adapter acquisition failure
 as an infrastructure failure.
 

@@ -12,7 +12,7 @@
 - [ ] [minor] **0.6.0 proposed for additive device support.** Exercise the real rectangular operator and its adjoint on a Hephaestus device. Compare the minimizer with the host solution and record the adapter, transfers and solver termination.
 - [ ] [major] **1.0.0-beta.1 → 1.0.0-rc.1 → 1.0.0.** Freeze the supported surface at beta. A packaged Krylov consumer repeats the rectangular solve and the final device least-squares milestone passes. Repeat the applicable exits on the exact RC before stable promotion. Attach exact-revision evidence for the local exits and this member’s [Atlas qualification criteria](https://github.com/ryancinsight/atlas/blob/17b0124a7548ad81e817284afc5cb115c1d1bc78/docs/parity/repositories.json).
 
-Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one milestone is the final block, so it plans 1.0.0, a major above the 0.3.3 manifest version and every crate tag. Each exit fails at the basis commit because a production symbol it needs is absent (`RectangularOperator` has no Hephaestus impl), not because its test file is missing. Release and publication need explicit authority.
+Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one milestone is the final block, so it plans 1.0.0, a major above every manifest version and every crate tag. Each exit fails at the basis commit because a production symbol it needs is absent (`RectangularOperator` has no Hephaestus impl), not because its test file is missing. Release and publication need explicit authority.
 
 <a id="M-device-least-squares"></a>
 ## M-device-least-squares — 1.0.0 — solve overdetermined least-squares systems on a Hephaestus device
@@ -45,44 +45,24 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
 
 <a id="athena-doc-drift-20261113"></a>
-## ATHENA-DOC-DRIFT-20261113 — Finish the doc-drift remainders: ledger and source citations [docs] — todo
+## ATHENA-DOC-DRIFT-20261113 — Correct solver source citations [docs] — todo
 
 - priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `docs/verification/`, doc comments in `crates/athena-core/src/solver/minres/algorithm.rs` and `chebyshev/algorithm.rs`
-- outcome: two remainders after the README, CHANGELOG, gap-audit, module-doc and book reconciliation. (1) `docs/verification/gmres-rank-recovery.md` (99 lines) records landed work pinned by `crates/athena-leto/tests/gmres_rank_deficient.rs`, whose counterexample `docs/book/gmres.md` states, so the ledger belongs to the commit history. (2) `minres/algorithm.rs:40-42` titles Paige and Saunders (1975) "...linear equations and least squares problems", while the SIAM record reads "Solution of sparse indefinite systems of linear equations" (doi:10.1137/0712047); `chebyshev/algorithm.rs:41` cites Golub and Van Loan §11.3 with no edition and no source read.
-- acceptance: (1) the file is deleted, no tracked file links it, and `git log --follow -- docs/verification/gmres-rank-recovery.md` still reaches it; (2) the MINRES comment carries the SIAM title and the Chebyshev comment cites Templates §2.3.9 or a Golub and Van Loan edition and section read from the book, so `git grep -n "11.3" -- crates/athena-core/src/solver/chebyshev` is empty.
-- next step: `git rm` the ledger, then `git grep -n "docs/verification"` to confirm no link remains; correct the two comments.
-- basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
-
-<a id="athena-minres-workspace-reset-20261124"></a>
-## ATHENA-MINRES-WORKSPACE-RESET-20261124 — Reset the MINRES update vectors at each solve [fix] — todo
-
-- priority: correctness; needs: none; milestone: M-device-least-squares
-- scope: `crates/athena-core/src/solver/minres/execution.rs`, `crates/athena-leto/tests/minres_contract.rs`
-- outcome: `seed` zeroes `previous_direction` but not `update_previous` or `update_previous_2` (`minres/execution.rs:150-168`; `workspace.rs:45-46` allocates them once). Step one forms `w₁ = (v₁ - λ₁·w₀ - ε₁·w₋₁)/ρ₁` with `λ₁ = β₁` (`execution.rs:205`, both pending rotations the identity), so a second solve on a used workspace reads the last update vectors of the previous solve as `w₀` and `w₋₁`. Derived from the source and not run (hypothesis).
-- acceptance: a `minres_contract.rs` case solves a system, then a second system on the same `MinresWorkspace`, and asserts the second closed form within the first's derived bound: `cargo nextest run -p athena-leto -E 'test(=minres_reused_workspace_matches_fresh_workspace)'`.
-- next step: write that test first and confirm it fails at the base, then zero both vectors in `seed`.
-- basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
+- scope: the MINRES and Chebyshev algorithm documentation in `crates/athena-core/src/solver/`
+- outcome: the algorithm comments cite verifiable sources for each recurrence.
+- acceptance: the MINRES comment gives the SIAM title and DOI for Paige and Saunders (1975). The Chebyshev comment identifies a verified edition and section or omits the unverified locator.
+- next step: reconcile the two source comments with the references in `docs/book/further_solvers.md`.
+- basis: 475a8afc0ae7a8c0ecd8a8f333455d26cb84d36a
 
 <a id="athena-minres-threshold-basis-20261124"></a>
 ## ATHENA-MINRES-THRESHOLD-BASIS-20261124 — Decide the residual-threshold basis of MINRES [test] — todo
 
 - priority: verification; needs: none; milestone: M-device-least-squares
 - scope: `crates/athena-core/src/solver/minres/execution.rs`, `crates/athena-leto/tests/minres_contract.rs`, `README.md`, `docs/book/further_solvers.md`
-- outcome: `Cg`, `Gmres`, `BiCgStab`, `Lsqr`, `Chebyshev` and `DeflatedCg` pass `‖b‖` to `ConvergencePolicy::threshold`; `Minres` passes `‖b - A x₀‖` (`minres/execution.rs:126`), so the thresholds differ for a nonzero initial guess. README "Numerical contract" and the book chapter now state the exception; whether it is intended is open.
+- outcome: `Cg`, `Gmres`, `BiCgStab`, `Lsqr`, `Chebyshev` and `DeflatedCg` pass `‖b‖` to `ConvergencePolicy::threshold`; `Minres` passes `‖b - A x₀‖` (`minres/execution.rs`), so the thresholds differ for a nonzero initial guess. README "Numerical contract" and the book chapter now state the exception; whether it is intended is open.
 - acceptance: with `x₀` chosen so `‖b - A x₀‖ ≪ ‖b‖`, a `minres_contract.rs` case pins the threshold to the chosen basis and the README and chapter match it: `cargo nextest run -p athena-leto -E 'test(=minres_threshold_basis_with_nonzero_guess)'`.
 - next step: build the `diag(1, -1)` oracle with a guess near the solution and read the reported threshold.
 - basis: a3b9b0472096796313c10512eb7dbc36cc3c3c79
-
-<a id="athena-device-minres-20261113"></a>
-## ATHENA-DEVICE-MINRES-20261113 — Pin MINRES on a Hephaestus device to its oracle [test] — todo
-
-- priority: verification; needs: none; milestone: M-device-least-squares
-- scope: `crates/athena-hephaestus/tests/solver_correctness.rs`
-- outcome: `Minres<B: KrylovBackend>` is backend-generic (`athena-core/src/solver/minres/algorithm.rs:46`); the device suites run `Cg`, `Gmres`, `BiCgStab`, `DeflatedCg` and `Chebyshev` and none runs `Minres`. The recurrence is expected to run unchanged; this item verifies that and builds nothing.
-- acceptance: the `diag(1, -1)` oracle of `crates/athena-leto/tests/minres_contract.rs` solves on a device at `f32` within a bound derived from the reduction order; the test sits in `solver_correctness.rs`, whose `backend()` panics without an adapter, so an unavailable adapter fails it.
-- next step: derive the `f32` bound from the dot-product reduction depth of a two-element system, then write the test first beside the Chebyshev device regression.
-- basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
 
 <a id="athena-gitconfig-20261113"></a>
 ## ATHENA-GITCONFIG-20261113 — Commit the conflict-hygiene repository config [chore] — todo
@@ -147,7 +127,85 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: tightening; needs: none; milestone: M-device-least-squares
 - scope: `docs/adr/0004-derived-progress-termination.md`
-- outcome: ADR 0004 is 168 lines (`docs/adr/0004-derived-progress-termination.md`, Context at :13, Verification at :149) against the budget of about 150 lines per ADR; the in-place revisions of 2026-11-16 (CG stall detection, noise-floor premise) and the Verification list grew it. Compact it without dropping the decision, the four rejected alternatives, the evidence or the revision notes; delivery narrative belongs to commits. ADR 0005 is 158 lines and stays outside this item.
+- outcome: ADR 0004 is 168 lines (`docs/adr/0004-derived-progress-termination.md`, Context at :13, Verification at :149) against the budget of about 150 lines per ADR; the in-place revisions of 2026-11-16 (CG stall detection, noise-floor premise) and the Verification list grew it. Compact it without dropping the decision, the four rejected alternatives, the evidence or the revision notes; delivery narrative belongs to commits. ADR 0005 is within that budget and stays outside this item.
 - acceptance: `test "$(wc -l < docs/adr/0004-derived-progress-termination.md)" -le 150` exits 0 (exits 1 at the basis, 168 lines); the Context, Decision, Rejected alternatives, Consequences and Verification headings and the four rejected-alternative headings remain; `python scripts/adr-index.py check --directory docs/adr` from an Atlas checkout passes.
 - next step: trim statements Consequences repeats from Decision, then shorten the Verification list to each test's name and oracle; keep every cited source.
 - basis: 68d618e87e42d1b4d9f77e56e2e8e05f7653b7f9
+
+<a id="athena-lsqr-rotation-overflow-20261124"></a>
+## ATHENA-LSQR-ROTATION-OVERFLOW-20261124 — Scale both LSQR plane rotations so a large damping converges [fix] — done
+
+- priority: correctness; needs: none; milestone: M-device-least-squares
+- outcome: LSQR uses the shared scaled Givens rotation for the damping row and the bidiagonal subdiagonal. Infinite damping reaching the first rotation retains the existing `Breakdown` termination.
+- evidence: `damped_solve_survives_a_damping_whose_square_overflows` checks the line-fit minimiser at `f32` and `f64`, including nonzero subnormal entries. Restoring either unscaled radius independently reproduces the first-iteration failure.
+- basis: 2600430d86f13ac9cd20d05dce9bd45e8a7e840c
+
+<a id="athena-device-minres-band-20261124"></a>
+## ATHENA-DEVICE-MINRES-BAND-20261124 — Pin the MINRES band-correction updates on a device [test] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `crates/athena-hephaestus/tests/solver_correctness.rs`
+- outcome: the device MINRES oracle (athena#186, `ATHENA-DEVICE-MINRES-20261113`) solves `diag(1, -1)`, where `λ₂ = c₁β₂ + s₁α₂ = 0`, `ε₁ = ε₂ = 0` and `λ₁` multiplies a zero vector, so deleting either band-correction axpy of `apply_update` (`execution.rs:376-389`) moves `x` by O(ε) and the test survives. athena#186 landed the device MINRES test, `minres_solves_the_indefinite_oracle_on_device`. The host tridiagonal (`minres_contract.rs:148-168`) does not close the gap alone: a Python transcription of the recurrence gives `ε₃ ≈ 0.249` there but `λ₂ = 0` and `λ₃ ≈ 1e-16`, so deleting the λ axpy changes `x` by under 1e-15 (derived; not run on the Rust code).
+- acceptance: a 3×3 device instance with `λⱼ ≠ 0` against a nonzero update vector and `ε₃ ≠ 0`, with an integer manufactured solution, solves within a bound derived from its operation count (transcription candidate: `[[1, 1, 0], [1, -2, 1], [0, 1, -2]]`, `b = (3, 0, -4)`, `x* = (1, 2, 3)`; judge-derived from a Python copy of the recurrence, not run on the Rust code: `λ₂ = -1.198` multiplies `w₁` (norm 0.58), `ε₃ = 1.359`; deleting the λ axpy shifts `x` by 1.867 and the ε axpy by 1.478, against 8.9e-16 intact); deleting the λ axpy and, separately, the ε axpy makes the test fail, each deletion run and recorded in the PR.
+- next step: add the instance beside `minres_solves_the_indefinite_oracle_on_device` and run the two deletions.
+- basis: 7aadfda2acd842abdfe563bbec8d2177a874d156
+
+<a id="athena-minres-host-bounds-20261124"></a>
+## ATHENA-MINRES-HOST-BOUNDS-20261124 — Derive the host MINRES tolerances from an operation count [test] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `crates/athena-leto/tests/minres_contract.rs`
+- outcome: the bounds `256·EPSILON` (`:76-83`) and `512·EPSILON` (`:210-214`) rest on "fewer than 48" and "fewer than 72" rounded operations, a "factor-of-five" and "factor-of-three margin" and an amplification claim, with no tally. A tally from `execution.rs` shows the rotation scalars, `φ` and `φ̄`, and the update recurrence alone (`:231-233`, `:250-251`, `:370-402`) take 20 rounded operations per step on two-element vectors (1 + 4 + 4 + 2 + 9, each axpy element as one rounding, a lower bound), 40 over two steps, before the Lanczos step, the Givens scalars and the seed, so "48" does not count the operations that form `x`. The athena#186 review counted 98 for the 2×2 oracle (63 once operations exact on that instance are dropped); only the 20 per step above are confirmed here. Whether the constants still hold is open (hypothesis). The device bound was re-derived in athena#186 (`ORACLE_BOUND_EPSILONS = 73`, `solver_correctness.rs:183`).
+- acceptance: each constant is derived from an itemized, source-cited count of the rounded operations forming `x`, each host operation at relative error at most `ε/2` (`RealField::EPSILON` is `f32::EPSILON` and `f64::EPSILON`, eunomia `crates/eunomia/src/impls/field.rs:19,46`), propagated through the recurrence by running-error analysis, with the derivation in the constant's doc; `cargo nextest run -p athena-leto -E 'test(~minres)'` passes at `f32` and `f64`.
+- next step: list the rounded operations of the two-step and three-step runs from `execution.rs`, then bound the error of `x` through the rotation scalars.
+- basis: 7aadfda2acd842abdfe563bbec8d2177a874d156
+
+<a id="athena-chebyshev-reuse-test-20261124"></a>
+## ATHENA-CHEBYSHEV-REUSE-TEST-20261124 — Compare the Chebyshev reuse solution bitwise and name its tolerance [test] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `crates/athena-leto/tests/chebyshev_contract.rs`
+- outcome: `reused_workspace_after_overflow_matches_a_fresh_one` compares the reused and fresh solutions with `assert_eq!` on `Array1` (`:353`), which equates `-0` and `+0`, so a signed-zero divergence between the two workspaces passes; bitwise equality holds at the basis (judge probe over four inputs in the athena#196 review, not rerun). It also repeats the literal `T::from_f64(512.0) * EPSILON` (`:354`) beside the same literal and its comment in `solves_the_manufactured_system` (`:96-100`), which the lint floor counts as a float-literal tolerance in an assertion.
+- acceptance: `git grep -c -E '^ +[^/ ].*to_bits' -- crates/athena-leto/tests/chebyshev_contract.rs` exits 0 (exits 1 at the basis; a code line, not a comment, calls `to_bits`); `git grep -c -F '512.0' -- crates/athena-leto/tests/chebyshev_contract.rs` prints 1 (prints 2 at the basis), the one literal sitting in a named constant or helper that carries the derivation in its doc; `cargo nextest run -p athena-leto -E 'test(~chebyshev)'` passes at `f32` and `f64`.
+- next step: compare the two solutions through `to_bits` and lift the shared bound into one named constant used by both tests.
+- basis: 7aadfda2acd842abdfe563bbec8d2177a874d156
+
+<a id="athena-lsqr-damped-contract-20261124"></a>
+## ATHENA-LSQR-DAMPED-CONTRACT-20261124 — Pin damped LSQR warm start and damping edge cases, derive its bound [test] — todo
+
+- priority: verification; needs: ATHENA-LSQR-ROTATION-OVERFLOW-20261124; milestone: M-device-least-squares
+- scope: `crates/athena-leto/tests/lsqr_damped_contract.rs` (production code changes only if a test exposes a defect)
+- outcome: four gaps in the damped LSQR contract, read at the basis unless marked. (1) The Rustdoc objective `‖A·x − b‖² + λ²‖x − x₀‖²` (`algorithm.rs:104-111`) is pinned only undamped (`lsqr_contract.rs:233`, `a_warm_start_is_honoured`); a judge probe on a 3×2 system at `x₀ ≠ 0` matched `x₀ + (AᵀA + λ²I)⁻¹Aᵀ(b − A·x₀)` to 1.1e-16, not committed. (2) A non-finite and a negative `damping` have no test; judge probes: `A·x₀ = b` with NaN or infinite `λ` ends `InitialResidual` at iteration 0, and `-0.5` is bitwise equal to `+0.5`. A finite `λ` whose square overflows is a defect (`Breakdown` at iteration 1 for `λ = 1e200` at `f64`), filed and tested under ATHENA-LSQR-ROTATION-OVERFLOW-20261124, which this item needs because that fix settles the termination of a non-finite `λ` after the first step. (3) `STEP_ROUNDING_UNITS = 8.0` (`:302`) asserts a count that its own list exceeds (two `γ₃` matvecs are 6 units before the norms, scalings, rotations and updates); the bound holds by margin (judge measurement: error at most 0.054 of the bound) but scales with `‖x*‖`, and a warm-started 8×6 `f32` case at `λ = 0.3` transcribes to 50.2 against 8·k = 48, so (1) cannot reuse it unchanged. (4) The bounds `1.0e-3` (`:176`), `1.0e-2` (`:256`), `64.0 * f64::EPSILON` (`:126`) and `1.0e3 * f64::EPSILON` (`:230`) are float-literal tolerances; the closed-form test supersedes the first two for the defect class and leaves the ill-conditioned 2×2 regime loosely checked.
+- acceptance: new tests, generic over `f32` and `f64`: a warm start at `λ` of 0.5 and 1 solves to the closed form above and reports `sqrt(‖b − A·x‖² + λ²‖x − x₀‖²)` within a bound derived from an itemized rounding count that replaces `STEP_ROUNDING_UNITS`; NaN and infinite `λ` end at iteration 1 on a nonzero residual with the termination that ATHENA-LSQR-ROTATION-OVERFLOW-20261124 settles (`Breakdown` at the basis, while `crates/athena-core/src/report/solve.rs:15-16` assigns a non-finite coefficient to `NonFinite`) and `InitialResidual` at iteration 0 when `A·x₀ = b`; `-λ` gives bitwise the iterate of `λ`; `git grep -n -E -e 'let bound = 1\.0e-[23]' -e 'let bound = 64\.0 \* f64::EPSILON' -e 'let bound = 1\.0e3 \* f64::EPSILON' -- crates/athena-leto/tests/lsqr_damped_contract.rs` prints nothing (prints four lines at the basis); `cargo nextest run -p athena-leto --no-tests=fail -E 'test(=damped_warm_start_matches_closed_form) or test(=non_finite_damping_ends_the_solve) or test(=negative_damping_acts_as_its_absolute_value)'` passes, and `git grep -c -F -e 'fn damped_warm_start_matches_closed_form()' -e 'fn non_finite_damping_ends_the_solve()' -e 'fn negative_damping_acts_as_its_absolute_value()' -- crates/athena-leto/tests/lsqr_damped_contract.rs` prints 3 (exits 1 at the basis), so one new test cannot satisfy the filter alone.
+- next step: write the warm-start case from the 3×2 system of `damped_solution_and_residual_match_closed_form`, then the damping edge cases, then replace the constant and the two literals with counts.
+- basis: 7aadfda2acd842abdfe563bbec8d2177a874d156
+
+<a id="athena-lsqr-damped-doc-20261124"></a>
+## ATHENA-LSQR-DAMPED-DOC-20261124 — Correct the damped LSQR Rustdoc, comment, test text and changelog entry [docs] — todo
+
+- priority: verification; needs: ATHENA-LSQR-ROTATION-OVERFLOW-20261124; milestone: M-device-least-squares
+- scope: `crates/athena-core/src/solver/lsqr/algorithm.rs`, `crates/athena-core/src/solver/lsqr/execution.rs`, `crates/athena-leto/tests/lsqr_damped_contract.rs`, `CHANGELOG.md`
+- outcome: four statements that the sources contradict and one consumer record, read at the basis unless marked. (1) `algorithm.rs:127-129` says a non-finite `damping` ends the solve with `Breakdown`; a solve that leaves before its first step ends `InitialResidual` (`execution.rs:80-87`) or `NormalEquations` (`:106-113`) instead (judge probe). The termination after the first step follows ATHENA-LSQR-ROTATION-OVERFLOW-20261124, which this item needs; a `λ` whose square overflows is a defect filed there, never documented behaviour. (2) `execution.rs:272-275` writes the augmented residual as `[b − A·x; −λ·x]` and the normal residual as `Aᵀr − λ²x`; with a warm start they are `−λ(x − x₀)` and `Aᵀr − λ²(x − x₀)`. (3) `lsqr_damped_contract.rs:196` states the objective as `‖A·x − b‖₂ + λ·‖x‖₂`, unsquared, and the message at `:416` carries a run of 18 spaces. (4) `CHANGELOG.md:11-12` credits the two-rotation elimination to Paige and Saunders (1982) §2.1; §2.1 states the damped problem (eq. 2.4) and the projected problem (eq. 2.7) but no rotation (judge read of the paper, not re-read), so the SciPy recurrence is its source; the entry also names the `NormalEquations` criterion but not the `Converged` check and the observer, which see the augmented residual too. (5) Consumers: `kwavers-math` calls `Lsqr::solve_damped_into` (`crates/kwavers-math/src/linear_algebra/sparse/matfree.rs:215`) and stores `final_residual_norm`, and `crates/kwavers-diagnostics/src/reconstruction/sound_speed_shift/tests/lsqr.rs:118` documents the old rotation formula (both at kwavers `7e9ac5d97f`). The affected-consumer record belongs to the delivering PR body, and the kwavers-side check to the kwavers board, not to `CHANGELOG.md`.
+- acceptance: `git grep -c -F 'λ·x]' -- crates/athena-core/src/solver/lsqr/execution.rs`, `git grep -c -F 'Aᵀr − λ²x' -- crates/athena-core/src/solver/lsqr/execution.rs`, `git grep -c -E 'non-finite .damping. ends the solve' -- crates/athena-core/src/solver/lsqr/algorithm.rs`, `git grep -c -F '‖A·x − b‖₂ + λ·‖x‖₂' -- crates/athena-leto/tests/lsqr_damped_contract.rs` and `git grep -c -E ' {10,}error' -- crates/athena-leto/tests/lsqr_damped_contract.rs` each exit 1 (each prints 1 at the basis); `git grep -c -F 'Termination::InitialResidual' -- crates/athena-core/src/solver/lsqr/algorithm.rs` prints 1 or more (exits 1 at the basis), so a reworded sentence that still names only `Breakdown` fails; the delivering PR body names the two kwavers sites of (5); `cargo doc -p athena-core --no-deps --locked` stays warning-clean.
+- next step: correct the four code-side texts from the evidence above, then amend the changelog entry with the source split and the other two criteria; the consumer's own check runs on the kwavers board.
+- basis: 7aadfda2acd842abdfe563bbec8d2177a874d156
+
+<a id="athena-krylov-zero-reset-20261124"></a>
+## ATHENA-KRYLOV-ZERO-RESET-20261124 — Hold the copy-then-scale-by-zero reset in one place [refactor] — todo
+
+- priority: tightening; needs: none; milestone: M-device-least-squares
+- scope: `crates/athena-core/src/solver/minres/execution.rs`, `crates/athena-core/src/solver/chebyshev/execution.rs`, `crates/athena-core/src/backend/krylov.rs` (only if a backend operation is chosen)
+- outcome: the seed paths of MINRES (`execution.rs:178-195`, three vectors) and Chebyshev (`execution.rs:162-178`, the step vector) both copy the seed residual into a vector and scale it by `ZERO`: `KrylovBackend` declares no operation that writes zeros (`copy` at `krylov.rs:94`, `scale` at `:101`), and scaling alone keeps NaN and turns infinity into NaN. Each site pays two passes per vector and relies on the residual being finite because its norm passed (on a device whose norm does not propagate NaN that premise is a hypothesis, athena194-1 F7, unverified). At the Chebyshev site the scale is bitwise redundant: step one scales `step` by `state.tau - one` (`:224`) with `τ₁` the literal `ONE` (`:195`), exactly `+0`, so the copy alone gives the same iterate and report (a copy-only mutant survived the reuse test in the athena#196 review; judge-run, not rerun). MINRES needs true zeros, since step one multiplies its stale vectors by `λ₁ = β ≠ 0`.
+- acceptance: the pair lives in one place or in none: `git grep -c -E '^ +<B::Scalar as NumericElement>::ZERO,$' -- crates/athena-core/src/solver/minres/execution.rs crates/athena-core/src/solver/chebyshev/execution.rs` prints at most one line (two lines, one per file, at the basis; the pattern matches the line that passes `ZERO` to `scale` and no field initializer); `cargo nextest run -p athena-leto -E 'test(=chebyshev_workspace_reuse_after_overflow_matches_a_fresh_workspace) or test(~minres_workspace_reused) or test(=minres_reused_workspace_matches_fresh_workspace)'` passes at `f32` and `f64`.
+- next step: delete the Chebyshev scale and state the `τ₁ − 1 = +0` argument in its comment; then decide for MINRES between keeping the pair and a backend zero write, which adds a required method to the public `KrylovBackend` and so needs an ADR and the SemVer gate.
+- basis: 7aadfda2acd842abdfe563bbec8d2177a874d156
+
+<a id="athena-bicgstab-book-claims-20261124"></a>
+## ATHENA-BICGSTAB-BOOK-CLAIMS-20261124 — Correct the BiCGSTAB chapter's breakdown claim and the book's Templates note [docs] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `docs/book/bicgstab.md`, `docs/book/README.md`
+- outcome: three statements the sources contradict or leave stale, read at the basis. (1) `bicgstab.md:71` says "the report says which recurrence stopped"; `Termination::Breakdown` is a unit variant (`report/solve.rs:12`), `SolveReport` has no field naming the recurrence (`:81-96`), and `bicgstab/execution.rs` returns the same `Breakdown` at four sites (`:142` zero shadow product `ρ`, `:223` zero `ω`, `:308` zero shadow-image product, `:365` zero stabilizer norm square). (2) `:53` names two denominators; that matches Figure 2.10 of Templates but understates the four zero tests. (3) `README.md:171-172` lists the Templates sections cited by the CG, GMRES and convergence-policy chapters (2.3.1, 2.3.4, 4.2) and omits §2.3.8, which `bicgstab.md:118` cites.
+- acceptance: `git grep -c -F 'which recurrence stopped' -- docs/book/bicgstab.md` exits 1 (prints 1 at the basis); `git grep -c -F '2.3.8' -- docs/book/README.md` prints 1 (exits 1 at the basis); `mdbook test docs/book` passes.
+- next step: state that `Breakdown` does not name the recurrence and list the four zero tests in the chapter, then add §2.3.8 to the README sentence.
+- basis: 7aadfda2acd842abdfe563bbec8d2177a874d156
