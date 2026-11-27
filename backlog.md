@@ -112,6 +112,18 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 - next step: build `606b4f9` and `a71cd7c` into the shared target, run `gmres_poisson` on isolated cores, and find the Harmonia hold's owner on the Atlas board.
 - basis: 0e250fdfa9a8ecff85bc3810993952e9d1f78876
 
+<a id="athena-minres-true-residual-20261127"></a>
+## ATHENA-MINRES-TRUE-RESIDUAL-20261127 — Return MINRES `Converged` only on the recomputed true residual [fix] — todo
+
+- priority: verification; needs: none; milestone: M-device-least-squares
+- scope: `crates/athena-core/src/solver/minres/execution.rs`, `crates/athena-leto/tests/minres_contract.rs`, `crates/athena-leto/examples/book_minres.rs` (restored by this item)
+- outcome: MINRES returns `Converged` only when the recomputed `‖b − A x‖` of the returned iterate is within the policy threshold, as Chebyshev (`chebyshev/execution.rs:234-278`) and deflated CG (`deflation/execution.rs:78-82`) do, so a caller derives an a priori error bound from the certificate. It returns `Converged` today when the recurrence estimate `|φ̄|` meets the threshold (`minres/execution.rs:319-320`), which bounds the true residual by no stated term.
+- evidence: a temporary probe of the solve (not committed), `diag(1, −1)`, `b = (1, 2)`, `x₀ = 0`, policy `(EPSILON, EPSILON, 3)` at `f64`: `Converged` after 2 iterations, recurrence estimate 1.0148e-16, threshold 4.9651e-16, `x = (1 + 2ε, −2 + ε)`, recomputed residual `(−2ε, ε)` whose norm `ε√5` equals the threshold, so the stopping test leaves no margin and no error bound follows from it.
+- priority basis: `Termination::Converged` is documented as "An iterative residual met the convergence policy" (`report/solve.rs:7`) and the MINRES Rustdoc names the "Lanczos residual estimate" (`minres/algorithm.rs:31-33`); only GMRES documents that the recomputed norm alone yields `Converged` (`docs/adr/0002-restarted-gmres-contract.md:41-42`). No contract states the true residual, so this is `verification`, not `correctness`.
+- acceptance: (1) mechanical: `minres_converged_certifies_true_residual` in `minres_contract.rs`, generic over `f32` and `f64`, solves `diag(s, −s)`, `b = (1, 2)`, `s = 2^-92` at `f32` and `2^-572` at `f64`, and asserts that a `Converged` report has `‖b − A x‖ ≤ report.threshold`; `ATHENA-MINRES-NORM-SCALING-20261127` (a) derives by reading, unrun, a basis `Converged` at a true residual near 2.98, so the test fails at the basis (the delivering PR runs it there; a pass there is restated here and filed `correctness`). (2) review-judged: `book_minres.rs` returns with the bound `(1 + O(u))·(√5 + |x*ᵢ|/2)·ε` per component, derived from the certificate in the form of `book_chebyshev.rs`, and the judge checks that derivation.
+- next step: in `step`, when `|φ̄|` meets the threshold, recompute `b − A x` into the seed buffer and norm it as `chebyshev/execution.rs:245-266` does, and return `Converged` only if that norm meets the threshold.
+- basis: 9b6541316824f1c02b2b4d4665ce6818e6c04e94
+
 <a id="athena-adr-0004-budget-20261124"></a>
 ## ATHENA-ADR-0004-BUDGET-20261124 — Compact ADR 0004 to the ADR line budget [docs] — todo
 
