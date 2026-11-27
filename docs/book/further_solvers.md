@@ -271,11 +271,11 @@ residual. Device tests exercise both the indefinite solve and this component
 check in `athena-hephaestus/tests/solver_correctness.rs`.
 
 ```rust
-{{#rustdoc_include ../../crates/athena-leto/examples/book_minres.rs:36:55}}
+{{#rustdoc_include ../../crates/athena-leto/examples/book_minres.rs:49:68}}
 ```
 
 The loop compares each component with the closed-form solution \\((1, -2)\\)
-within `BOUND`, an absolute bound the sample derives from its operation count.
+within `BOUND`, which the sample bases on a count of 113 operations, not a proof.
 
 ### Chebyshev
 
@@ -285,11 +285,11 @@ residual every iteration, and measures the threshold against \\(\\|b\\|\\).
 Storage is three vectors.
 
 ```rust
-{{#rustdoc_include ../../crates/athena-leto/examples/book_chebyshev.rs:43:68}}
+{{#rustdoc_include ../../crates/athena-leto/examples/book_chebyshev.rs:60:85}}
 ```
 
 The loop compares each component with the closed-form solution \\((1, 2, 3)\\)
-within `BOUND`, derived in the sample from its operation count.
+within `BOUND`, derived in the sample from the stopping test.
 
 ### Deflated CG
 
@@ -311,11 +311,11 @@ and its images, two blocks of \\(k\\) vectors. A `DeflatedCg` solve therefore
 allocates, unlike a solve with any of the other six solvers.
 
 ```rust
-{{#rustdoc_include ../../crates/athena-leto/examples/book_deflated_cg.rs:49:79}}
+{{#rustdoc_include ../../crates/athena-leto/examples/book_deflated_cg.rs:64:94}}
 ```
 
 The asserts check termination within \\(n - k = 3\\) iterations and each component
-against \\((1, 2, 3, 4, 5)\\) within `BOUND`, derived in the sample.
+against \\((1, 2, 3, 4, 5)\\) within `BOUND`, derived in the sample from the stopping test.
 
 ## References
 
