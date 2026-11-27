@@ -41,9 +41,12 @@ fn main() {
     let mut solution = Array1::zeros([3]);
     let mut workspace = ChebyshevWorkspace::new(&backend, 3).expect("workspace allocation");
     let bounds = SpectralBounds::new(2.0_f64, 5.0).expect("the interval is finite and ordered");
-    // Reaching an epsilon-scaled threshold needs `T_k(μ)` above `1/ε`, that is
-    // `k·acosh(μ) ≈ 33` for `μ = 7/3`, so `k ≈ 23`; the budget carries that
-    // with margin.
+    // The solution starts at zero, so the residual starts at `b` and the
+    // threshold is `ε‖b‖`. The bound `‖r_k‖ ≤ ‖b‖ / T_k(μ)` reaches it once
+    // `T_k(μ) ≥ 1/ε`. With `T_k(μ) = cosh(k·acosh μ) ≈ e^(k·acosh μ) / 2`, that
+    // is `k·acosh(μ) ≥ ln(2/ε)`. For `ε = 2^-52` the right side is about 36.74
+    // and `acosh(7/3)` is about 1.491, so `k ≥ 24.64`, that is `k = 25`; the
+    // budget of 28 covers it.
     let policy = ConvergencePolicy::new(f64::EPSILON, f64::EPSILON, 28)
         .expect("tolerances are finite and positive");
 
