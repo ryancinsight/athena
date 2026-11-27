@@ -18,10 +18,23 @@ use athena_leto::{CsrOperator, LetoBackend};
 use leto::Array1;
 use leto_ops::CsrMatrix;
 
-/// Absolute error bound for each solution component. Two Lanczos steps over
-/// length-two vectors perform fewer than 48 rounded scalar operations with unit
-/// amplification (the condition number is one); 256 machine epsilons is a
-/// factor-of-five margin over that first-order count.
+/// Absolute error bound for each solution component, from a first-order
+/// count, not a proven bound: the stopping test reads the recurrence estimate
+/// `|φ̄|`, so it cannot certify the error of the returned `x`.
+///
+/// Reading `minres/execution.rs` and `rotation.rs`, the seed and the two
+/// steps perform 113 scalar operations (add, multiply, divide, square root)
+/// that feed the solution: seed 7; step one 55 and step two 51, each made of
+/// Lanczos 17, rotation coefficients 9, Givens pair 8, radius 1, `φ` and `φ̄`
+/// 2 (1 in step two), solution update 15, and the Lanczos rescale 3 (step one
+/// only). A vector operation counts both entries and a multiply-add counts as
+/// two, so a fused one only lowers the count; operations that happen to be
+/// exact for this input, such as the zero products of step one, stay in it.
+///
+/// Each operation is assumed to perturb a quantity of the size of the
+/// solution, `‖x‖∞ = 2`, by at most `u = ε/2`, with no amplification
+/// (`κ(A) = 1`). The error then stays below `113·u·2 = 113 ε`, and 256 ε is
+/// a factor of 2.3 above that.
 const BOUND: f64 = 256.0 * f64::EPSILON;
 
 fn main() {
