@@ -20,12 +20,27 @@ use athena_leto::{CsrOperator, LetoBackend};
 use leto::Array1;
 use leto_ops::CsrMatrix;
 
-/// Absolute error bound for each solution component. The complement phase
-/// runs three steps over length-five vectors (under 40 rounded operations per
-/// entry, complement eigenvalues of unit amplification), and the coarse
-/// correction adds one 2-by-2 solve whose entries have magnitude at most
-/// `1/0.01`: 512 machine epsilons covers that first-order count with margin.
-const BOUND: f64 = 512.0 * f64::EPSILON;
+/// Absolute error bound for each solution component, derived from the
+/// stopping test, not from the CG phase. `solve_into` reports `Converged`
+/// only after it recomputes `r̂ = fl(b − fl(A·x̂))` from the recovered `x̂` and
+/// finds `‖r̂‖ ≤ ε‖b‖`. Assume IEEE binary64, round to nearest, no overflow
+/// or underflow, a native-precision dot product, and `u = ε/2 = 2^-53`.
+///
+/// - Each row holds one nonzero `aᵢ`, so, whether the product is fused or
+///   not, `|x̂ᵢ − xᵢ| ≤ |r̂ᵢ| / (aᵢ(1 − u)) + u|x̂ᵢ|`. The stored system is
+///   solved exactly by `x = (1, 2, 3, 4, 5)`, because `fl(0.04)` is
+///   `2·fl(0.02)`.
+/// - A computed five-term norm has relative error at most `γ₅/2 + u ≤ 4u`,
+///   `γ₅ = 5u / (1 − 5u)`, applied to both `‖b‖ ≈ 10.8744` and `‖r̂‖`; the
+///   threshold product by `ε = 2^-52` is exact. Hence
+///   `|r̂ᵢ| ≤ ‖r̂‖ ≤ ε‖b‖·(1 + 9u)`.
+/// - Per component, `|x̂ᵢ − xᵢ| / ε ≤ (1 + 11u)·(10.8744 / aᵢ + xᵢ/2)`. The
+///   test certifies a component only to `1/aᵢ` times the threshold: for the
+///   complement eigenvalues 0.5, 1 and 2 it is 23.25, 12.87 and 7.94, and
+///   for the coarse eigenvalues 0.02 and 0.01 it is 544.7 and 1087.94. The
+///   `1 + 11u` adds under `10^-11`, so 1088 machine epsilons covers the
+///   largest.
+const BOUND: f64 = 1088.0 * f64::EPSILON;
 
 fn main() {
     let backend = LetoBackend::<f64>::default();
