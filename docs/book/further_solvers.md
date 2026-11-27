@@ -81,9 +81,10 @@ w_j = \frac{v_j - \lambda_j w_{j-1} - \epsilon_j w_{j-2}}{\rho_j}, \qquad
 x_j = x_{j-1} + \varphi_j w_j , \qquad w_0 = w_{-1} = 0 .
 \\]
 
-A freshly allocated workspace supplies the zero \\(w_0\\) and \\(w_{-1}\\). No
-basis is stored: \\(v_j, v_{j-1}\\), the work vector \\(A v_j\\), the three
-\\(w\\), and the seed residual make seven vectors whatever the iteration count.
+The seed zeroes \\(w_0\\) and \\(w_{-1}\\) at every solve, so a reused workspace
+gives the same result as a fresh one under IEEE value equality. No basis is
+stored: \\(v_j, v_{j-1}\\), the work vector \\(A v_j\\), the three \\(w\\), and
+the seed residual make seven vectors whatever the iteration count.
 
 ### What the iteration achieves
 
@@ -270,8 +271,11 @@ residual. Device tests exercise both the indefinite solve and this component
 check in `athena-hephaestus/tests/solver_correctness.rs`.
 
 ```rust
-{{#rustdoc_include ../../crates/athena-leto/examples/book_minres.rs:36:51}}
+{{#rustdoc_include ../../crates/athena-leto/examples/book_minres.rs:36:55}}
 ```
+
+The loop compares each component with the closed-form solution \\((1, -2)\\)
+within `BOUND`, an absolute bound the sample derives from its operation count.
 
 ### Chebyshev
 
@@ -281,8 +285,11 @@ residual every iteration, and measures the threshold against \\(\\|b\\|\\).
 Storage is three vectors.
 
 ```rust
-{{#rustdoc_include ../../crates/athena-leto/examples/book_chebyshev.rs:43:61}}
+{{#rustdoc_include ../../crates/athena-leto/examples/book_chebyshev.rs:43:68}}
 ```
+
+The loop compares each component with the closed-form solution \\((1, 2, 3)\\)
+within `BOUND`, derived in the sample from its operation count.
 
 ### Deflated CG
 
@@ -304,8 +311,11 @@ and its images, two blocks of \\(k\\) vectors. A `DeflatedCg` solve therefore
 allocates, unlike a solve with any of the other six solvers.
 
 ```rust
-{{#rustdoc_include ../../crates/athena-leto/examples/book_deflated_cg.rs:49:70}}
+{{#rustdoc_include ../../crates/athena-leto/examples/book_deflated_cg.rs:49:79}}
 ```
+
+The asserts check termination within \\(n - k = 3\\) iterations and each component
+against \\((1, 2, 3, 4, 5)\\) within `BOUND`, derived in the sample.
 
 ## References
 
