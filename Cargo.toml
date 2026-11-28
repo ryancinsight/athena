@@ -28,8 +28,10 @@ mnemosyne-arena = { version = "0.7.1", git = "https://github.com/ryancinsight/Mn
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std"] }
 eunomia = { version = ">=0.10.0, <0.13.0", git = "https://github.com/ryancinsight/eunomia", default-features = false }
-leto = { version = ">=0.46.3, <0.51.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
-leto-ops = { version = ">=0.46.3, <0.51.0", git = "https://github.com/ryancinsight/leto.git", default-features = false, features = ["std"] }
+# Keep Athena on the same local Leto identity as the rest of the Atlas stack so
+# the CPU backend and provider crates resolve the exact same numeric contracts.
+leto = { version = "0.50.0", path = "../leto/crates/leto", default-features = false, features = ["std"] }
+leto-ops = { version = "0.50.0", path = "../leto/crates/leto-ops", default-features = false, features = ["std"] }
 hephaestus-core = { version = "0.28.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false }
 hephaestus-wgpu = { version = "0.28.0", git = "https://github.com/ryancinsight/hephaestus.git", default-features = false, features = ["sparse"] }
 bytemuck = { version = "1.25", features = ["derive"] }
@@ -71,6 +73,17 @@ debug = false
 lto = "thin"
 overflow-checks = true
 strip = "symbols"
+
+# Single Atlas Leto source identity: redirect every git-sourced
+# `leto`/`leto-ops` edge to the local checkout so the graph carries one
+# crate ID standalone, matching the in-tree overlay (cf. CFDrs).
+[patch."https://github.com/ryancinsight/leto"]
+leto = { path = "../leto/crates/leto" }
+leto-ops = { path = "../leto/crates/leto-ops" }
+
+[patch."https://github.com/ryancinsight/leto.git"]
+leto = { path = "../leto/crates/leto" }
+leto-ops = { path = "../leto/crates/leto-ops" }
 
 
 
