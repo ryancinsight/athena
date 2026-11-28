@@ -40,7 +40,13 @@ use crate::SolveError;
 /// reports [`crate::Termination::MaxIterations`] with the last recomputed
 /// norm, as [`crate::Chebyshev`] does. The run reports
 /// [`crate::Termination::Breakdown`] when the recurrence loses rank before the
-/// policy is met — a zero next Lanczos coefficient, or a zero QR diagonal.
+/// policy is met — a zero next Lanczos coefficient, or a zero QR diagonal. A
+/// zero Lanczos coefficient closes the Krylov space, so the run ends there
+/// even when the recomputed norm is above the threshold. On a consistent
+/// system the threshold then lies below the accuracy rounding leaves; a
+/// singular space whose zero QR diagonal rounded to nonzero would end here
+/// too (hypothesis, not witnessed on the host backend). The report says that
+/// the recurrence ended, where a budget that ends first says `MaxIterations`.
 ///
 /// Before accepting an initial or iterative convergence result, MINRES checks
 /// every component of the candidate solution. A NaN or infinity changes the

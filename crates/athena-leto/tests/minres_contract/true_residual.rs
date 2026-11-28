@@ -15,7 +15,7 @@ use athena_core::{
 use athena_leto::{CsrOperator, LetoBackend};
 use eunomia::RealField;
 use leto::Array1;
-use leto_ops::RealScalar;
+use leto_ops::{CsrMatrix, RealScalar};
 
 use super::indefinite_matrix;
 
@@ -128,6 +128,92 @@ fn minres_converged_certifies_true_residual() {
         row_violations::<f64>(4.0, Threshold::Met),
         row_violations::<f32>(1.0 / 3.0, Threshold::Exceeded),
         row_violations::<f32>(0.5, Threshold::Met),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    assert_eq!(violations, Vec::<String>::new());
+}
+
+/// Pivot of the closed-space witness: `fl(107 * fl(1 / 107))` is `1 - EPSILON / 2`
+/// in `f32` and in `f64`, the first pivot above 100 for which both round down.
+const WITNESS_PIVOT: f64 = 107.0;
+
+/// A closed Krylov space with a consistent, nonsingular system ends
+/// `Breakdown` when the threshold lies below the attainable accuracy.
+///
+/// `diag(p, 2) x = (1, 0)` with `p = WITNESS_PIVOT`: `v1 = (1, 0)` is an
+/// eigenvector, so `alpha = p`, the Lanczos remainder is exactly zero and the
+/// recurrence estimate is exactly zero after one step. The iterate is
+/// `x0 = fl(1 / p)`, and the recomputed residual `1 - fl(p * fl(1 / p))` is
+/// `EPSILON / 2`, one unit in the last place below one. A relative tolerance
+/// of `EPSILON / 4` lies below it, and the recurrence cannot continue because
+/// the space is closed, so the run reports that the recurrence ended
+/// (`Breakdown`) with the recomputed norm, not that the budget did. The
+/// pre-fix solver reported `Converged` on the zero estimate.
+fn closed_space_witness_violations<T>() -> Vec<String>
+where
+    T: RealScalar + RealField + core::fmt::Debug,
+{
+    let backend = LetoBackend::<T>::default();
+    let matrix = CsrMatrix::from_parts(
+        vec![T::from_f64(WITNESS_PIVOT), T::from_f64(2.0)],
+        vec![0, 1],
+        vec![0, 1, 2],
+        2,
+        2,
+    )
+    .expect("invariant: manufactured CSR parts are valid");
+    let operator = CsrOperator::new(matrix).expect("invariant: matrix is square");
+    let right_hand_side = Array1::from_shape_vec([2], vec![T::from_f64(1.0), T::from_f64(0.0)])
+        .expect("invariant: vector shape is exact");
+    let mut solution = Array1::zeros([2]);
+    let mut workspace =
+        MinresWorkspace::new(&backend, 2).expect("invariant: host allocation succeeds");
+    let relative = T::from_f64(0.25) * <T as RealField>::EPSILON;
+    let policy = ConvergencePolicy::new(T::from_f64(0.0), relative, 3)
+        .expect("invariant: tolerances are finite and non-negative");
+
+    let report = Minres::<LetoBackend<T>>::solve_into(
+        &backend,
+        &operator,
+        &right_hand_side,
+        &mut solution,
+        &mut workspace,
+        policy,
+    )
+    .expect("invariant: manufactured solve has valid dimensions");
+
+    let recomputed = recomputed_residual_norm(backend, &operator, &right_hand_side, &solution);
+    let half_epsilon = T::from_f64(0.5) * <T as RealField>::EPSILON;
+    let row = format!(
+        "{}: {report:?}, recomputed {recomputed:?}",
+        core::any::type_name::<T>()
+    );
+    let mut violations = Vec::new();
+    if report.termination != Termination::Breakdown || report.iterations != 1 {
+        violations.push(format!("{row}: expected Breakdown at iteration 1"));
+    }
+    // Seed, one step and the recompute.
+    if report.operator_applications != 3 {
+        violations.push(format!("{row}: expected 3 operator applications"));
+    }
+    if report.final_residual_norm != recomputed || recomputed != half_epsilon {
+        violations.push(format!(
+            "{row}: expected the recomputed residual EPSILON / 2"
+        ));
+    }
+    if report.final_residual_norm <= report.threshold {
+        violations.push(format!("{row}: the residual does not exceed the threshold"));
+    }
+    violations
+}
+
+#[test]
+fn minres_reports_a_closed_space_above_the_threshold_as_breakdown() {
+    let violations: Vec<String> = [
+        closed_space_witness_violations::<f32>(),
+        closed_space_witness_violations::<f64>(),
     ]
     .into_iter()
     .flatten()
