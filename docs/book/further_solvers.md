@@ -270,13 +270,6 @@ component changes the termination to `NonFinite` and preserves the reported
 residual. Device tests exercise both the indefinite solve and this component
 check in `athena-hephaestus/tests/solver_correctness.rs`.
 
-```rust
-{{#rustdoc_include ../../crates/athena-leto/examples/book_minres.rs:49:68}}
-```
-
-The loop compares each component with the closed-form solution \\((1, -2)\\)
-within `BOUND`, which the sample bases on a count of 113 operations, not a proof.
-
 ### Chebyshev
 
 `Chebyshev::solve_into` takes the same arguments plus the `SpectralBounds`.

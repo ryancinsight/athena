@@ -48,9 +48,9 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 ## ATHENA-DOC-DRIFT-20261113 — Correct solver source citations [docs] — todo
 
 - priority: verification; needs: none; milestone: M-device-least-squares
-- scope: the MINRES and Chebyshev algorithm documentation in `crates/athena-core/src/solver/`
-- outcome: the algorithm comments cite verifiable sources for each recurrence.
-- acceptance: the MINRES comment gives the SIAM title and DOI for Paige and Saunders (1975). The Chebyshev comment identifies a verified edition and section or omits the unverified locator.
+- scope: the MINRES and Chebyshev algorithm documentation in `crates/athena-core/src/solver/`, the MINRES section of `docs/book/further_solvers.md`
+- outcome: the algorithm comments cite verifiable sources for each recurrence. The MINRES section carries no compiled sample, because `book_minres.rs` is not on main; its chapter include returns with the sample when `ATHENA-MINRES-TRUE-RESIDUAL-20261127` restores it.
+- acceptance: the MINRES comment gives the SIAM title and DOI for Paige and Saunders (1975). The Chebyshev comment identifies a verified edition and section or omits the unverified locator. After the sample returns, the MINRES section includes its value-assert block with `rustdoc_include` and `mdbook test docs/book` passes.
 - next step: reconcile the two source comments with the references in `docs/book/further_solvers.md`.
 - basis: 475a8afc0ae7a8c0ecd8a8f333455d26cb84d36a
 
