@@ -5,9 +5,9 @@
 //! with budget three and absolute tolerance zero, so the threshold is
 //! `relative * ||b||` with `||b|| = sqrt(5)`. Each row sets `relative` to a
 //! multiple of the machine epsilon, bracketing the recomputed residual of the
-//! iterate after the second Lanczos step: the exceeding rows lie below it and
-//! the recurrence estimate `|phi_bar|`, which falls below any threshold once the
-//! rotated right-hand side cancels, would report `Converged` there.
+//! iterate after the second Lanczos step: on the exceeding rows the threshold
+//! lies below it while the recurrence estimate `|phi_bar|` still meets the
+//! threshold, so a solver that trusts the estimate reports `Converged` there.
 
 use athena_core::{
     ConvergencePolicy, KrylovBackend, LinearOperator, Minres, MinresWorkspace, Termination,
