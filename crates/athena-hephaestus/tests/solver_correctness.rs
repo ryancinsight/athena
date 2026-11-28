@@ -183,16 +183,19 @@ fn chebyshev_reports_the_exact_singleton_spectrum_solution_on_device() {
 const ORACLE_BOUND_EPSILONS: u16 = 73;
 
 /// Bound, in machine epsilons, on the true residual `‖b - A x‖₂` and on the
-/// reported residual estimate `|φ̄₃|`.
+/// reported residual, the device's recomputed norm of the same vector.
 ///
-/// The true residual is at most `hypot(38.01, 72.35) ε = 81.73 ε`. The
-/// estimate is `|s₂ φ̄₂|` with `φ̄₂ = 4√5/5` and `s₂ = β₃/ρ₂`, where `β₃` is
+/// The true residual is at most `hypot(38.01, 72.35) ε = 81.73 ε`; the
+/// recomputed norm is the same quantity up to the rounding of one norm,
+/// far below the `0.27 ε` the bound leaves. The recurrence estimate is `|s₂ φ̄₂|` with `φ̄₂ = 4√5/5` and `s₂ = β₃/ρ₂`, where `β₃` is
 /// the norm of the second Lanczos remainder; the same propagation bounds its
 /// components by `15.09 ε` and `34.10 ε`, so `β₃ ≤ 37.29 ε` and the estimate
-/// is at most `1.789 · 37.29 ε = 66.7 ε`. Both are nonnegative and below
-/// `82 ε`, so they differ by at most `82 ε`. The estimate also lies below the
-/// convergence threshold `73 ε · ‖b‖ = 163 ε`, so the second step converges,
-/// while the first step's estimate `4√5/5` exceeds it.
+/// is at most `1.789 · 37.29 ε = 66.7 ε`. The true and the reported residual
+/// are nonnegative and below `82 ε`, so they differ by at most `82 ε`. The
+/// estimate lies below the convergence threshold `73 ε · ‖b‖ = 163 ε`, so the
+/// second step recomputes the residual, while the first step's estimate
+/// `4√5/5` exceeds the threshold. The true residual `81.73 ε` is also below
+/// the threshold, so the recompute returns `Converged`.
 const ORACLE_RESIDUAL_BOUND_EPSILONS: u16 = 82;
 
 fn oracle_bound() -> f32 {
@@ -253,22 +256,25 @@ fn minres_solves_the_indefinite_oracle_on_device() {
     assert!(r1.abs() <= f64::from(bound), "row 1 residual {r1}");
     assert_eq!(report.termination, Termination::Converged);
     // One step leaves residual `‖b - c·A·b‖ = √3.2` (`c = -3/5`), far above
-    // the threshold, so convergence is reported by the second step.
+    // the threshold, so convergence is reported by the second step. The
+    // operator runs once to seed, once per step and once to recompute
+    // `b - A x` before `Converged`.
     assert_eq!(report.iterations, 2);
-    assert_eq!(report.operator_applications, 3);
+    assert_eq!(report.operator_applications, 4);
     assert!(report.final_residual_norm <= report.threshold);
     // `b - A x = (-r0, -r1)`, so the true residual norm of the read-back
-    // iterate is `hypot(r0, r1)`; the estimate must agree within the bound.
+    // iterate is `hypot(r0, r1)`; the reported residual is the device's
+    // recomputed norm and must agree within the bound.
     let true_residual = r0.hypot(r1);
     let residual_bound = oracle_residual_bound();
     assert!(
         true_residual <= residual_bound,
         "true residual {true_residual}"
     );
-    let estimate = f64::from(report.final_residual_norm);
+    let reported = f64::from(report.final_residual_norm);
     assert!(
-        (estimate - true_residual).abs() <= residual_bound,
-        "estimate {estimate} against true residual {true_residual}"
+        (reported - true_residual).abs() <= residual_bound,
+        "reported {reported} against true residual {true_residual}"
     );
 
     // The oracle's discriminating half: `Cg` meets `dᵀAd = 1 - 4 = -3` on its
@@ -307,9 +313,11 @@ fn minres_checks_nullspace_components_on_device() {
     let mut workspace = MinresWorkspace::new(&backend, 2).expect("workspace");
     let policy = ConvergencePolicy::new(0.0, 0.0, 1).expect("exact convergence");
 
-    for (rhs0, finite_exit, steps) in [
-        (0.0, Termination::InitialResidual, 0),
-        (1.0, Termination::Converged, 1),
+    // `Converged` recomputes `b - A x`, one operator application beyond the
+    // seed and each step; `InitialResidual` stops after the seed.
+    for (rhs0, finite_exit, steps, applications) in [
+        (0.0, Termination::InitialResidual, 0, 1),
+        (1.0, Termination::Converged, 1, 3),
     ] {
         let rhs = backend.device().upload(&[rhs0, 0.0]).expect("upload");
         for (value, expected) in [
@@ -324,7 +332,7 @@ fn minres_checks_nullspace_components_on_device() {
                     .expect("valid solve");
             assert_eq!(report.termination, expected, "x[1]={value}, rhs[0]={rhs0}");
             assert_eq!(report.iterations, steps);
-            assert_eq!(report.operator_applications, steps + 1);
+            assert_eq!(report.operator_applications, applications);
         }
     }
 }

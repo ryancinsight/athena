@@ -23,7 +23,9 @@ pub(super) enum Stage<S, T> {
 pub(super) struct MinresState<T> {
     initial_residual: T,
     threshold: T,
-    /// `|φ̄ⱼ₊₁|`, maintained so the const report needs no method calls.
+    /// The residual norm the report carries: `|φ̄ⱼ₊₁|` while the recurrence
+    /// estimate is above the threshold, and the recomputed `‖b − A x‖` from
+    /// the first step whose estimate meets it.
     last_residual: T,
     /// `βⱼ`: the Lanczos coefficient connecting `vⱼ₋₁` and `vⱼ`; produced by
     /// the previous step, consumed as the new tridiagonal column's
@@ -64,6 +66,7 @@ where
 {
     pub(super) backend: &'a B,
     pub(super) operator: &'a O,
+    pub(super) right_hand_side: &'a B::Vector,
     pub(super) solution: &'a mut B::Vector,
     pub(super) workspace: &'a mut MinresWorkspace<B>,
     pub(super) policy: ConvergencePolicy<B::Scalar>,
@@ -76,16 +79,13 @@ where
     O: LinearOperator<B>,
     Obs: IterationObserver<B::Scalar>,
 {
-    pub(super) fn validate_dimensions(
-        &self,
-        right_hand_side: &B::Vector,
-    ) -> Result<(), SolveError<B::Error>> {
+    pub(super) fn validate_dimensions(&self) -> Result<(), SolveError<B::Error>> {
         let dimension = self.operator.dimension();
         validate_dimensions(&[
             (
                 "right-hand side",
                 dimension,
-                self.backend.vector_len(right_hand_side),
+                self.backend.vector_len(self.right_hand_side),
             ),
             (
                 "solution",
@@ -107,31 +107,8 @@ where
     /// overwritten before it is read. The zeroing multiplies the seed
     /// residual by `+0`. A negative residual entry, including `-0`, gives
     /// `-0`, which compares equal to the fresh workspace's `+0`.
-    pub(super) fn seed(
-        &mut self,
-        right_hand_side: &B::Vector,
-    ) -> ExecutionResult<B, Stage<MinresState<B::Scalar>, B::Scalar>> {
-        self.operator
-            .apply(
-                self.backend,
-                self.backend.view(self.solution),
-                self.backend.view_mut(&mut self.workspace.image),
-            )
-            .map_err(SolveError::Backend)?;
-        self.backend
-            .residual(
-                self.backend.view(right_hand_side),
-                self.backend.view(&self.workspace.image),
-                self.backend.view_mut(&mut self.workspace.seed_residual),
-            )
-            .map_err(SolveError::Backend)?;
-        let initial_residual = self
-            .backend
-            .norm_l2_prepared(
-                &self.workspace.seed_norm,
-                self.backend.view(&self.workspace.seed_residual),
-            )
-            .map_err(SolveError::Backend)?;
+    pub(super) fn seed(&mut self) -> ExecutionResult<B, Stage<MinresState<B::Scalar>, B::Scalar>> {
+        let initial_residual = self.residual_norm()?;
         let threshold = self.policy.threshold(initial_residual);
         if !initial_residual.is_finite() || !threshold.is_finite() {
             return Ok(Stage::Complete(SolveReport::new(
@@ -305,9 +282,20 @@ where
         state.sine_1 = sine;
         state.beta = beta_next;
         state.phi_bar = phi_bar_next;
-        state.last_residual = phi_bar_next.abs();
-        if !state.last_residual.is_finite() {
+        let estimate = phi_bar_next.abs();
+        state.last_residual = estimate;
+        if !estimate.is_finite() {
             return Ok(Step::Complete(state.report(Termination::NonFinite)));
+        }
+        // The estimate only gates the recompute: `Converged` certifies the
+        // true residual of the returned iterate, so a caller derives an
+        // a posteriori error bound from the report.
+        if estimate <= state.threshold {
+            state.operator_applications += 1;
+            state.last_residual = self.residual_norm()?;
+            if !state.last_residual.is_finite() {
+                return Ok(Step::Complete(state.report(Termination::NonFinite)));
+            }
         }
         if self.policy.should_check(state.iterations) {
             self.observer.observe(IterationState::new(
@@ -326,6 +314,36 @@ where
             return Ok(Step::Complete(state.report(Termination::Breakdown)));
         }
         Ok(Step::Continue)
+    }
+
+    /// `‖b − A x‖` of the current iterate, left in `seed_residual`; the
+    /// caller counts the operator application.
+    ///
+    /// Seeding runs before the first step, and a candidate convergence runs
+    /// after the Lanczos shift has consumed `image`; the next step rewrites
+    /// `image` before reading it, so `image` and the spent seed residual
+    /// serve as scratch.
+    fn residual_norm(&mut self) -> ExecutionResult<B, B::Scalar> {
+        self.operator
+            .apply(
+                self.backend,
+                self.backend.view(self.solution),
+                self.backend.view_mut(&mut self.workspace.image),
+            )
+            .map_err(SolveError::Backend)?;
+        self.backend
+            .residual(
+                self.backend.view(self.right_hand_side),
+                self.backend.view(&self.workspace.image),
+                self.backend.view_mut(&mut self.workspace.seed_residual),
+            )
+            .map_err(SolveError::Backend)?;
+        self.backend
+            .norm_l2_prepared(
+                &self.workspace.seed_norm,
+                self.backend.view(&self.workspace.seed_residual),
+            )
+            .map_err(SolveError::Backend)
     }
 
     /// Three-term Lanczos: `w ← A·vⱼ − βⱼ·vⱼ₋₁`, then `w ← w − αⱼ·vⱼ`,

@@ -4,8 +4,9 @@
 pub struct IterationState<T> {
     /// One-based iteration number.
     pub iteration: usize,
-    /// Current residual norm. CG and GMRES can report recurrence estimates
-    /// during iteration and explicitly recomputed norms at terminal checks.
+    /// Current residual norm. CG, GMRES and MINRES can report recurrence
+    /// estimates during iteration and explicitly recomputed norms at the
+    /// checks that decide convergence.
     pub residual_norm: T,
     /// Effective convergence threshold.
     pub threshold: T,

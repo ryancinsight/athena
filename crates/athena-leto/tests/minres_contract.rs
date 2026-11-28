@@ -15,6 +15,8 @@ use eunomia::{FloatElement, RealField};
 use leto::Array1;
 use leto_ops::{CsrMatrix, RealScalar};
 
+#[path = "minres_contract/true_residual.rs"]
+mod true_residual;
 #[path = "minres_contract/workspace_reuse.rs"]
 mod workspace_reuse;
 
@@ -205,8 +207,16 @@ where
     T: RealScalar + RealField + core::fmt::Debug,
 {
     assert_eq!(report.termination, Termination::Converged);
-    // Three distinct eigenvalues complete the Krylov space at step three.
-    assert!(report.iterations <= 3, "Lanczos completion bound");
+    // Three distinct eigenvalues complete the Krylov space at step three, so
+    // no iterate before it reaches the threshold. `Converged` certifies the
+    // recomputed residual, which can still exceed the threshold after step
+    // three; the budget of four steps bounds the count. Measured: `f32`
+    // converges at step three and `f64` at step four.
+    assert!(
+        (3..=4).contains(&report.iterations),
+        "Lanczos completion at step three; the budget is four"
+    );
+    assert!(report.final_residual_norm <= report.threshold);
     // Three steps over length-three vectors perform fewer than 72 rounded
     // scalar operations; the spectral spread is [−2.7, 2.7] with the smallest
     // magnitude ≈ 1.4, so the amplification stays below two. 512 machine
@@ -298,9 +308,11 @@ where
     let mut workspace = MinresWorkspace::new(&backend, 2).expect("workspace");
     let policy = ConvergencePolicy::new(zero, zero, 1).expect("exact convergence");
 
-    for (rhs0, finite_exit, steps) in [
-        (zero, Termination::InitialResidual, 0),
-        (one, Termination::Converged, 1),
+    // `Converged` recomputes `b − A x`, one operator application beyond the
+    // seed and each step; `InitialResidual` stops after the seed.
+    for (rhs0, finite_exit, steps, applications) in [
+        (zero, Termination::InitialResidual, 0, 1),
+        (one, Termination::Converged, 1, 3),
     ] {
         let rhs = Array1::from_shape_vec([2], vec![rhs0, zero]).expect("two entries");
         for (value, expected) in [
@@ -315,7 +327,7 @@ where
                     .expect("valid dimensions");
             assert_eq!(report.termination, expected);
             assert_eq!(report.iterations, steps);
-            assert_eq!(report.operator_applications, steps + 1);
+            assert_eq!(report.operator_applications, applications);
             assert_eq!(report.final_residual_norm, zero);
         }
     }

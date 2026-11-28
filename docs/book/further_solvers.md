@@ -100,10 +100,9 @@ In exact arithmetic, a nonsingular operator with \\(m\\) distinct eigenvalues is
 solved in at most \\(m\\) steps, because its minimal polynomial, scaled to equal
 one at zero, gives \\(q(A) = 0\\). These statements hold for symmetric \\(A\\) in
 exact arithmetic; in floating point the recurrence \\(|\bar\varphi_{j+1}|\\) drifts
-from the true residual. `Minres` currently reports `Converged` from that
-recurrence value without recomputing \\(b - A x\\), although the
-[Convergence Policy](convergence_policy.md) chapter says every solver does. The
-deviation is a defect, tracked as `ATHENA-MINRES-TRUE-RESIDUAL-20261127`.
+from the true residual. `Minres` therefore uses that recurrence value only to
+decide when to recompute \\(b - A x\\), as the
+[Convergence Policy](convergence_policy.md) chapter requires of every solver.
 
 ## Chebyshev: no inner products
 
@@ -262,9 +261,13 @@ positive-definite factorisation seam \\(M = L L^{\mathsf T}\\), which differs fr
 
 `Minres::solve_into` takes the backend, operator, right-hand side, solution,
 workspace and policy. It applies the operator once to seed the recurrence and
-once per iteration. It currently reports `Converged` when
-\\(|\bar\varphi_{j+1}|\\) meets the threshold, the recurrence value rather than a
-recomputed residual (see the defect above), and `Breakdown` when the Lanczos space closes
+once per iteration, and once more whenever \\(|\bar\varphi_{j+1}|\\) meets the
+threshold, to recompute \\(b - A x\\). `Converged` means that recomputed norm
+meets the threshold, and the report carries it. If it does not, the run
+keeps iterating, and a budget that ends first reports `MaxIterations` with the
+last recomputed norm. It has no stall test: ADR 0004 requires a derivation
+for each solver family, and this chapter supplies none for MINRES. It returns
+`Breakdown` when the Lanczos space closes
 (\\(\beta_{j+1} = 0\\)) or a rotation radius is not positive before the policy
 is met. Its threshold is built from \\(\\|r_0\\|\\) rather than \\(\\|b\\|\\), so
 the two agree when \\(x_0 = 0\\). Before returning `Converged` or
