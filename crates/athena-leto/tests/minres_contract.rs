@@ -209,13 +209,11 @@ where
     assert_eq!(report.termination, Termination::Converged);
     // Three distinct eigenvalues complete the Krylov space at step three, so
     // no iterate before it reaches the threshold. `Converged` certifies the
-    // recomputed residual, which can still exceed the threshold after step
-    // three; the budget of four steps bounds the count. Measured: `f32`
-    // converges at step three and `f64` at step four.
-    assert!(
-        (3..=4).contains(&report.iterations),
-        "Lanczos completion at step three; the budget is four"
-    );
+    // recomputed residual, which can exceed the threshold after step three;
+    // the budget of four steps, which `Converged` above already respects,
+    // is the only upper bound. Measured, not derived: `f32` converges at
+    // step three and `f64` at step four.
+    assert!(report.iterations >= 3, "Lanczos completion at step three");
     assert!(report.final_residual_norm <= report.threshold);
     // Three steps over length-three vectors perform fewer than 72 rounded
     // scalar operations; the spectral spread is [−2.7, 2.7] with the smallest

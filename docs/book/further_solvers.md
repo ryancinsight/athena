@@ -101,7 +101,7 @@ solved in at most \\(m\\) steps, because its minimal polynomial, scaled to equal
 one at zero, gives \\(q(A) = 0\\). These statements hold for symmetric \\(A\\) in
 exact arithmetic; in floating point the recurrence \\(|\bar\varphi_{j+1}|\\) drifts
 from the true residual. `Minres` therefore uses that recurrence value only to
-decide when to recompute \\(b - A x\\), as the
+trigger the recompute of \\(b - A x\\) that decides `Converged`, as the
 [Convergence Policy](convergence_policy.md) chapter requires of every solver.
 
 ## Chebyshev: no inner products
@@ -269,7 +269,9 @@ last recomputed norm. It has no stall test: ADR 0004 requires a derivation
 for each solver family, and this chapter supplies none for MINRES. It returns
 `Breakdown` when the Lanczos space closes
 (\\(\beta_{j+1} = 0\\)) or a rotation radius is not positive before the policy
-is met. Its threshold is built from \\(\\|r_0\\|\\) rather than \\(\\|b\\|\\), so
+is met. A closed space whose recomputed residual is still above the threshold
+also ends as `Breakdown`: the recurrence cannot continue, and the threshold is
+below the accuracy that rounding leaves, as for the `MaxIterations` exit above. Its threshold is built from \\(\\|r_0\\|\\) rather than \\(\\|b\\|\\), so
 the two agree when \\(x_0 = 0\\). Before returning `Converged` or
 `InitialResidual`, MINRES checks every solution component. A nonfinite
 component changes the termination to `NonFinite` and preserves the reported

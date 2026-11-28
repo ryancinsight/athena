@@ -308,9 +308,13 @@ where
             return Ok(Step::Complete(state.report(Termination::Converged)));
         }
         if beta_next == <B::Scalar as NumericElement>::ZERO {
-            // The Krylov space closed on an invariant subspace while the
-            // residual is still above policy: the system is inconsistent over
-            // the reachable space, or the operator is singular there.
+            // The Krylov space closed on an invariant subspace, so the
+            // recurrence cannot continue, and the recomputed residual is
+            // still above policy. In exact arithmetic the iterate solves the
+            // system exactly on that space; here the policy lies below the
+            // accuracy that rounding leaves (a singular space whose zero
+            // radius rounded to nonzero would end here too: hypothesis). The
+            // run reports that the recurrence ended, not that the budget did.
             return Ok(Step::Complete(state.report(Termination::Breakdown)));
         }
         Ok(Step::Continue)
