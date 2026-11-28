@@ -8,9 +8,7 @@
   the manifest and tag reading follow athena#185 (merge `9741050`), re-read
   against the manifests and tags on `main` (athena#192); device `Minres` moved
   to Delivered: `minres_solves_the_indefinite_oracle_on_device` (athena#186).
-- Revised 2026-11-27: the athena-core and athena-krylov rows return to the
-  seven-solver book, because the further-solvers chapter now derives `Minres`,
-  `Chebyshev` and `DeflatedCg`; only the source-comment citations stay open.
+- Revised 2026-11-27: the core and krylov rows follow the seven-solver book.
 
 ## Context
 
@@ -37,7 +35,7 @@ contract; such an item gates no exit.
 
 | Crate | Delivered | In scope for 1.0 | Non-goal for 1.0 |
 |---|---|---|---|
-| athena-core | `KrylovBackend` seam with GAT views and `VectorBlock`; `LinearOperator`, `RectangularOperator`, `Preconditioner`, `Identity`; `ConvergencePolicy`, `residual_noise_floor`, `Termination` with `Stagnated` and `Diverged` (ADR 0004); allocation-free reports and observers; `Cg`, `Gmres` (restarted, right-preconditioned, flexible-preconditioner property, rank-deficient recovery), `BiCgStab`, `Lsqr` (plain and damped), `Minres`, `Chebyshev`, `DeflatedCg`; `Cg` recomputes `b - A x` before accepting convergence and at its curvature and budget exits (`ATHENA-CG-TERMINAL-RESIDUAL-20261103`); README and book chapters for all seven solvers | Source-comment citations for the `Minres` and `Chebyshev` recurrences (`ATHENA-DOC-DRIFT-20261113`) | Nonlinear solver policy; QMR, TFQMR, IDR, LSMR and Krylov recycling; Arnoldi and Lanczos eigenvalue machinery; complex scalars |
+| athena-core | `KrylovBackend` seam with GAT views and `VectorBlock`; `LinearOperator`, `RectangularOperator`, `Preconditioner`, `Identity`; `ConvergencePolicy`, `residual_noise_floor`, `Termination` with `Stagnated` and `Diverged` (ADR 0004); allocation-free reports and observers; `Cg`, `Gmres` (restarted, right-preconditioned, flexible-preconditioner property, rank-deficient recovery), `BiCgStab`, `Lsqr` (plain and damped), `Minres`, `Chebyshev`, `DeflatedCg`; `Cg` recomputes `b - A x` before accepting convergence and at its curvature and budget exits (`ATHENA-CG-TERMINAL-RESIDUAL-20261103`); README and book chapters for all seven solvers | Source-comment citations for the `Minres` and `Chebyshev` recurrences and a compiled sample in the chapter's MINRES section (`ATHENA-DOC-DRIFT-20261113`) | Nonlinear solver policy; QMR, TFQMR, IDR, LSMR and Krylov recycling; Arnoldi and Lanczos eigenvalue machinery; complex scalars |
 | athena-leto | `LetoBackend` and `LetoVectorBlock`; runtime-restart `KrylovWorkspace`; `CsrOperator`, `BorrowedCsrOperator`, `BorrowedDenseOperator`, `PoissonStencilOperator`, `RectangularCsrOperator`; `Jacobi`, `IncompleteLu` and `SuccessiveOverRelaxation` preconditioners; `BlockDiagonalPreconditioner`, `ComponentBlockPreconditioner` and `SimplePreconditioner` (7 unit tests); `AlgebraicMultigrid` (2 unit tests) and its component API: five smoothers, five coarsening functions with `analyze_coarsening_quality`, the classical and direct interpolation builders, the restriction builders and both validators, `restrict_matrix` and `restrict_vector` (28 unit tests) | Solve-level contracts for `AlgebraicMultigrid`, the three saddle-point preconditioners and the two functions no test names, `hmis_coarsening` and `create_standard_interpolation` (`ATHENA-PRECONDITIONER-CONTRACT-20261113`) and for `LinearSolverChain`, which has no test (`ATHENA-SOLVER-CHAIN-CONTRACT-20261113`); a book chapter for the preconditioners, multigrid and chain | Coarsening over unstructured meshes beyond the shipped `*_coarsening` strategies |
 | athena-hephaestus | `HephaestusBackend` over `DenseVectorOps`; prepared dot and norm; `CsrOperator` over `SparseOperatorOps`; device `Jacobi`; `Cg`, `Gmres`, `BiCgStab`, `DeflatedCg`, `Chebyshev` and `Minres` on device (`minres_solves_the_indefinite_oracle_on_device`) | `Lsqr` on device through a device `RectangularOperator` (the milestone exit) | Device incomplete-LU, SOR, multigrid and saddle-point preconditioners; a device stencil operator; device scalars other than `f32` |
 | athena-krylov | Re-export of `athena-core`; features `cpu` (default) and `accelerator`; examples `poisson_cpu`, `nonsymmetric_cpu`, `poisson_accelerator`, `nonsymmetric_accelerator`; benches `cg_poisson`, `gmres_poisson`, `kernels`, `stencil_vs_csr`; a seven-solver book | One self-checking example for the milestone (`least_squares_accelerator`), which solves with `Lsqr` through the device `RectangularOperator` and asserts the closed-form least-squares solution | A crate per device (ADR 0034); runtime backend detection; a CPU fallback behind an accelerator example |
@@ -60,8 +58,7 @@ coarsening waits for a mesh-hierarchy owner or a second consumer).
 One milestone, the final block: `M-device-least-squares`, solve overdetermined
 least-squares systems on a Hephaestus device. It plans 1.0.0, a major above
 every manifest version and every crate tag. Crates carry separate versions and
-release per crate tag (`<package>-v<version>`); release needs explicit
-authority.
+release per crate tag (`<package>-v<version>`); release needs explicit authority.
 
 Device `Lsqr` is the one capability this scope names that is absent at the
 basis: README:35-36 records `RectangularOperator` as Leto-only, `git grep
