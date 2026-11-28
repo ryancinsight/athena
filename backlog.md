@@ -49,7 +49,7 @@ Milestone ladder; scope in [ADR 0005](docs/adr/0005-release-scope.md). The one m
 
 - priority: verification; needs: none; milestone: M-device-least-squares
 - scope: the MINRES and Chebyshev algorithm documentation in `crates/athena-core/src/solver/`, the MINRES section of `docs/book/further_solvers.md`
-- outcome: the algorithm comments cite verifiable sources for each recurrence. The MINRES section carries no compiled sample, because no MINRES sample is on main; a sample that asserts the solution within a derived bound needs MINRES to return `Converged` only on a recomputed residual, as the other solvers do, and its include returns once that holds.
+- outcome: the algorithm comments cite verifiable sources for each recurrence. The MINRES section carries no compiled sample, because no MINRES sample is on main; a sample that asserts the solution within a derived bound needs MINRES to return `Converged` only on a recomputed residual, as `Chebyshev` and `DeflatedCg` do, and its include returns once that holds.
 - acceptance: the MINRES comment gives the SIAM title and DOI for Paige and Saunders (1975). The Chebyshev comment identifies a verified edition and section or omits the unverified locator. Once the MINRES sample exists on main, the MINRES section includes its value-assert block with `rustdoc_include` and `mdbook test docs/book` passes.
 - next step: reconcile the two source comments with the references in `docs/book/further_solvers.md`.
 - basis: f0af0a509aeff0d5c5f67ef7e3be036e0adb5bf4
