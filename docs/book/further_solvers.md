@@ -269,8 +269,13 @@ last recomputed norm. It has no stall test: ADR 0004 requires a derivation
 for each solver family, and this chapter supplies none for MINRES. It returns
 `Breakdown` when the Lanczos space closes
 (\\(\beta_{j+1} = 0\\)) or a rotation radius is not positive before the policy
-is met. Its threshold is built from \\(\\|r_0\\|\\) rather than \\(\\|b\\|\\), so
-the two agree when \\(x_0 = 0\\). Before returning `Converged` or
+is met. A closed space whose recomputed residual is still above the threshold
+also ends as `Breakdown`, because the recurrence cannot continue. On a
+consistent system the threshold is then below the accuracy that rounding
+leaves, as for the `MaxIterations` exit above; a singular space whose zero
+radius rounded to nonzero would end here too (a hypothesis, not witnessed on
+the host backend). Its threshold is built from \\(\\|r_0\\|\\) rather than
+\\(\\|b\\|\\), so the two agree when \\(x_0 = 0\\). Before returning `Converged` or
 `InitialResidual`, MINRES checks every solution component. A nonfinite
 component changes the termination to `NonFinite` and preserves the reported
 residual. Device tests exercise both the indefinite solve and this component
