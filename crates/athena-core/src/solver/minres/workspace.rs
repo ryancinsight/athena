@@ -13,14 +13,16 @@ use crate::KrylovBackend;
 /// result as a fresh one under IEEE value equality (`-0` equals `+0`).
 pub struct MinresWorkspace<B: KrylovBackend> {
     /// Seed residual `r₀ = b − A·x₀`. After seeding, a candidate
-    /// convergence reuses this allocation and its prepared norm for `x − x`.
+    /// convergence reuses this allocation and its prepared norm for the
+    /// recomputed `b − A·x` and for `x − x`.
     pub(super) seed_residual: B::Vector,
     /// Current Lanczos direction `vⱼ`.
     pub(super) direction: B::Vector,
     /// Previous Lanczos direction `vⱼ₋₁`; zero before the first step.
     pub(super) previous_direction: B::Vector,
     /// Operator image `A·vⱼ`, reused in place as the three-term Lanczos
-    /// accumulator `w` and then as the next direction after normalisation.
+    /// accumulator `w` and then as the next direction after normalisation;
+    /// a candidate convergence then reuses it for `A·x`.
     pub(super) image: B::Vector,
     /// Solution update vectors `wⱼ`, `wⱼ₋₁`, `wⱼ₋₂`.
     pub(super) update: B::Vector,
