@@ -9,6 +9,10 @@
 - Revised 2026-11-16: the noise floor's `||A|| ||x|| ~ ||b||` premise is
   restated as an assumption that fails when `Ax` cancels; the CG stall test
   does not use the floor.
+- Revised 2026-11-27: MINRES recomputes `b - A x` before `Converged` and,
+  with no stall test derived for it, ends `MaxIterations` at the budget or
+  `Breakdown` at a closed Krylov space; the stalled case stays unseparated
+  for MINRES.
 
 ## Context
 

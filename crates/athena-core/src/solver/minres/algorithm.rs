@@ -30,10 +30,18 @@ use crate::SolveError;
 ///
 /// # Termination
 ///
-/// The Lanczos residual estimate is exact in exact arithmetic (the Givens
-/// rotations are norm-preserving), and the run reports [`crate::Termination::Breakdown`]
-/// when the recurrence loses rank before the policy is met — a zero next
-/// Lanczos coefficient, or a zero QR diagonal.
+/// The Lanczos residual estimate `|φ̄|` is exact in exact arithmetic (the
+/// Givens rotations are norm-preserving) but drifts from `‖b − A x‖` in
+/// floating point. Each step whose estimate meets the threshold therefore
+/// recomputes `b − A x` with one extra operator application, and the report
+/// carries that recomputed norm. [`crate::Termination::Converged`] means the
+/// recomputed norm meets the threshold. When it does not, the run continues:
+/// a later step can still meet the threshold, and a budget that ends first
+/// reports [`crate::Termination::MaxIterations`] with the last recomputed
+/// norm, as [`crate::Chebyshev`] does. The run reports
+/// [`crate::Termination::Breakdown`] when the recurrence loses rank before the
+/// policy is met — a zero next Lanczos coefficient, or a zero QR diagonal.
+///
 /// Before accepting an initial or iterative convergence result, MINRES checks
 /// every component of the candidate solution. A NaN or infinity changes the
 /// termination to [`crate::Termination::NonFinite`]. The residual field
@@ -99,13 +107,14 @@ impl<B: KrylovBackend> Minres<B> {
         let mut execution = Execution {
             backend,
             operator,
+            right_hand_side,
             solution,
             workspace,
             policy,
             observer,
         };
-        execution.validate_dimensions(right_hand_side)?;
-        let mut report = match execution.seed(right_hand_side)? {
+        execution.validate_dimensions()?;
+        let mut report = match execution.seed()? {
             Stage::Complete(report) => report,
             Stage::Continue(state) => execution.iterate(state)?,
         };
