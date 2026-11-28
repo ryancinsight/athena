@@ -5,7 +5,7 @@
 This book is written for someone meeting Krylov methods for the first time. It
 builds the mathematics before the API: Part I covers what it means for an
 iterative solve to be finished and what a solver needs from the machine it runs
-on, Part II covers the seven solvers Athena ships and says which
+on, Part II derives the seven solvers Athena ships and says which
 problem each one is for, and Part III places the crate in the Atlas stack.
 
 ## Why iterate at all
